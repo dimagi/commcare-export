@@ -25,7 +25,7 @@ def main(argv):
     parser.add_argument('--domain', required=True)
     parser.add_argument('--username')
     parser.add_argument('--password')
-    parser.add_argument('--output-format', default='json', choices=['json', 'csv', 'excel'], help='Output format')
+    parser.add_argument('--output-format', default='json', choices=['json', 'csv', 'xsl', 'xslx'], help='Output format')
     parser.add_argument('--output', metavar='PATH', default='reports.zip', help='Path to output; defaults to `reports.zip`.')
 
     args = parser.parse_args(argv)
@@ -46,8 +46,10 @@ def main(argv):
     if not args.query:
         args.query = sys.stdin.read()
 
-    if args.output_format == 'excel':
+    if args.output_format == 'xslx':
         writer = writers.Excel2007TableWriter(args.output)
+    elif args.output_format == 'xsl':
+        writer = writers.Excel2003TableWriter(args.output)
     elif args.output_format == 'csv':
         writer = writers.CsvTableWriter(args.output)
     elif args.output_format == 'json':

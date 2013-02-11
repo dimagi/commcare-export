@@ -4,6 +4,8 @@ from StringIO import StringIO
 import csv
 import json
 
+from itertools import chain
+
 MAX_COLUMN_SIZE = 2000
 
 class TableWriter(object):
@@ -56,7 +58,7 @@ class CsvTableWriter(TableWriter):
         return name[:31]
 
 
-class Excel2007ExportWriter(TableWriter):
+class Excel2007TableWriter(TableWriter):
     max_table_name_size = 31
     
     def __init__(self, file):
@@ -65,14 +67,12 @@ class Excel2007ExportWriter(TableWriter):
         except ImportError:
             raise Exception("It doesn't look like this machine is configured for "
                             "excel export. To export to excel you have to run the "
-                            "command:  easy_install openpyxl")
+                            "command:  pip install openpyxl")
 
         self.file = file
+        self.book = openpyxl.workbook.Workbook(optimized_write=True)
 
     def __enter__(self):
-        self.book = openpyxl.workbook.Workbook(optimized_write=True)
-        self.tables = {}
-        self.table_indices = {}
         return self
 
     def write_table(self, table):
@@ -86,7 +86,7 @@ class Excel2007ExportWriter(TableWriter):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.book.save(self.file)
 
-class Excel2003ExportWriter(TableWriter):
+class Excel2003TableWriter(TableWriter):
     max_table_name_size = 31
 
     def __init__(self, file):
@@ -95,21 +95,18 @@ class Excel2003ExportWriter(TableWriter):
         except ImportError:
             raise Exception("It doesn't look like this machine is configured for "
                             "excel export. To export to excel you have to run the "
-                            "command:  easy_install openpyxl")
+                            "command:  pip install xlwt")
 
         self.file = file
+        self.book = xlwt.Workbook()
 
     def __enter__(self):
-        self.book = xlwt.Workbook(optimized_write=True)
-        self.tables = {}
-        self.table_indices = {}
         return self
 
     def write_table(self, table):
         sheet = self.book.add_sheet(table['name'][:self.max_table_name_size])
 
-        sheet.append([unicode(v) for v in table['headings']])
-        for rownum, row in [table['headings']] + table['rows']:
+        for rownum, row in enumerate(chain([table['headings']], table['rows'])):
             for colnum, val in enumerate(row):
                 sheet.write(rownum, colnum, unicode(val))
         
