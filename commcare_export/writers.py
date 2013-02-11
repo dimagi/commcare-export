@@ -44,17 +44,19 @@ class CsvTableWriter(TableWriter):
         tempfile = StringIO()
         writer = csv.writer(tempfile, dialect=csv.excel)
         writer.writerow(table['headings'])
-        for row in table:
-            writer.writerow(map(_encode_if_needed(val) for val in row))
+        for row in table['rows']:
+            writer.writerow([val.encode('utf-8') if isinstance(val, unicode) else val
+                             for val in row])
 
-        self.archive.writestr('%s.csv' % self.zip_safe_name_for_table(name),
-                              tempfile.value())
+        # TODO: make this a polite zip and put everything in a subfolder with the same basename
+        # as the zipfile
+        self.archive.writestr('%s.csv' % self.zip_safe_name(table['name']),
+                              tempfile.getvalue())
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.archive.close()
-        self.file.seek(0)
 
-    def zip_safe_name(name):
+    def zip_safe_name(self, name):
         return name[:31]
 
 
