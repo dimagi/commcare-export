@@ -6,7 +6,7 @@ setuptools.setup(
     url = "https://github.com/dimagi/commcare-export",
     maintainer = "CommCareHQ Team",
     maintainer_email = "information@dimagi.com",
-    entry_points = { 'console_scripts': ['commcare-export = commcare_export.cli:main'] },
+    entry_points = { 'console_scripts': ['commcare-export = commcare_export.cli:entry_point'] },
     packages = setuptools.find_packages(),
     install_requires = ['jsonpath_rw', 
                         'requests',

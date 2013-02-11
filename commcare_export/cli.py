@@ -50,6 +50,9 @@ def main(argv):
         pprint.pprint(list(results), indent=4)
     else:
         print 'Not yet!'
+
+def entry_point():
+    main(sys.argv[1:])
     
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    entry_point()
