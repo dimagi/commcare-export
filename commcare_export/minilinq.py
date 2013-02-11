@@ -202,6 +202,53 @@ class Map(MiniLinq):
         return {'Map': {'body': self.body,
                         'source': self.source,
                         'name': self.name}}
+class FlatMap(MiniLinq):
+    """
+    Somewhat like a JOIN, but not quite. Called `SelectMany`
+    in LINQ and `flatMap` other languages. Obvious equivalence:
+    `flatMap f = flatten . map f` but so common it is useful to
+    have around.
+
+    If `name` is provided to the constructor, then instead of
+    replacing the environment with each row, it will just
+    bind the row to `name`, enabling references to the
+    rest of the env.
+    """
+
+    def __init__(self, source, body, name=None):
+        "(MiniLinq, MiniLinq, var?) -> MiniLinq"
+        self.source = source
+        self.name = name
+        self.body = body
+    
+    def eval(self, env):
+        source_result = self.source.eval(env)
+
+        def iterate(env=env, source_result=source_result): # Python closure workaround
+            if self.name:
+                for item in source_result:
+                    for result_item in self.body.eval(env.bind(name, item)):
+                        yield result_item
+            else:
+                for item in source_result:
+                    for result_item in self.body.eval(env.replace(item)):
+                        yield result_item
+
+        return RepeatableIterator(iterate)
+
+    @classmethod
+    def from_jvalue(cls, jvalue):
+        fields = jvalue['FlatMap']
+
+        # TODO: catch errors and give informative error messages
+        return cls(body   = MiniLinq.from_jvalue(fields['body']),
+                   source = MiniLinq.from_jvalue(fields['source']),
+                   name   = fields.get('name'))
+
+    def to_jvalue(self):
+        return {'FlatMap': {'body': self.body,
+                            'source': self.source,
+                            'name': self.name}}
 
 class RepeatableIterator(object):
     def __init__(self, generator):
@@ -231,4 +278,5 @@ class Columns(MiniLinq):
 MiniLinq.register(Reference, slug='Ref')
 MiniLinq.register(Map)
 MiniLinq.register(Filter)
+MiniLinq.register(FlatMap)
 
