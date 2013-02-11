@@ -1,4 +1,5 @@
-
+from jsonpath_rw.parser import parse as parse_jsonpath
+    
 class JsonPathEnv(object):
     """
     An environment like those that map names
@@ -13,18 +14,9 @@ class JsonPathEnv(object):
         # TODO: parse the str as JsonPath using a library,
         # and just lookup via that
         if isinstance(name, basestring):
-            bits = name.split('.')
-            curr = self.__bindings
-            for field in bits:
-                if field == '@':
-                    pass
-                elif curr == None:
-                    pass
-                elif field in curr:
-                    curr = curr[field]
-                else:
-                    curr = None
-            return curr
+            jsonpath = parse_jsonpath(name)
+
+            return list(jsonpath.find(self.__bindings))
         else:
             # TODO: JsonPath does not exist, and we need
             # to actually depend on the library
