@@ -1,3 +1,5 @@
+from datetime import datetime
+from itertools import imap
 
 class MiniLinq(object):
     """
@@ -162,6 +164,27 @@ class Filter(MiniLinq):
                            'source': self.source,
                            'name': self.name}}
 
+class List(MiniLinq):
+    """
+    A list of expressions, embeds the [ ... ] syntax into the
+    MiniLinq meta-leval
+    """
+    def __init__(self, items):
+        self.items = items
+    
+    def eval(self, env):
+        return [item.eval(env) for item in self.items]
+
+    def __eq__(self, other):
+        return isinstance(other, List) and self.items == other.items
+
+    @classmethod
+    def from_jvalue(cls, jvalue):
+        return cls([MiniLinq.from_jvalue(item) for item in jvalue['List']])
+
+    def to_jvalue(self):
+        return {'List': self.items}
+
 class Map(MiniLinq):
     """
     Like the `FROM` clause of a SQL `SELECT` or jQuery's map,
@@ -293,42 +316,55 @@ class Apply(MiniLinq):
 
 class Emit(MiniLinq):
     """
-    This MiniLinq has only the side effect of writing a collection
-    of results to a new table (via whatever writer is present in the environment)
+    This MiniLinq writes to whatever writer is registered in the `env`.
+    It first writes the column headers, and then writes one row per
+    each element of its input. 
+
+    Note that it does not actually check that the number of headings is
+    correct, nor does it try to ensure that the things being emitted
+    are actually lists - it is just crashy instead.
     """
-    def __init__(self, table_name, body):
-        self.table_name = table_name
-        self.body = body
+    def __init__(self, table, headings, source):
+        "(str, [(str, MiniLinq)]) -> MiniLinq"
+        self.table = table
+        self.headings = headings
+        self.source = source
+
+    def coerce_cell(self, cell):
+        if isinstance(cell, unicode):
+            return cell
+        elif isinstance(cell, str):
+            return unicode(cell)
+        elif isinstance(cell, int):
+            return cell
+        elif isinstance(cell, datetime):
+            return cell
+
+        # In all other cases, coerce to a list and join with ',' for now
+        return ','.join([self.coerce_cell(item) for item in list(cell)])
+        
+    def coerce_row(self, row):
+        return [self.coerce_cell(cell) for cell in row]
 
     def eval(self, env):
-        body_results = self.body.eval(env)
-        env.writer.write_table(table_name, body_results)
+        rows = self.source.eval(env)
+        env.emit_table({'name': self.table,
+                        'headings': [heading.eval(env) for heading in self.headings],
+                        'rows': imap(self.coerce_row, rows)})
+        return rows
 
     @classmethod
     def from_jvalue(cls, jvalue):
         fields = jvalue['Emit']
 
-        # TODO: catch errors and give informative error messages
-        return cls(table_name = fields['table_name'],
-                   body       = MiniLinq.from_jvalue(fields['body']))
+        return cls(table    = fields['table'],
+                   source   = MiniLinq.from_jvalue(fields['source']),
+                   headings = [MiniLinq.from_jvalue(heading) for heading in fields['headings']])
 
     def to_jvalue(self):
-        return {'Emit': {'table_name': self.table_name,
-                         'body': self.body.to_jvalue()}}
-
-class Columns(MiniLinq):
-    def __init__(self, columns):
-        """
-        ([(str, MiniLinq)] -> MiniLinq
-
-        Each item in the `columns` list gives a header
-        for the column and the expression to populate
-        the column with.
-        """
-        self.columns = columns
-
-    def eval(self, env):
-        return dict([ (field, expr.eval(env)) for field, expr in self.columns.items() ])
+        return {'Emit': {'table': self.table,
+                         'headings': [heading.to_jvalue() for heading in self.headings],
+                         'source': self.source.to_jvalue()}}
 
 ### Utility class
 
@@ -348,3 +384,4 @@ MiniLinq.register(Filter)
 MiniLinq.register(FlatMap)
 MiniLinq.register(Apply)
 MiniLinq.register(Emit)
+MiniLinq.register(List)

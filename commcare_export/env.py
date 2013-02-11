@@ -1,9 +1,11 @@
 from jsonpath_rw.parser import parse as parse_jsonpath
 
 import operator
+from itertools import chain
 
 class CannotBind(Exception): pass
 class CannotReplace(Exception): pass
+class CannotEmit(Exception): pass
 class NotFound(Exception): pass
 
 class Env(object):
@@ -56,6 +58,17 @@ class Env(object):
         """
         raise NotImplementedError()
 
+    # Minor impurity of the idea of a binding env:
+    # also allow `Emit` to directly call into
+    # the environment. It is up to the env
+    # whether to store it, write it immediately,
+    # or do something clever with iterators, etc.
+    def emit_table(self, table_spec):
+        raise NotImplementedError()
+
+    def emitted_tables(self):
+        raise NotImplementedError()
+    
     #
     # Fluent interface to combinators
     #
@@ -93,6 +106,13 @@ class OrElse(Env):
         try:                  return OrElse(self.left.replace(data), self.right)
         except CannotReplace: return OrElse(self.left, self.right.replace(data))
 
+    def emit_table(self, table_spec):
+        try:               return self.left.emit_table(table_spec)
+        except CannotEmit: return self.right.emit_table(table_spec)
+
+    def emitted_tables(self):
+        return chain(self.left.emitted_tables(), self.right.emitted_tables())
+
 
 #
 # Concrete environment classes
@@ -115,6 +135,12 @@ class DictEnv(Env):
     def replace(self, data):
         if isinstance(data, dict): return DictEnv(data)
         else:                      raise CannotReplace()
+
+    def emit_table(self, table_spec):
+        raise CannotEmit()
+
+    def emitted_tables(self):
+        return []
     
 class JsonPathEnv(Env):
     """
@@ -155,6 +181,12 @@ class JsonPathEnv(Env):
     def replace(self, data):
         return self.__class__(data)
 
+    def emit_table(self, table_spec):
+        raise CannotEmit()
+
+    def emitted_tables(self):
+        return []
+
 #
 # Actual concrete environments, basically with built-in functions.
 #
@@ -163,9 +195,14 @@ class BuiltInEnv(DictEnv):
     """
     A built-in environment of operators and functions
     which does not support replacement or bindings.
+
+    For convenience, this environment has been chosen to
+    queue up tables to be written out, since it will be
+    the first env involved in almost any situation.
     """
     
     def __init__(self):
+        self.__tables = []
         return super(BuiltInEnv, self).__init__({
             '+'   : operator.__add__,
             '-'   : operator.__sub__,
@@ -182,3 +219,10 @@ class BuiltInEnv(DictEnv):
 
     def bind(self, name, value): raise CannotBind()
     def replace(self, data): raise CannotReplace()
+
+    def emit_table(self, table):
+        self.__tables.append(table)
+
+    def emitted_tables(self):
+        return self.__tables
+
