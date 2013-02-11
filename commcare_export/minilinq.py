@@ -1,5 +1,12 @@
 
 class Env(object):
+    """
+    An abstract model of an "environment" where data can be bound to
+    names and later looked up. Not simply a dictionary as lookup in our
+    case may support JsonPath, but the abstract interface will
+    allow experimentation and customization.
+    """
+    
     def bind(self, *args):
         "(key, ??) -> Env | ({key: ??}) -> Env"
         raise NotImplementedError()
@@ -24,6 +31,7 @@ class Env(object):
         and binding "@" in JsonPath.
         """
         raise NotImplementedError()
+
 
 class MiniLinq(object):
     """
