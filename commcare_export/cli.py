@@ -5,7 +5,7 @@ import getpass
 import requests
 import pprint
 
-from commcare_export.jsonpath_env import JsonPathEnv
+from commcare_export.env import BuiltInEnv, JsonPathEnv
 from commcare_export.minilinq import MiniLinq
 from commcare_export.commcare_hq_client import CommCareHqClient
 
@@ -45,7 +45,7 @@ def main(argv):
     
     if args.format == 'json':
         records = [doc['_source'] for doc in api_client.get('xform_es')['hits']['hits']]
-        env = JsonPathEnv({'xform_es': records})
+        env = BuiltInEnv() | JsonPathEnv({'xform_es': records})
         results = MiniLinq.from_jvalue(json.loads(args.query)).eval(env)
         pprint.pprint(list(results), indent=4)
     else:

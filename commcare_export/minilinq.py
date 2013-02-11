@@ -1,38 +1,4 @@
 
-class Env(object):
-    """
-    An abstract model of an "environment" where data can be bound to
-    names and later looked up. Not simply a dictionary as lookup in our
-    case may support JsonPath, but the abstract interface will
-    allow experimentation and customization.
-    """
-    
-    def bind(self, *args):
-        "(key, ??) -> Env | ({key: ??}) -> Env"
-        raise NotImplementedError()
-
-    def lookup(self, key):
-        """
-        key -> ??
-
-        Note that the ?? may be None which may mean
-        the value was unbound or may mean it was
-        found and was None. This may need revisiting.
-        """
-        raise NotImplementedError()
-
-    def replace(self, data):
-        """
-        data -> Env
-
-        Completely replace the environment with new
-        data (somewhat like "this"-based Map functions a la jQuery).
-        Could be the same as creating a new empty env
-        and binding "@" in JsonPath.
-        """
-        raise NotImplementedError()
-
-
 class MiniLinq(object):
     """
     The abstract base class for MiniLinqs, and also the factory/registry
@@ -103,12 +69,38 @@ class Reference(MiniLinq):
     def eval(self, env):
         return env.lookup(self.ref)
 
+    def __eq__(self, other):
+        return isinstance(other, Reference) and self.ref == other.ref
+
     @classmethod
     def from_jvalue(cls, jvalue):
         return cls(jvalue['Ref'])
 
     def to_jvalue(self):
         return {'Ref': self.ref}
+
+class Literal(MiniLinq):
+    """
+    An MiniLinq wrapper around a python value. Returns exactly the
+    value given to it. Note: when going to/from jvalue the
+    contents are left alone, so it can be _used_ with a non-JSON
+    encodable value, but cannot be encoded.
+    """
+    def __init__(self, v):
+        self.v = v
+    
+    def eval(self, env):
+        return self.v
+
+    def __eq__(self, other):
+        return isinstance(other, Literal) and self.v == other.v
+
+    @classmethod
+    def from_jvalue(cls, jvalue):
+        return cls(jvalue['Lit'])
+
+    def to_jvalue(self):
+        return {'Lit': self.v}
 
 class Alias(MiniLinq):
     """
@@ -125,6 +117,10 @@ class Alias(MiniLinq):
 
     def eval(self, env):
         return self.body.eval(env.bind(self.name, self.value.eval(env)))
+
+    def __eq__(self, other):
+        return isinstance(other, Alias) and self.name == other.name and self.value == other.value and self.body == other.body
+
 
 class Filter(MiniLinq):
     """
@@ -197,6 +193,9 @@ class Map(MiniLinq):
 
         return RepeatableIterator(iterate)
 
+    def __eq__(self, other):
+        return isinstance(other, Map) and self.name == other.name and self.source == other.source and self.body == other.body
+
     @classmethod
     def from_jvalue(cls, jvalue):
         fields = jvalue['Map']
@@ -244,6 +243,10 @@ class FlatMap(MiniLinq):
 
         return RepeatableIterator(iterate)
 
+    def __eq__(self, other):
+        return isinstance(other, FlatMap) and self.name == other.name and self.source == other.source and self.body == other.body
+
+
     @classmethod
     def from_jvalue(cls, jvalue):
         fields = jvalue['FlatMap']
@@ -258,33 +261,90 @@ class FlatMap(MiniLinq):
                             'source': self.source,
                             'name': self.name}}
 
+class Apply(MiniLinq):
+    """
+    Abstract syntax for function or operator application.
+    """
+    
+    def __init__(self, fn, *args):
+        self.fn = fn
+        self.args = args
+
+    def eval(self, env):
+        fn_result = self.fn.eval(env)
+        args_results = [arg.eval(env) for arg in self.args]
+
+        return fn_result(*args_results)
+
+    def __eq__(self, other):
+        return isinstance(other, Apply) and self.fn == other.fn and self.args == other.args
+
+    @classmethod
+    def from_jvalue(cls, jvalue):
+        fields = jvalue['Apply']
+
+        # TODO: catch errors and give informative error messages
+        return cls(MiniLinq.from_jvalue(fields['fn']),
+                   *[MiniLinq.from_jvalue(arg) for arg in fields['args']])
+
+    def to_jvalue(self):
+        return {'Apply': {'fn': self.fn.to_jvalue(),
+                          'args': [arg.to_jvalue() for arg in self.args]}}
+
+class Emit(MiniLinq):
+    """
+    This MiniLinq has only the side effect of writing a collection
+    of results to a new table (via whatever writer is present in the environment)
+    """
+    def __init__(self, table_name, body):
+        self.table_name = table_name
+        self.body = body
+
+    def eval(self, env):
+        body_results = self.body.eval(env)
+        env.writer.write_table(table_name, body_results)
+
+    @classmethod
+    def from_jvalue(cls, jvalue):
+        fields = jvalue['Emit']
+
+        # TODO: catch errors and give informative error messages
+        return cls(table_name = fields['table_name'],
+                   body       = MiniLinq.from_jvalue(fields['body']))
+
+    def to_jvalue(self):
+        return {'Emit': {'table_name': self.table_name,
+                         'body': self.body.to_jvalue()}}
+
+class Columns(MiniLinq):
+    def __init__(self, columns):
+        """
+        ([(str, MiniLinq)] -> MiniLinq
+
+        Each item in the `columns` list gives a header
+        for the column and the expression to populate
+        the column with.
+        """
+        self.columns = columns
+
+    def eval(self, env):
+        return dict([ (field, expr.eval(env)) for field, expr in self.columns.items() ])
+
+### Utility class
+
 class RepeatableIterator(object):
     def __init__(self, generator):
         self.generator = generator
 
     def __iter__(self):
         return self.generator()
-
-class EmitMiniLinq(MiniLinq):
-    """
-    This MiniLinq has only the side effect of writing a collection
-    of results to a new table (via whatever writer is present in the environment)
-    """
-    pass
-
-class Columns(MiniLinq):
-    def __init__(self, columns):
-        "({str: MiniLinq} -> MiniLinq"
-        self.columns = columns
-
-    def eval(self, env):
-        return dict([ (field, expr.eval(env)) for field, expr in self.columns.items() ])
-
     
 ### Register everything with the root parser ###
 
 MiniLinq.register(Reference, slug='Ref')
+MiniLinq.register(Literal, slug='Lit')
 MiniLinq.register(Map)
 MiniLinq.register(Filter)
 MiniLinq.register(FlatMap)
-
+MiniLinq.register(Apply)
+MiniLinq.register(Emit)
