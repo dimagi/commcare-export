@@ -3,6 +3,9 @@
 \#*
 .\#*
 
+# OSX droppings
+.DS_Store
+
 # C extensions
 *.so
 
