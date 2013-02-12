@@ -18,14 +18,15 @@ commcare_hq_aliases = {
 def main(argv):
     parser = argparse.ArgumentParser('commcare-hq-export', 'Output a customized export of CommCareHQ data.')
 
-    parser.add_argument('--query-format', choices=['json', 'excel'], default='json') # possibly eventually concrete syntax
+    parser.add_argument('--query-format', choices=['json', 'xls', 'xlsx'], default='json') # possibly eventually concrete syntax
     parser.add_argument('--query')
+    parser.add_argument('--pure', default=False, action='store_true', help='Just output the results of the query, rather than the emitted tables')
     parser.add_argument('--commcare-hq', default='local') #default='https://commcare-hq.org') # Can be aliases or a URL
     parser.add_argument('--api-version', default='0.3')
     parser.add_argument('--domain', required=True)
     parser.add_argument('--username')
     parser.add_argument('--password')
-    parser.add_argument('--output-format', default='json', choices=['json', 'csv', 'xsl', 'xslx'], help='Output format')
+    parser.add_argument('--output-format', default='json', choices=['json', 'csv', 'xls', 'xlsx'], help='Output format')
     parser.add_argument('--output', metavar='PATH', default='reports.zip', help='Path to output; defaults to `reports.zip`.')
 
     args = parser.parse_args(argv)
@@ -46,9 +47,9 @@ def main(argv):
     if not args.query:
         args.query = sys.stdin.read()
 
-    if args.output_format == 'xslx':
+    if args.output_format == 'xlsx':
         writer = writers.Excel2007TableWriter(args.output)
-    elif args.output_format == 'xsl':
+    elif args.output_format == 'xls':
         writer = writers.Excel2003TableWriter(args.output)
     elif args.output_format == 'csv':
         writer = writers.CsvTableWriter(args.output)
@@ -65,12 +66,15 @@ def main(argv):
     env = BuiltInEnv() | JsonPathEnv({'xform_es': records})
     results = query.eval(env)
 
-    with writer:
-        for table in env.emitted_tables():
-            writer.write_table(table)
+    if args.pure:
+        print json.dumps(list(results), indent=4)
+    else:
+        with writer:
+            for table in env.emitted_tables():
+                writer.write_table(table)
 
-    if args.output_format == 'json':
-        print json.dumps(writer.tables, indent=4)
+        if args.output_format == 'json':
+            print json.dumps(writer.tables, indent=4)
 
 def entry_point():
     main(sys.argv[1:])
