@@ -14,6 +14,7 @@ class TestMiniLinq(unittest.TestCase):
         
         assert Literal("foo").eval(env) == "foo"
         assert Literal(2).eval(env) == 2
+        assert Literal({'foo': 'baz'}).eval(env) == {'foo': 'baz'}
 
         assert Reference("foo").eval(DictEnv({'foo': 2})) == 2
         assert Reference("foo[*]").eval(JsonPathEnv({'foo': [2]})) == [2]

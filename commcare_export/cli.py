@@ -9,6 +9,7 @@ from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.env import BuiltInEnv, JsonPathEnv
 from commcare_export.minilinq import MiniLinq
 from commcare_export.commcare_hq_client import CommCareHqClient
+from commcare_export.commcare_minilinq import CommCareHqEnv
 from commcare_export import writers
 from commcare_export import excel_query
 
@@ -33,6 +34,18 @@ def main(argv):
 
     args = parser.parse_args(argv)
 
+    if not args.query:
+        args.query = sys.stdin.read()
+
+    if args.query_format == 'json':
+        query = MiniLinq.from_jvalue(json.loads(args.query))
+    elif args.query_format == 'xlsx':
+        import openpyxl
+        workbook = openpyxl.load_workbook(args.query)
+        query = excel_query.compile(workbook)
+    else:
+        raise NotImplementedError()
+
     if not args.username:
         args.username = raw_input('Pleaes provide a username: ')
 
@@ -46,9 +59,6 @@ def main(argv):
 
     api_client = api_client.authenticated(username=args.username, password=args.password)
 
-    if not args.query:
-        args.query = sys.stdin.read()
-
     if args.output_format == 'xlsx':
         writer = writers.Excel2007TableWriter(args.output)
     elif args.output_format == 'xls':
@@ -59,16 +69,7 @@ def main(argv):
         writer = writers.JValueTableWriter()
     # SQLite?
     
-    if args.query_format == 'json':
-        query = MiniLinq.from_jvalue(json.loads(args.query))
-    elif args.query_format == 'xlsx':
-        import openpyxl
-        workbook = openpyxl.load_workbook(args.query)
-        query = excel_query.compile(workbook)
-    else:
-        raise NotImplementedError()
-        
-    env = BuiltInEnv() | JsonPathEnv({'form': api_client.iterate('form')})
+    env = BuiltInEnv() | CommCareHqEnv(api_client) | JsonPathEnv({}) # {'form': api_client.iterate('form')})
     results = query.eval(env)
 
     if args.pure:

@@ -84,6 +84,5 @@ class CommCareHqClient():
                 
         return RepeatableIterator(iterate_resource)
 
-
         
         

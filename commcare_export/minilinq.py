@@ -313,6 +313,8 @@ class Apply(MiniLinq):
         fn_result = self.fn.eval(env)
         args_results = [arg.eval(env) for arg in self.args]
 
+        print 'Applying ', fn_result, ' to ', args_results
+
         return fn_result(*args_results)
 
     def __eq__(self, other):
