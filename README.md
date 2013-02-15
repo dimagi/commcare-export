@@ -20,7 +20,7 @@ In Python, the support code for this library makes it easy to directly access th
 ```python
 >>> import getpass
 >>> from commcare_export.commcare_hq_client import CommCareHqClient
->>> api_client = CommCareHqClient('http://commcarehq.org', domain='your_domain').authenticated('your_username, getpass.getpass())
+>>> api_client = CommCareHqClient('http://commcarehq.org', domain='your_domain').authenticated('your_username', getpass.getpass())
 >>> forms = api_client.iterate('form', {'app_id': "whatever"})
 >>> [ (form['received_on'], form['form.gender']) for form in forms ]
 ```
