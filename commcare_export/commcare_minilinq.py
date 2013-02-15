@@ -6,7 +6,8 @@ API directly.
 """
 
 import simplejson
-from commcare_export.env import DictEnv
+from commcare_export.env import DictEnv, CannotBind, CannotReplace
+
 
 class CommCareHqEnv(DictEnv):
     """
@@ -16,7 +17,7 @@ class CommCareHqEnv(DictEnv):
     
     def __init__(self, commcare_hq_client):
         self.commcare_hq_client = commcare_hq_client
-        return super(CommCareHqEnv, self).__init__({
+        super(CommCareHqEnv, self).__init__({
             'api_data' : self.api_data
         })
 
@@ -24,5 +25,8 @@ class CommCareHqEnv(DictEnv):
         params = {'_search': simplejson.dumps(payload)} if payload else None
         return self.commcare_hq_client.iterate(resource, params=params)
 
-    def bind(self, name, value): raise CannotBind()
-    def replace(self, data): raise CannotReplace()
+    def bind(self, name, value):
+        raise CannotBind()
+
+    def replace(self, data):
+        raise CannotReplace()
