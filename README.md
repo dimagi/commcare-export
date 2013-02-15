@@ -39,7 +39,7 @@ help support serialization/deserialization to JSON for building a tool to work w
 >>> saved_query = Map(source=Apply(Reference("api_data"), [Literal("form"), Literal({"filter": {"term": {"app_id": "whatever"}}})])
                       body=List([Reference("received_on"), Reference("form.gender")]))
 
->>> forms = saved_query.eval(BuiltInEnv() | CommCareHqEnv() | JsonPathEnv())
+>>> forms = saved_query.eval(BuiltInEnv() | CommCareHqEnv(api_client) | JsonPathEnv())
 >>> print json.dumps(saved_query.to_jvalue(), indent=2)
 ```
 
