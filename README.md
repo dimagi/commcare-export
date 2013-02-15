@@ -78,3 +78,20 @@ $ commcare-export --commcare-hq <URL or alias like "local" or "prod"> \
                   --query <file or raw json>
 ```
 
+Output Formats
+--------------
+
+Your MiniLinq may define multiple tables with headings in addition to their body rows by using `Emit`
+expressions, or may simply return the results of a single query.
+
+If your MiniLinq does not contain any `Emit` expressions, then the results of the expression will be
+printed to standard output as pretty-printed JSON.
+
+If your MiniLinq _does_ contain `Emit` expressions, then there are many formats available, selected
+via the `--output-format <format>` option, and it can be directed to a file with the `--output <file>` command-line option.
+
+ - `json`: The tables will each be a member of a JSON dictionary, printed to standard outputv
+ - `csv`: Each table will be a CSV file within a Zip archive.
+ - `xls`: Each table will be a sheet in an old-format Excel spreadsheet.
+ - `xlsx`: Each table will be a sheet in a new-format Excel spreadsheet.
+
