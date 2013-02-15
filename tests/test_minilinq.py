@@ -17,6 +17,7 @@ class TestMiniLinq(unittest.TestCase):
 
         assert Reference("foo").eval(DictEnv({'foo': 2})) == 2
         assert Reference("foo[*]").eval(JsonPathEnv({'foo': [2]})) == [2]
+        assert Reference("foo[*]").eval(JsonPathEnv({'foo': xrange(0, 1)})) == [0] # Should work the same w/ iterators as with lists
 
         # Special case to handle XML -> JSON conversion where there just
         # happened to be a single value
