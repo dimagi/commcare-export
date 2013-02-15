@@ -1,4 +1,7 @@
 import requests
+import urlparse
+
+from commcare_export.repeatable_iterator import RepeatableIterator
 
 class CommCareHqClient():
     """
@@ -44,7 +47,7 @@ class CommCareHqClient():
         
         return CommCareHqClient(url = self.url, domain = self.domain, version = self.version, session = session)
 
-    def get(self, resource):
+    def get(self, resource, params=None):
         """
         Gets the named resource.
 
@@ -53,10 +56,34 @@ class CommCareHqClient():
         want this to work like (or via) slumber.
         """
         resource_url = '%s/%s/' % (self.api_url, resource)
-        response = self.session.get(resource_url)
+        response = self.session.get(resource_url, params=params)
 
         if response.status_code != 200:
             raise Exception('GET %s failed (%s): %s' % (resource_url, response.status_code, response.text))
         else:
             return response.json()
             
+    def iterate(self, resource, params=None):
+        """
+        Assumes the endpoint is a list endpoint, and iterates over it
+        making a lot of assumptions that it is like a tastypie endpoint.
+        """
+        params = dict(params or {})
+        def iterate_resource(resource=resource, params=params):
+            more_to_fetch = True
+
+            while more_to_fetch:
+                batch = self.get(resource, params)
+                for obj in batch['objects']:
+                    yield obj
+                    
+                if batch['meta']['next']:
+                    params = urlparse.parse_qs(urlparse.urlparse(batch['meta']['next']).query)
+                else:
+                    more_to_fetch = False
+                
+        return RepeatableIterator(iterate_resource)
+
+
+        
+        

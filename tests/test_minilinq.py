@@ -14,9 +14,18 @@ class TestMiniLinq(unittest.TestCase):
         
         assert Literal("foo").eval(env) == "foo"
         assert Literal(2).eval(env) == 2
+
+        assert Reference("foo").eval(DictEnv({'foo': 2})) == 2
+        assert Reference("foo[*]").eval(JsonPathEnv({'foo': [2]})) == [2]
+
+        # Special case to handle XML -> JSON conversion where there just
+        # happened to be a single value
+        assert Reference("foo[*]").eval(JsonPathEnv({'foo': 2})) == [2]
+
         assert Apply(Reference("*"), Literal(2), Literal(3)).eval(env) == 6
         assert Apply(Reference(">"), Literal(56), Literal(23.5)).eval(env) == True
         assert Apply(Reference("len"), Literal([1, 2, 3])).eval(env) == 3
+
 
     def test_from_jvalue(self):
 

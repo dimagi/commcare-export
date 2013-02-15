@@ -5,10 +5,12 @@ import getpass
 import requests
 import pprint
 
+from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.env import BuiltInEnv, JsonPathEnv
 from commcare_export.minilinq import MiniLinq
 from commcare_export.commcare_hq_client import CommCareHqClient
 from commcare_export import writers
+from commcare_export import excel_query
 
 commcare_hq_aliases = {
     'local': 'http://localhost:8000',
@@ -59,22 +61,25 @@ def main(argv):
     
     if args.query_format == 'json':
         query = MiniLinq.from_jvalue(json.loads(args.query))
+    elif args.query_format == 'xlsx':
+        import openpyxl
+        workbook = openpyxl.load_workbook(args.query)
+        query = excel_query.compile(workbook)
     else:
         raise NotImplementedError()
         
-    records = [doc['_source'] for doc in api_client.get('xform_es')['hits']['hits']]
-    env = BuiltInEnv() | JsonPathEnv({'xform_es': records})
+    env = BuiltInEnv() | JsonPathEnv({'form': api_client.iterate('form')})
     results = query.eval(env)
 
     if args.pure:
-        print json.dumps(list(results), indent=4)
+        print json.dumps(list(results), indent=4, default=RepeatableIterator.to_jvalue)
     else:
         with writer:
             for table in env.emitted_tables():
                 writer.write_table(table)
 
         if args.output_format == 'json':
-            print json.dumps(writer.tables, indent=4)
+            print json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue)
 
 def entry_point():
     main(sys.argv[1:])

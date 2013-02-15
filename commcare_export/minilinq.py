@@ -1,6 +1,8 @@
 from datetime import datetime
 from itertools import imap
 
+from commcare_export.repeatable_iterator import RepeatableIterator
+
 class MiniLinq(object):
     """
     The abstract base class for MiniLinqs, and also the factory/registry
@@ -104,11 +106,13 @@ class Literal(MiniLinq):
     def to_jvalue(self):
         return {'Lit': self.v}
 
-class Alias(MiniLinq):
+class Bind(MiniLinq):
     """
-    A way to make convenient aliases, since form types, and maybe other things,
-    are just referenceable by UUID. A la `let x = 5 in x * x` but with a name
-    that might make sense to a broader audience.
+    Binds the results of an expression to a new name. Will be useful
+    in writing exports by hand or debugging, and maybe for efficiency
+    if it de-dupes computation (but generally exports will be
+    expected to be too large to store, so it'll be re-run on each
+    access.
     """
 
     def __init__(self, name, value, body):
@@ -121,7 +125,19 @@ class Alias(MiniLinq):
         return self.body.eval(env.bind(self.name, self.value.eval(env)))
 
     def __eq__(self, other):
-        return isinstance(other, Alias) and self.name == other.name and self.value == other.value and self.body == other.body
+        return isinstance(other, Bind) and self.name == other.name and self.value == other.value and self.body == other.body
+
+    @classmethod
+    def from_jvalue(cls, jvalue):
+        fields = jvalue['Bind']
+        return cls(name=field['name'],
+                   value=MiniLinq.from_jvalue(field['value']),
+                   body=MiniLinq.from_jvalue(field['body']))
+
+    def to_jvalue(self):
+        return {'Bind':{'name': self.name,
+                        'value': self.value.to_jvalue(),
+                        'body': self.body.to_jvalue()}}
 
 
 class Filter(MiniLinq):
@@ -314,11 +330,12 @@ class Apply(MiniLinq):
         return {'Apply': {'fn': self.fn.to_jvalue(),
                           'args': [arg.to_jvalue() for arg in self.args]}}
 
+
 class Emit(MiniLinq):
     """
-    This MiniLinq writes to whatever writer is registered in the `env`.
-    It first writes the column headers, and then writes one row per
-    each element of its input. 
+    This MiniLinq writes a whole table to whatever writer is registered in the `env`.
+    In practice,  a table to a dict of a name, headers, and rows, so the
+    writer is free to do an idempotent upsert, etc.
 
     Note that it does not actually check that the number of headings is
     correct, nor does it try to ensure that the things being emitted
@@ -366,15 +383,6 @@ class Emit(MiniLinq):
                          'headings': [heading.to_jvalue() for heading in self.headings],
                          'source': self.source.to_jvalue()}}
 
-### Utility class
-
-class RepeatableIterator(object):
-    def __init__(self, generator):
-        self.generator = generator
-
-    def __iter__(self):
-        return self.generator()
-    
 ### Register everything with the root parser ###
 
 MiniLinq.register(Reference, slug='Ref')
