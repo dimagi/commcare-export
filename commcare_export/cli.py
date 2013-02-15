@@ -4,11 +4,12 @@ import json
 import getpass
 import requests
 import pprint
+import os.path
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.env import BuiltInEnv, JsonPathEnv
 from commcare_export.minilinq import MiniLinq
-from commcare_export.commcare_hq_client import CommCareHqClient
+from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION
 from commcare_export.commcare_minilinq import CommCareHqEnv
 from commcare_export import writers
 from commcare_export import excel_query
@@ -21,11 +22,10 @@ commcare_hq_aliases = {
 def main(argv):
     parser = argparse.ArgumentParser('commcare-hq-export', 'Output a customized export of CommCareHQ data.')
 
-    parser.add_argument('--query-format', choices=['json', 'xls', 'xlsx'], default='json') # possibly eventually concrete syntax
-    parser.add_argument('--query')
-    parser.add_argument('--pure', default=False, action='store_true', help='Just output the results of the query, rather than the emitted tables')
-    parser.add_argument('--commcare-hq', default='local') #default='https://commcare-hq.org') # Can be aliases or a URL
-    parser.add_argument('--api-version', default='0.3')
+    #parser.add_argument('--query-format', choices=['json', 'xls', 'xlsx'], default='json') # possibly eventually concrete syntax
+    parser.add_argument('--query', help='JSON string or file name. If omitted, reads from standard input (--username must be provided)')
+    parser.add_argument('--commcare-hq', default='prod')
+    parser.add_argument('--api-version', default=LATEST_KNOWN_VERSION)
     parser.add_argument('--domain', required=True)
     parser.add_argument('--username')
     parser.add_argument('--password')
@@ -34,17 +34,22 @@ def main(argv):
 
     args = parser.parse_args(argv)
 
-    if not args.query:
+    if args.query:
+        if os.path.exists(args.query):
+            with open(args.query) as fh:
+                args.query = fh.read()
+        # else it should already be a legit JSON string
+    else:
         args.query = sys.stdin.read()
 
-    if args.query_format == 'json':
-        query = MiniLinq.from_jvalue(json.loads(args.query))
-    elif args.query_format == 'xlsx':
-        import openpyxl
-        workbook = openpyxl.load_workbook(args.query)
-        query = excel_query.compile(workbook)
-    else:
-        raise NotImplementedError()
+    #if args.query_format == 'json':
+    query = MiniLinq.from_jvalue(json.loads(args.query))
+    #elif args.query_format == 'xlsx':
+    #    import openpyxl
+    #    workbook = openpyxl.load_workbook(args.query)
+    #    query = excel_query.compile(workbook)
+    #else:
+    #    raise NotImplementedError()
 
     if not args.username:
         args.username = raw_input('Pleaes provide a username: ')
@@ -72,15 +77,16 @@ def main(argv):
     env = BuiltInEnv() | CommCareHqEnv(api_client) | JsonPathEnv({}) # {'form': api_client.iterate('form')})
     results = query.eval(env)
 
-    if args.pure:
-        print json.dumps(list(results), indent=4, default=RepeatableIterator.to_jvalue)
-    else:
+    # Assume that if any tables were emitted, that is the idea, otherwise print the output
+    if len(list(env.emitted_tables())) > 0:
         with writer:
             for table in env.emitted_tables():
                 writer.write_table(table)
 
         if args.output_format == 'json':
             print json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue)
+    else:
+        print json.dumps(list(results), indent=4, default=RepeatableIterator.to_jvalue)
 
 def entry_point():
     main(sys.argv[1:])

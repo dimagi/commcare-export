@@ -3,6 +3,8 @@ from jsonpath_rw.parser import parse as parse_jsonpath
 import operator
 from itertools import chain
 
+from commcare_export.repeatable_iterator import RepeatableIterator
+
 class CannotBind(Exception): pass
 class CannotReplace(Exception): pass
 class CannotEmit(Exception): pass
@@ -111,7 +113,7 @@ class OrElse(Env):
         except CannotEmit: return self.right.emit_table(table_spec)
 
     def emitted_tables(self):
-        return chain(self.left.emitted_tables(), self.right.emitted_tables())
+        return RepeatableIterator(lambda: chain(self.left.emitted_tables(), self.right.emitted_tables()))
 
 
 #

@@ -3,12 +3,14 @@ import urlparse
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
+LATEST_KNOWN_VERSION='0.4'
+
 class CommCareHqClient():
     """
     A connection to CommCareHQ for a particular version, domain, and user.
     """
 
-    def __init__(self, url, domain, version='0.3', session=None):
+    def __init__(self, url, domain, version=LATEST_KNOWN_VERSION, session=None):
         self.version = version
         self.url = url
         self.domain = domain
