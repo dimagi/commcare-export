@@ -35,7 +35,7 @@ help support serialization/deserialization to JSON for building a tool to work w
 >>> from commcare_export.commcare_hq_client import CommCareHqClient
 >>> from commcare_export.commcare_minilinq import CommCareHqEnv
 >>> from commcare_export.env import BuiltInEnv
->>> api_client = CommCareHqClient('http://commcarehq.org', domain='your_domain').authenticated('your_username, getpass.getpass())
+>>> api_client = CommCareHqClient('http://commcarehq.org', domain='your_domain').authenticated('your_username', getpass.getpass())
 >>> saved_query = Map(source=Apply(Reference("api_data"), [Literal("form"), Literal({"filter": {"term": {"app_id": "whatever"}}})])
                       body=List([Reference("received_on"), Reference("form.gender")]))
 
