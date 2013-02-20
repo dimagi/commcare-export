@@ -54,7 +54,7 @@ Which will output JSON equivalent to this:
         "args": [
           {"Lit": "form"},
           {"Lit": {"filter": {"term": {"app_id": "something"}}}}
-        ],
+        ]
       }
     },
     "body": {
