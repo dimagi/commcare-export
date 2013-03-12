@@ -22,8 +22,8 @@ commcare_hq_aliases = {
 def main(argv):
     parser = argparse.ArgumentParser('commcare-hq-export', 'Output a customized export of CommCareHQ data.')
 
-    #parser.add_argument('--query-format', choices=['json', 'xls', 'xlsx'], default='json') # possibly eventually concrete syntax
     parser.add_argument('--query', help='JSON string or file name. If omitted, reads from standard input (--username must be provided)')
+    parser.add_argument('--dump-query', default=False, action='store_true')
     parser.add_argument('--commcare-hq', default='prod')
     parser.add_argument('--api-version', default=LATEST_KNOWN_VERSION)
     parser.add_argument('--domain', required=True)
@@ -34,25 +34,28 @@ def main(argv):
 
     args = parser.parse_args(argv)
 
+    # Reads as excel if it is a file name that looks like excel, otherwise reads as JSON, 
+    # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
     if args.query:
         if os.path.exists(args.query):
-            with open(args.query) as fh:
-                args.query = fh.read()
-        # else it should already be a legit JSON string
+            if os.path.splitext(args.query)[1] in ['xls', 'xlsx']:
+                import openpyxl
+                workbook = openpyxl.load_workbook(args.query)
+                query = excel_query.compile(workbook)
+            else:
+                with open(args.query) as fh:
+                    query = MiniLinq.from_jvalue(json.loads(fh.read()))
+        else:
+            query = MiniLinq.from_jvalue(json.loads(fh.read()))
     else:
-        args.query = sys.stdin.read()
+        query = MiniLinq.from_jvalue(json.loads(sys.stdin.read()))
 
-    #if args.query_format == 'json':
-    query = MiniLinq.from_jvalue(json.loads(args.query))
-    #elif args.query_format == 'xlsx':
-    #    import openpyxl
-    #    workbook = openpyxl.load_workbook(args.query)
-    #    query = excel_query.compile(workbook)
-    #else:
-    #    raise NotImplementedError()
+    if args.dump_query:
+        pprint.pprint(json.dumps(query.to_jvalue()), indent=4)
+        exit(0)
 
     if not args.username:
-        args.username = raw_input('Pleaes provide a username: ')
+        args.username = raw_input('Please provide a username: ')
 
     if not args.password:
         args.password = getpass.getpass('Please enter your password: ')
