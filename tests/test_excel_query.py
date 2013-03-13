@@ -36,6 +36,7 @@ class TestExcelQuery(unittest.TestCase):
             compiled = compile_sheet(openpyxl.load_workbook(abs_path).get_active_sheet()) 
             # Print will be suppressed by pytest unless it fails
             if not (compiled == minilinq):
+                print 'In', filename, ':'
                 pprint.pprint(compiled.to_jvalue())
                 print '!='
                 pprint.pprint(minilinq.to_jvalue())
