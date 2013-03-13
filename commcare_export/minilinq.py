@@ -199,7 +199,7 @@ class List(MiniLinq):
         return cls([MiniLinq.from_jvalue(item) for item in jvalue['List']])
 
     def to_jvalue(self):
-        return {'List': self.items}
+        return {'List': [item.to_jvalue() for item in self.items]}
 
 class Map(MiniLinq):
     """
@@ -245,9 +245,10 @@ class Map(MiniLinq):
                    name   = fields.get('name'))
 
     def to_jvalue(self):
-        return {'Map': {'body': self.body,
-                        'source': self.source,
+        return {'Map': {'body': self.body.to_jvalue(),
+                        'source': self.source.to_jvalue(),
                         'name': self.name}}
+
 class FlatMap(MiniLinq):
     """
     Somewhat like a JOIN, but not quite. Called `SelectMany`
@@ -382,6 +383,9 @@ class Emit(MiniLinq):
         return {'Emit': {'table': self.table,
                          'headings': [heading.to_jvalue() for heading in self.headings],
                          'source': self.source.to_jvalue()}}
+
+    def __eq__(self, other):
+        return isinstance(other, Emit) and self.table == other.table and self.headings == other.headings and self.source == other.source
 
 ### Register everything with the root parser ###
 

@@ -16,19 +16,31 @@ class TestExcelQuery(unittest.TestCase):
     def test_compile_sheet(self):
 
         test_cases = [
-            ('001_JustDataSource.xlsx', Apply(Reference("api_data"), Literal("form"))),
+            ('001_JustDataSource.xlsx', Emit(table='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form")))),
             
             ('002_DataSourceAndFilters.xlsx', 
-             Apply(Reference("api_data"), 
-                   Literal("form"), 
-                   Literal({
-                       'filter': {
-                           'and': [
-                               {'term': { 'app_id': 'foobizzle' }},
-                               {'term': { 'type': 'intake' }}
-                            ]
-                        }
-                   }))),
+             Emit(table='Forms', 
+                  headings=[], 
+                  source=Apply(Reference("api_data"), 
+                               Literal("form"),  
+                               Literal({
+                                   'filter': {
+                                       'and': [
+                                           {'term': { 'app_id': 'foobizzle' }},
+                                           {'term': { 'type': 'intake' }}
+                                        ]
+                                   }
+                        })))),
+
+            ('003_DataSourceAndEmitColumns.xlsx',
+             Emit(table    = 'Forms',
+                  headings = [Literal('Form Type'), Literal('Fecha de Nacimiento'), Literal('Sexo')],
+                  source   = Map(source = Apply(Reference("api_data"), Literal("form")),
+                                 body   = List([
+                                     Reference("type"),
+                                     Apply(Reference("FormatDate"), Reference("date_of_birth")),
+                                     Apply(Reference("sexo"), Reference("gender"))
+                                 ])))),
         ]
 
         for filename, minilinq in test_cases:

@@ -12,16 +12,44 @@ def get_column_by_name(worksheet, column_name):
 
 def compile_filters(worksheet, mappings=None):
     filter_names  = [cell.value for cell in get_column_by_name(worksheet, 'Filter Name') or []]
-    filter_values = [cell.value for cell in get_column_by_name(worksheet, 'Filter Value') or []]
 
-    # Fill in blanks if there are names with no values
-    filter_values = [filter_values[i] if i < len(filter_values) else None 
-                     for i in range(0, len(filter_names))]
-
-    if filter_names:
-        return zip(filter_names, filter_values)
-    else:
+    if not filter_names:
         return []
+
+    filter_values = extended_to_len(len(filter_names), [cell.value for cell in get_column_by_name(worksheet, 'Filter Value') or []])
+    return zip(filter_names, filter_values)
+
+def extended_to_len(desired_len, some_list, value=None):
+    return [some_list[i] if i < len(some_list) else value
+            for i in xrange(0, desired_len)]
+
+def compile_field(field, source_field, map_via=None, format_via=None, mappings=None):
+    expr = Reference(source_field)    
+
+    if map_via:
+        expr = Apply(Reference(map_via), expr)
+
+    if format_via:
+        expr = Apply(Reference(format_via), expr)
+
+    return expr
+
+def compile_fields(worksheet, mappings=None):
+    fields = get_column_by_name(worksheet, 'Field')
+
+    if not fields:
+        return []
+
+    source_fields = extended_to_len(len(fields), get_column_by_name(worksheet, 'Source Field') or [])
+    map_vias      = extended_to_len(len(fields), get_column_by_name(worksheet, 'Map Via') or [])
+    format_vias   = extended_to_len(len(fields), get_column_by_name(worksheet, 'Format Via') or [])
+
+    return [compile_field(field        = field.value, 
+                          source_field = source_field.value,
+                          map_via      = map_via.value, 
+                          format_via   = format_via.value,
+                          mappings     = mappings)
+            for field, source_field, map_via, format_via in zip(fields, source_fields, map_vias, format_vias)]
 
 def compile_sheet(worksheet, mappings=None):
     mappings = mappings or {}
@@ -29,11 +57,26 @@ def compile_sheet(worksheet, mappings=None):
     filters = compile_filters(worksheet)
 
     if filters:
-        return Apply(Reference("api_data"), Literal(data_source), Literal(
+        api_query = Apply(Reference("api_data"), Literal(data_source), Literal(
             {'filter': {'and': [{'term': {filter_name: filter_value}} for filter_name, filter_value in filters]}}
         ))
     else:
-        return Apply(Reference("api_data"), Literal(data_source))
+        api_query = Apply(Reference("api_data"), Literal(data_source))
+
+    output_table_name = worksheet.title
+    output_headings = get_column_by_name(worksheet, 'Field') # It is unfortunate that this is duplicated here and in `compile_fields`
+    output_fields = compile_fields(worksheet, mappings=mappings)
+
+    if not output_fields:
+        headings = headings = []
+        source = api_query
+    else:
+        headings = [Literal(output_heading.value) for output_heading in output_headings]
+        source = Map(source=api_query, body=List(output_fields))
+
+    return Emit(table    = output_table_name, 
+                headings = headings,
+                source   = source)
 
 def compile_workbook(workbook):
     """
