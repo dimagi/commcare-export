@@ -10,11 +10,7 @@ def get_column_by_name(worksheet, column_name):
         if column_name == worksheet.cell(row=0, column=col).value:
             return [worksheet.cell(row=i, column=col) for i in xrange(1, worksheet.get_highest_row())]
 
-def compile_sheet(worksheet, mappings=None):
-    mappings = mappings or {}
-
-    data_source = get_column_by_name(worksheet, 'Data Source')[0].value
-
+def compile_filters(worksheet, mappings=None):
     filter_names  = [cell.value for cell in get_column_by_name(worksheet, 'Filter Name') or []]
     filter_values = [cell.value for cell in get_column_by_name(worksheet, 'Filter Value') or []]
 
@@ -23,8 +19,18 @@ def compile_sheet(worksheet, mappings=None):
                      for i in range(0, len(filter_names))]
 
     if filter_names:
+        return zip(filter_names, filter_values)
+    else:
+        return []
+
+def compile_sheet(worksheet, mappings=None):
+    mappings = mappings or {}
+    data_source = get_column_by_name(worksheet, 'Data Source')[0].value
+    filters = compile_filters(worksheet)
+
+    if filters:
         return Apply(Reference("api_data"), Literal(data_source), Literal(
-            {'filter': {'and': [{'term': {filter_name: filter_value}} for filter_name, filter_value in zip(filter_names, filter_values)]}}
+            {'filter': {'and': [{'term': {filter_name: filter_value}} for filter_name, filter_value in filters]}}
         ))
     else:
         return Apply(Reference("api_data"), Literal(data_source))
