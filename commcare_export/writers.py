@@ -202,7 +202,7 @@ class SqlTableWriter(TableWriter):
         op = self.alembic.operations.Operations(ctx)
 
         if not table_name in self.metadata.tables:
-            op.create_table(table_name, self.sqlalchemy.Column('id', self.sqlalchemy.Integer, primary_key=True))
+            op.create_table(table_name, self.sqlalchemy.Column('id', self.sqlalchemy.String(255), primary_key=True))
 
         for column, val in row_dict.items():
             ty = self.best_type_for(val)
@@ -217,13 +217,22 @@ class SqlTableWriter(TableWriter):
                 current_ty = columns[column].type
 
                 if not self.compatible(ty, current_ty):
+                    print ty, current_ty
                     op.alter_column(table_name, column, type_ = self.least_upper_bound(column_type(table_name_column), ty))
                     self.metadata.clear()
                     self.metadata.reflect()
 
-    def upsert(self, table_name, row_dict):
-        insert = self.table(table_name).insert().values(**row_dict)
-        self.connection.execute(insert)
+    def upsert(self, table, row_dict):
+
+        # For atomicity "insert, catch, update" is slightly better than "select, insert or update".
+        # The latter may crash, while the former may overwrite data (which should be fine if whatever is
+        # racing against this is importing from the same source... if not you are busted anyhow
+        try:
+            insert = table.insert().values(**row_dict)
+            self.connection.execute(insert)
+        except self.sqlalchemy.exc.IntegrityError:
+            update = table.update().where(table.c.id == row_dict['id']).values(**row_dict)
+            self.connection.execute(update)
 
     def write_table(self, table):
         table_name = table['name']
@@ -233,5 +242,5 @@ class SqlTableWriter(TableWriter):
         for row in table['rows']:
             row_dict = dict(zip(headings, row))
             self.make_table_compatible(table_name, row_dict)
-            self.upsert(table_name, row_dict)
+            self.upsert(self.table(table_name), row_dict)
         
