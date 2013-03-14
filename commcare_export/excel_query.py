@@ -1,3 +1,4 @@
+from collections import defaultdict
 
 from commcare_export.minilinq import *
 
@@ -9,6 +10,18 @@ def get_column_by_name(worksheet, column_name):
     for col in xrange(0, worksheet.get_highest_column()):
         if column_name == worksheet.cell(row=0, column=col).value:
             return [worksheet.cell(row=i, column=col) for i in xrange(1, worksheet.get_highest_row())]
+
+def compile_mappings(worksheet):
+    mapping_names = get_column_by_name(worksheet, "Mapping Name")
+    sources       = extended_to_len(len(mapping_names), get_column_by_name(worksheet, "Source"))   
+    destinations  = extended_to_len(len(mapping_names), get_column_by_name(worksheet, "Destination"))
+
+    mappings = defaultdict(lambda: defaultdict(lambda: None))
+    
+    for mapping_name, source, dest in zip(mapping_names, sources, destinations):
+        mappings[mapping_name.value][source.value] = dest.value
+
+    return mappings
 
 def compile_filters(worksheet, mappings=None):
     filter_names  = [cell.value for cell in get_column_by_name(worksheet, 'Filter Name') or []]
