@@ -129,3 +129,109 @@ class JValueTableWriter(TableWriter):
                                 headings=list(table['headings']),
                                 rows=[list(row) for row in table['rows']]))
 
+class SqlTableWriter(TableWriter):
+    """
+    Write tables to a database specified by URL
+    (TODO) with "upsert" based on primary key.
+    """
+
+    MAX_VARCHAR_LEN=255 # Arbitrary point at which we switch to TEXT; for postgres VARCHAR == TEXT anyhow and for Sqlite it doesn't matter either
+
+    def __init__(self, url_or_connection):
+        try:
+            import sqlalchemy
+            import alembic
+            self.sqlalchemy = sqlalchemy
+            self.alembic = alembic
+        except ImportError:
+            raise Exception("It doesn't look like this machine is configured for "
+                            "SQL export. To export to excel you have to run the "
+                            "command:  pip install sqlalchemy alembic")
+
+        if isinstance(url_or_connection, basestring):
+            self.connection = self.sqlalchemy.create_engine(url_or_connection)
+        else:
+            self.connection = url_or_connection.connect() # "forks" the SqlAlchemy connection
+
+    @property
+    def metadata(self):
+        if not hasattr(self, '_metadata'):
+            self._metadata = self.sqlalchemy.MetaData()
+            self._metadata.bind = self.connection
+            self._metadata.reflect()
+        return self._metadata
+
+    def table(self, table_name):
+        return self.sqlalchemy.Table(table_name, self.metadata, autoload=True, autoload_with=self.connection)
+
+    def best_type_for(self, val):
+        if isinstance(val, int):
+            return self.sqlalchemy.Integer()
+        elif isinstance(val, basestring):
+            if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
+                return self.sqlalchemy.String(len(val))
+            else:
+                return self.sqlalchemty.Text()
+
+    def compatible(self, source_type, dest_type):
+        """
+        Checks _coercion_ compatibility.
+        """
+
+        # FIXME: Add datetime and friends
+        if isinstance(source_type, self.sqlalchemy.Integer):
+            # Integers can be cast to varch
+            return True
+        if isinstance(source_type, self.sqlalchemy.String):
+            return isinstance(dest_type, self.sqlalchemy.VARCHAR) and dest_type.length >= source_type.length
+
+    def least_upper_bound(self, source_type, dest_type):
+        """
+        Returns the _coercion_ least uppper bound. 
+        Mostly just promotes everything to string if it is not already.
+        In fact, since this is only called when they are incompatible, it promotes to string right away.
+        """
+
+        # FIXME: Don't be so silly
+        return self.sqlalchemy.Text()
+
+    def make_table_compatible(self, table_name, row_dict):
+        # FIXME: This does lots of redundant checks in a tight loop. Stop doing that.
+        
+        ctx = self.alembic.migration.MigrationContext.configure(self.connection)
+        op = self.alembic.operations.Operations(ctx)
+
+        if not table_name in self.metadata.tables:
+            op.create_table(table_name, self.sqlalchemy.Column('id', self.sqlalchemy.Integer, primary_key=True))
+
+        for column, val in row_dict.items():
+            ty = self.best_type_for(val)
+            
+            if not column in [c.name for c in self.table(table_name).columns]:
+                op.add_column(table_name, self.sqlalchemy.Column(column, ty, nullable=True))
+                self.metadata.clear()
+                self.metadata.reflect()
+
+            else:
+                columns = dict([(c.name, c) for c in self.table(table_name).columns])
+                current_ty = columns[column].type
+
+                if not self.compatible(ty, current_ty):
+                    op.alter_column(table_name, column, type_ = self.least_upper_bound(column_type(table_name_column), ty))
+                    self.metadata.clear()
+                    self.metadata.reflect()
+
+    def upsert(self, table_name, row_dict):
+        insert = self.table(table_name).insert().values(**row_dict)
+        self.connection.execute(insert)
+
+    def write_table(self, table):
+        table_name = table['name']
+        headings = table['headings']
+
+        # Rather inefficient for now...
+        for row in table['rows']:
+            row_dict = dict(zip(headings, row))
+            self.make_table_compatible(table_name, row_dict)
+            self.upsert(table_name, row_dict)
+        

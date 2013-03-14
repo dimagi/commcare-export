@@ -11,6 +11,13 @@ Installation
 $ pip install commcare-export
 ```
 
+Or, during development:
+
+```
+$ git clone git@github.com:dimagi/commcare-export.git
+$ cd commcare-export
+$ pip install -e .
+```
 
 Usage
 -----
@@ -117,4 +124,23 @@ via the `--output-format <format>` option, and it can be directed to a file with
  - `csv`: Each table will be a CSV file within a Zip archive.
  - `xls`: Each table will be a sheet in an old-format Excel spreadsheet.
  - `xlsx`: Each table will be a sheet in a new-format Excel spreadsheet.
+
+
+Dependencies
+------------
+
+Required dependencies will be automatically installed via pip. But since
+you may not care about all export formats, the various dependencies there
+are optional. Here is how you might install them:
+
+```
+# To export "xlsx"
+$ pip install openpyxl
+
+# To export "xls"
+$ pip install xlwt
+
+# To sync with a SQL database
+$ pip install SQLAlchemy alembic
+```
 
