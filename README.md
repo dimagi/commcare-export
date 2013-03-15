@@ -1,7 +1,9 @@
 CommCare Export
 ===============
 
-https://github.com/dimagi/commcare-export [![Build status](https://travis-ci.org/dimagi/commcare-export.png)](https://travis-ci.org/dimagi/commcare-export)
+https://github.com/dimagi/commcare-export 
+
+[![Build status](https://travis-ci.org/dimagi/commcare-export.png)](https://travis-ci.org/dimagi/commcare-export)
 
 A Python library and command-line tools to generate customized exports from CommCareHQ.
 
