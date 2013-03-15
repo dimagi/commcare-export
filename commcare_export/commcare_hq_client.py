@@ -1,11 +1,12 @@
 import requests
 import urlparse
+import urllib
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
 LATEST_KNOWN_VERSION='0.4'
 
-class CommCareHqClient():
+class CommCareHqClient(object):
     """
     A connection to CommCareHQ for a particular version, domain, and user.
     """
@@ -86,5 +87,35 @@ class CommCareHqClient():
                 
         return RepeatableIterator(iterate_resource)
 
-        
-        
+class MockCommCareHqClient(object):
+    """
+    An in-memory mock of the hq client, instantiated
+    with a simple mapping of resource and params to results.
+    Since dictionaries are not hashable, these querystrings
+    are clearly very sensitive to reordering, etc.
+    This mock sorts the keys. Still, the recommended way 
+    is to just use very simple strings, like so:
+
+    MockCommCareHqClient({
+        'forms': {
+            '_search=test1': [
+               ... objects ...
+            ],
+            '_search=test2': [
+               ... objects ...
+            ],
+        }
+    })
+    """    
+    def __init__(self, mock_data):
+        self.mock_data = mock_data
+
+    def authenticated(self, *args, **kwargs):
+        return self
+
+    def get(self, resource, params=None):
+        return self.mock_data[resource][urllib.urlencode(params)]
+    
+    def iterate(self, resource, params=None):
+        return self.mock_data[resource][urllib.urlencode(params)]
+

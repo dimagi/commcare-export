@@ -32,7 +32,6 @@ class TestMiniLinq(unittest.TestCase):
         assert Apply(Reference(">"), Literal(56), Literal(23.5)).eval(env) == True
         assert Apply(Reference("len"), Literal([1, 2, 3])).eval(env) == 3
 
-
     def test_from_jvalue(self):
 
         assert MiniLinq.from_jvalue({"Ref": "form.log_subreport"}) == Reference("form.log_subreport")
