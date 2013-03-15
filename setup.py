@@ -8,7 +8,7 @@ setuptools.setup(
     maintainer_email = "information@dimagi.com",
     entry_points = { 'console_scripts': ['commcare-export = commcare_export.cli:entry_point'] },
     packages = setuptools.find_packages(),
-    install_requires = ['jsonpath_rw', 
+    install_requires = ['jsonpath_rw>=0.4', 
                         'requests',
                         'simplejson',
                         'argparse'],

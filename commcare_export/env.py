@@ -1,3 +1,4 @@
+from jsonpath_rw import jsonpath
 from jsonpath_rw.parser import parse as parse_jsonpath
 
 import operator
@@ -154,6 +155,10 @@ class JsonPathEnv(Env):
     """
     def __init__(self, bindings=None):
         self.__bindings = bindings or {}
+
+        # Currently hardcoded because it is a global is jsonpath-rw
+        # Probably not widely used, but will require refactor if so
+        jsonpath.auto_id_field = "id"
 
     def lookup(self, name):
         "str|JsonPath -> ??"
