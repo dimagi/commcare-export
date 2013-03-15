@@ -159,7 +159,7 @@ class JsonPathEnv(Env):
         "str|JsonPath -> ??"
         if isinstance(name, basestring):
             jsonpath = parse_jsonpath(name)
-            return list(jsonpath.find(self.__bindings))
+            return [datum.value for datum in jsonpath.find(self.__bindings)]
         else:
             # TODO: JsonPath does not exist, and we need
             # to actually depend on the library
