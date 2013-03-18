@@ -149,9 +149,16 @@ class SqlTableWriter(TableWriter):
                             "command:  pip install sqlalchemy alembic")
 
         if isinstance(url_or_connection, basestring):
-            self.connection = self.sqlalchemy.create_engine(url_or_connection)
+            self.base_connection = self.sqlalchemy.create_engine(url_or_engine)
         else:
-            self.connection = url_or_connection.connect() # "forks" the SqlAlchemy connection
+            self.base_connection = url_or_connection
+
+    def __enter__(self):
+        self.connection = self.base_connection.connect() # "forks" the SqlAlchemy connection
+        return self # TODO: A safe context manager so this can be called many times
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.connection.close()
 
     @property
     def metadata(self):
@@ -203,6 +210,7 @@ class SqlTableWriter(TableWriter):
 
         if not table_name in self.metadata.tables:
             op.create_table(table_name, self.sqlalchemy.Column('id', self.sqlalchemy.String(255), primary_key=True))
+            self.metadata.reflect()
 
         for column, val in row_dict.items():
             ty = self.best_type_for(val)
@@ -217,7 +225,6 @@ class SqlTableWriter(TableWriter):
                 current_ty = columns[column].type
 
                 if not self.compatible(ty, current_ty):
-                    print ty, current_ty
                     op.alter_column(table_name, column, type_ = self.least_upper_bound(column_type(table_name_column), ty))
                     self.metadata.clear()
                     self.metadata.reflect()
