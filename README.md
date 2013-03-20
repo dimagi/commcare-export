@@ -5,7 +5,7 @@ https://github.com/dimagi/commcare-export
 
 [![Build status](https://travis-ci.org/dimagi/commcare-export.png)](https://travis-ci.org/dimagi/commcare-export)
 
-A Python library and command-line tool to generate customized exports from CommCareHQ.
+A Python library and command-line tool to generate customized exports from the CommCareHQ REST API.
 
 Installation & Quick Start
 --------------------------
@@ -57,6 +57,8 @@ $ commcare-export --commcare-hq <URL or alias like "local" or "prod"> \
                   --output <file name or SQL database URL>
 ```
 
+See `commcare-export --help` for the full list of options.
+
 There are example query files for the CommCare Demo App (available on the CommCareHq Exchange) in the `examples/`
 directory.
 
@@ -64,8 +66,12 @@ directory.
 Python Library Usage
 --------------------
 
-As a library, the various `commcare_export` modules make it easy to load and save JSON queries and interact with
-the CommCareHq REST API.
+As a library, the various `commcare_export` modules make it easy to
+
+ - Interact with the CommCareHQ REST API
+ - Execute "Minilinq" queries against the API (a very simple query language, described below)
+ - Load and save JSON representations of Minilinq queries
+ - Compile Excel configurations to Minilinq queries
 
 To directly access the CommCareHq REST API:
 
@@ -141,6 +147,13 @@ Here is a description of the astract syntax and semantics
 
 Built in functions like `api_data` and basic arithmetic and comparison are provided via the environment,
 referred to be name using `Ref`, and utilized via `Apply`
+
+
+Excel Queries
+-------------
+
+There is an excel configuration format in progress. Small examples can be found via the unit tests. Excel queries are
+always intend to be user-facing, and are always compiled to Minilinq before being run.
 
 
 Output Formats
