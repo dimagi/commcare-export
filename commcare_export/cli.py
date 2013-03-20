@@ -1,11 +1,13 @@
-import sys
 import argparse
+import sys
 import json
 import getpass
 import requests
 import pprint
 import os.path
 import logging
+import hotshot
+import hotshot.stats
 
 import dateutil.parser
 
@@ -35,8 +37,9 @@ def main(argv):
     parser.add_argument('--username')
     parser.add_argument('--password')
     parser.add_argument('--since')
+    parser.add_argument('--profile')
     parser.add_argument('--verbose', default=False, action='store_true')
-    parser.add_argument('--output-format', default='json', choices=['json', 'csv', 'xls', 'xlsx'], help='Output format')
+    parser.add_argument('--output-format', default='json', choices=['json', 'csv', 'xls', 'xlsx', 'sql', 'markdown'], help='Output format')
     parser.add_argument('--output', metavar='PATH', default='reports.zip', help='Path to output; defaults to `reports.zip`.')
 
     args = parser.parse_args(argv)
@@ -48,6 +51,22 @@ def main(argv):
         logging.basicConfig(level=logging.WARN,
                             format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
+    if args.profile:
+        profile = hotshot.Profile(args.profile)
+        profile.start()
+
+    try:
+        main_with_args(args)
+    finally:
+        if args.profile:
+            profile.close()
+            stats = hotshot.stats.load(args.profile)
+            stats.strip_dirs()
+            stats.sort_stats('cumulative', 'calls')
+            stats.print_stats(100)
+            
+
+def main_with_args(args):
     # Reads as excel if it is a file name that looks like excel, otherwise reads as JSON, 
     # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
     if args.query:
@@ -89,7 +108,10 @@ def main(argv):
         writer = writers.CsvTableWriter(args.output)
     elif args.output_format == 'json':
         writer = writers.JValueTableWriter()
-    # SQLite?
+    elif args.output_format == 'markdown':
+        writer = writers.StreamingMarkdownTableWriter(sys.stdout) 
+    elif args.output_format == 'sql':
+        writer = writers.SqlTableWriter(args.output) # Output should be a connection URL
 
     env = BuiltInEnv() | CommCareHqEnv(api_client, since=dateutil.parser.parse(args.since)) | JsonPathEnv({}) # {'form': api_client.iterate('form')})
     results = query.eval(env)
@@ -102,15 +124,7 @@ def main(argv):
                 writer.write_table(table)
 
         if args.output_format == 'json':
-            # With verbose output we would like to know when a row is forced relative to
-            # API queries, so we do the _equivalent_ thing to writing whole tables and
-            # write a bunch of one-liners to tables
-            if args.verbose: 
-                for table in writer.tables:
-                    for row in table['rows']:
-                        print json.dumps({'name': table['name'], 'headings': table['headings'], 'rows': [row]})
-            else:
-                print json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue)
+            print json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue)
         else:
             print json.dumps(list(results), indent=4, default=RepeatableIterator.to_jvalue)
 

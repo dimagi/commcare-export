@@ -6,6 +6,8 @@ from itertools import chain
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
+JSONPATH_CACHE = {}
+
 class CannotBind(Exception): pass
 class CannotReplace(Exception): pass
 class CannotEmit(Exception): pass
@@ -152,27 +154,34 @@ class JsonPathEnv(Env):
     an JsonPath expression. Note that it never
     fails a lookup, but always returns an empty 
     list.
+
+    It also interns all parsed expressions
     """
     def __init__(self, bindings=None):
         self.__bindings = bindings or {}
-
+        
         # Currently hardcoded because it is a global is jsonpath-rw
         # Probably not widely used, but will require refactor if so
         jsonpath.auto_id_field = "id"
 
+    def parse(self, jsonpath_string):
+        if jsonpath_string not in JSONPATH_CACHE:
+            JSONPATH_CACHE[jsonpath_string] = parse_jsonpath(jsonpath_string)
+        return JSONPATH_CACHE[jsonpath_string]
+        
     def lookup(self, name):
         "str|JsonPath -> ??"
         if isinstance(name, basestring):
-            jsonpath = parse_jsonpath(name)
-
-            def iter():
-                for datum in jsonpath.find(self.__bindings):
-                    yield datum.value
-            return RepeatableIterator(iter)
+            jsonpath_expr = self.parse(name)
+        elif isinstance(name, jsonpath.JSONPath):
+            jsonpath_expr = name
         else:
-            # TODO: JsonPath does not exist, and we need
-            # to actually depend on the library
             raise NotImplementedError() 
+
+        def iter(jsonpath_expr=jsonpath_expr): # Capture closure
+            for datum in jsonpath_expr.find(self.__bindings):
+                yield datum.value
+        return RepeatableIterator(iter)
 
     def bind(self, *args):
         "(str, ??) -> Env | ({str: ??}) -> Env"

@@ -133,6 +133,21 @@ class JValueTableWriter(TableWriter):
                                 headings=list(table['headings']),
                                 rows=[list(row) for row in table['rows']]))
 
+class StreamingMarkdownTableWriter(TableWriter):
+    """
+    Writes markdown to an output stream, where each table just comes one after the other
+    """
+
+    def __init__(self, output_stream):
+        self.output_stream = output_stream
+    
+    def write_table(self, table):
+        self.output_stream.write('\n# %s \n\n' % table['name'])
+        self.output_stream.write('|%s|\n' % '|'.join(table['headings']))
+
+        for row in table['rows']:
+            self.output_stream.write('|%s|\n' % '|'.join(row))
+        
 class SqlTableWriter(TableWriter):
     """
     Write tables to a database specified by URL

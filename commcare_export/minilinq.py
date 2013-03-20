@@ -1,6 +1,8 @@
 from datetime import datetime
 from itertools import imap
 
+from jsonpath_rw.parser import parse as parse_jsonpath
+
 from commcare_export.repeatable_iterator import RepeatableIterator
 
 class MiniLinq(object):
@@ -65,10 +67,10 @@ class Reference(MiniLinq):
     """
     An MiniLinq referencing a datum or data. It is flexible
     about what the type of the environment is, but it must
-    support using these as keys
+    support using these as keys.
     """
     def __init__(self, ref):
-        self.ref = ref
+        self.ref = ref #parse_jsonpath(ref) #ref
     
     def eval(self, env):
         return env.lookup(self.ref)
