@@ -1,6 +1,7 @@
 import unittest
 import simplejson
 import urllib
+from itertools import *
 
 from commcare_export.minilinq import *
 from commcare_export.env import *
@@ -14,15 +15,27 @@ class TestCommCareMiniLinq(unittest.TestCase):
         pass
 
     def test_eval(self):
+        def die(msg): raise Exception(msg)
+        
         client = MockCommCareHqClient({
-            'form': {
-                urllib.urlencode({'_search': simplejson.dumps({"filter":"test1"})}): [1, 2, 3],
-                urllib.urlencode({'_search': simplejson.dumps({"filter":"test2"})}): [
-                    { 'x': [{ 'y': 1 }, {'y': 2}] },
-                    { 'x': [{ 'y': 3 }, {'z': 4}] },
-                    { 'x': [{ 'y': 5 }] }
-                ],
-            }
+            'form': [
+                (
+                    {'limit': 100, '_search': simplejson.dumps({"filter":"test1"}, separators=(',',':'))},
+                    [1, 2, 3],
+                ),
+                (
+                    {'limit': 100, '_search': simplejson.dumps({"filter":"test2"}, separators=(',', ':'))},
+                    [
+                        { 'x': [{ 'y': 1 }, {'y': 2}] },
+                        { 'x': [{ 'y': 3 }, {'z': 4}] },
+                        { 'x': [{ 'y': 5 }] }
+                    ]
+                ),
+                (
+                    {'limit': 100, '_search': simplejson.dumps({'filter':'laziness-test'}, separators=(',', ':'))},
+                    (i if i < 5 else die('Not lazy enough') for i in range(12))
+                )
+            ]
         })
 
         env = BuiltInEnv() | CommCareHqEnv(client) | JsonPathEnv({}) # {'form': api_client.iterate('form')})
@@ -44,3 +57,8 @@ class TestCommCareMiniLinq(unittest.TestCase):
                                      Literal('form'),
                                      Literal({"filter": 'test2'})),
                         body=Reference('x[*].y')).eval(env)) == [1, 2, 3, 5]
+
+        assert list(islice(Apply(Reference('api_data'),
+                                 Literal('form'),
+                                 Literal({"filter": "laziness-test"})).eval(env),
+                           5)) == [0, 1, 2, 3, 4]

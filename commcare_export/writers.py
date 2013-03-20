@@ -1,10 +1,14 @@
 import re
+import sys
 import zipfile
 from StringIO import StringIO
 import csv
 import json
+import logging
 
 from itertools import chain
+
+logger = logging.getLogger(__name__)
 
 MAX_COLUMN_SIZE = 2000
 
@@ -20,7 +24,7 @@ class TableWriter(object):
     def __enter__(self):
         return self
     
-    def write_table(self, table):    
+    def write_table(self, table):
         "{'name': str, 'headings': [str], 'rows': [[str]]} -> ()"
         raise NotImplementedError() 
 
@@ -247,7 +251,11 @@ class SqlTableWriter(TableWriter):
 
         # Rather inefficient for now...
         for row in table['rows']:
+            if logger.getEffectiveLevel() == logging.DEBUG: sys.stderr.write('.')
+
             row_dict = dict(zip(headings, row))
             self.make_table_compatible(table_name, row_dict)
             self.upsert(self.table(table_name), row_dict)
+
+        if logger.getEffectiveLevel() == 'DEBUG': sys.stderr.write('\n')
         

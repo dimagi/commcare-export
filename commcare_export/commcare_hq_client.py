@@ -1,8 +1,11 @@
 import requests
 import urlparse
 import urllib
+import logging
 
 from commcare_export.repeatable_iterator import RepeatableIterator
+
+logger = logging.getLogger(__file__)
 
 LATEST_KNOWN_VERSION='0.4'
 
@@ -42,9 +45,11 @@ class CommCareHqClient(object):
         if response.status_code != 200:
             raise Exception('Failed to connect to authentication page (%s): %s' % (response.status_code, response.text))
 
-        response = session.post(login_url, data = {'username': username, 
-                                                   'password': password, 
-                                                   'csrfmiddlewaretoken': response.cookies['csrftoken']})
+        response = session.post(login_url, 
+                                headers = {'Referer': login_url },
+                                data = {'username': username, 
+                                        'password': password, 
+                                        'csrfmiddlewaretoken': response.cookies['csrftoken']})
         if response.status_code != 200:
             raise Exception('Authentication failed (%s): %s' % (response.status_code, response.text))
         
@@ -91,24 +96,26 @@ class MockCommCareHqClient(object):
     """
     An in-memory mock of the hq client, instantiated
     with a simple mapping of resource and params to results.
-    Since dictionaries are not hashable, these querystrings
-    are clearly very sensitive to reordering, etc.
-    This mock sorts the keys. Still, the recommended way 
-    is to just use very simple strings, like so:
+
+    Since dictionaries are not hashable, the mapping is
+    written as a pair of tuples, handled appropriately
+    internallly.
 
     MockCommCareHqClient({
-        'forms': {
-            '_search=test1': [
-               ... objects ...
-            ],
-            '_search=test2': [
-               ... objects ...
-            ],
-        }
+        'forms': [
+            (
+                {'_search': 'test1'},
+                [
+                   ... objects ...
+                ]
+            ),
+        ]
     })
     """    
     def __init__(self, mock_data):
-        self.mock_data = mock_data
+        self.mock_data = dict([(resource, dict([(urllib.urlencode(params), result) for params, result in resource_results]))
+                              for resource, resource_results in mock_data.items()])
+        print self.mock_data
 
     def authenticated(self, *args, **kwargs):
         return self

@@ -5,6 +5,9 @@ import getpass
 import requests
 import pprint
 import os.path
+import logging
+
+import dateutil.parser
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.env import BuiltInEnv, JsonPathEnv
@@ -14,9 +17,11 @@ from commcare_export.commcare_minilinq import CommCareHqEnv
 from commcare_export import writers
 from commcare_export import excel_query
 
+logger = logging.getLogger(__name__)
+
 commcare_hq_aliases = {
     'local': 'http://localhost:8000',
-    'prod': 'https://www.commcare-hq.org'
+    'prod': 'https://www.commcarehq.org'
 }
 
 def main(argv):
@@ -29,10 +34,19 @@ def main(argv):
     parser.add_argument('--domain', required=True)
     parser.add_argument('--username')
     parser.add_argument('--password')
+    parser.add_argument('--since')
+    parser.add_argument('--verbose', default=False, action='store_true')
     parser.add_argument('--output-format', default='json', choices=['json', 'csv', 'xls', 'xlsx'], help='Output format')
     parser.add_argument('--output', metavar='PATH', default='reports.zip', help='Path to output; defaults to `reports.zip`.')
 
     args = parser.parse_args(argv)
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG, 
+                            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+    else:
+        logging.basicConfig(level=logging.WARN,
+                            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
     # Reads as excel if it is a file name that looks like excel, otherwise reads as JSON, 
     # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
@@ -76,20 +90,29 @@ def main(argv):
     elif args.output_format == 'json':
         writer = writers.JValueTableWriter()
     # SQLite?
-    
-    env = BuiltInEnv() | CommCareHqEnv(api_client) | JsonPathEnv({}) # {'form': api_client.iterate('form')})
+
+    env = BuiltInEnv() | CommCareHqEnv(api_client, since=dateutil.parser.parse(args.since)) | JsonPathEnv({}) # {'form': api_client.iterate('form')})
     results = query.eval(env)
 
     # Assume that if any tables were emitted, that is the idea, otherwise print the output
     if len(list(env.emitted_tables())) > 0:
         with writer:
             for table in env.emitted_tables():
+                logging.debug('Writing %s', table['name'])
                 writer.write_table(table)
 
         if args.output_format == 'json':
-            print json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue)
-    else:
-        print json.dumps(list(results), indent=4, default=RepeatableIterator.to_jvalue)
+            # With verbose output we would like to know when a row is forced relative to
+            # API queries, so we do the _equivalent_ thing to writing whole tables and
+            # write a bunch of one-liners to tables
+            if args.verbose: 
+                for table in writer.tables:
+                    for row in table['rows']:
+                        print json.dumps({'name': table['name'], 'headings': table['headings'], 'rows': [row]})
+            else:
+                print json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue)
+        else:
+            print json.dumps(list(results), indent=4, default=RepeatableIterator.to_jvalue)
 
 def entry_point():
     main(sys.argv[1:])

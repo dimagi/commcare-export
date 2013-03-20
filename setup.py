@@ -11,5 +11,6 @@ setuptools.setup(
     install_requires = ['jsonpath_rw>=0.4', 
                         'requests',
                         'simplejson',
+                        'python-dateutil',
                         'argparse'],
 )

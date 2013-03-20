@@ -17,16 +17,16 @@ class TestMiniLinq(unittest.TestCase):
         assert Literal({'foo': 'baz'}).eval(env) == {'foo': 'baz'}
 
         assert Reference("foo").eval(DictEnv({'foo': 2})) == 2
-        assert Reference("foo[*]").eval(JsonPathEnv({'foo': [2]})) == [2]
-        assert Reference("foo[*]").eval(JsonPathEnv({'foo': xrange(0, 1)})) == [0] # Should work the same w/ iterators as with lists
+        assert list(Reference("foo[*]").eval(JsonPathEnv({'foo': [2]}))) == [2]
+        assert list(Reference("foo[*]").eval(JsonPathEnv({'foo': xrange(0, 1)}))) == [0] # Should work the same w/ iterators as with lists
 
         # Test that we have turned on the auto id field properly
-        assert Reference("foo.id").eval(JsonPathEnv({'foo': [2]})) == ['foo']
-        assert Reference("foo.id").eval(JsonPathEnv({'foo': {'id': 2}})) == [2]
+        assert list(Reference("foo.id").eval(JsonPathEnv({'foo': [2]}))) == ['foo']
+        assert list(Reference("foo.id").eval(JsonPathEnv({'foo': {'id': 2}}))) == [2]
 
         # Special case to handle XML -> JSON conversion where there just
         # happened to be a single value
-        assert Reference("foo[*]").eval(JsonPathEnv({'foo': 2})) == [2]
+        assert list(Reference("foo[*]").eval(JsonPathEnv({'foo': 2}))) == [2]
 
         assert Apply(Reference("*"), Literal(2), Literal(3)).eval(env) == 6
         assert Apply(Reference(">"), Literal(56), Literal(23.5)).eval(env) == True
