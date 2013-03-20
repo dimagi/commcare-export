@@ -113,7 +113,7 @@ def main_with_args(args):
     elif args.output_format == 'sql':
         writer = writers.SqlTableWriter(args.output) # Output should be a connection URL
 
-    env = BuiltInEnv() | CommCareHqEnv(api_client, since=dateutil.parser.parse(args.since)) | JsonPathEnv({}) # {'form': api_client.iterate('form')})
+    env = BuiltInEnv() | CommCareHqEnv(api_client, since=dateutil.parser.parse(args.since) if args.since else None) | JsonPathEnv({}) 
     results = query.eval(env)
 
     # Assume that if any tables were emitted, that is the idea, otherwise print the output
@@ -125,8 +125,8 @@ def main_with_args(args):
 
         if args.output_format == 'json':
             print json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue)
-        else:
-            print json.dumps(list(results), indent=4, default=RepeatableIterator.to_jvalue)
+    else:
+        print json.dumps(list(results), indent=4, default=RepeatableIterator.to_jvalue)
 
 def entry_point():
     main(sys.argv[1:])

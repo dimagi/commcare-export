@@ -5,7 +5,7 @@ https://github.com/dimagi/commcare-export
 
 [![Build status](https://travis-ci.org/dimagi/commcare-export.png)](https://travis-ci.org/dimagi/commcare-export)
 
-A Python library and command-line tools to generate customized exports from CommCareHQ.
+A Python library and command-line tool to generate customized exports from CommCareHQ.
 
 Installation
 ------------
@@ -19,13 +19,36 @@ Or, during development:
 ```
 $ git clone git@github.com:dimagi/commcare-export.git
 $ cd commcare-export
+$ mkvirtualenv commcare-export
 $ pip install -e .
 ```
 
-Usage
------
+Command-line Usage
+------------------
 
-In Python, the support code for this library makes it easy to directly access the CommCareHq REST API:
+The basic usage of the command-line tool is with a saved Excel or JSON query (see how to write these, below)
+
+```
+$ commcare-export --commcare-hq <URL or alias like "local" or "prod"> \
+                  --username <username> \
+                  --domain <domain> \
+                  --version <api version, defaults to latest known> \
+                  --query <excel file, json file, or raw json> \
+                  --output-format <csv, xls, xlsx, json, markdown, sql> \
+                  --output <file name or SQL database URL>
+```
+
+There are example query files for the CommCare Demo App (available on the CommCareHq Exchange) in the `examples/`
+directory.
+
+
+Python Library Usage
+--------------------
+
+As a library, the various `commcare_export` modules make it easy to load and save JSON queries and interact with
+the CommCareHq REST API.
+
+To directly access the CommCareHq REST API:
 
 ```python
 >>> import getpass
@@ -35,8 +58,7 @@ In Python, the support code for this library makes it easy to directly access th
 >>> [ (form['received_on'], form['form.gender']) for form in forms ]
 ```
 
-You can also use the MiniLinq language, which is more machine-friendly than human-friendly, to
-help support serialization/deserialization to JSON for building a tool to work with exports.
+To issue a `minilinq` query against it, and then print out that query in a JSON serialization:
 
 ```python
 >>> import getpass
@@ -77,16 +99,6 @@ Which will output JSON equivalent to this:
 }
 ```
 
-If you have saved the JSON representation of a query to a file, or are willing to type it in, then you can
-also easily experiment on the command-line.
-
-```
-$ commcare-export --commcare-hq <URL or alias like "local" or "prod"> \
-                  --username <username> \
-                  --domain <domain> \
-                  --version <api version, defaults to latest known> \
-                  --query <file or raw json>
-```
 
 MiniLinq Reference
 ------------------
@@ -111,6 +123,7 @@ Here is a description of the astract syntax and semantics
 Built in functions like `api_data` and basic arithmetic and comparison are provided via the environment,
 referred to be name using `Ref`, and utilized via `Apply`
 
+
 Output Formats
 --------------
 
@@ -123,10 +136,12 @@ printed to standard output as pretty-printed JSON.
 If your MiniLinq _does_ contain `Emit` expressions, then there are many formats available, selected
 via the `--output-format <format>` option, and it can be directed to a file with the `--output <file>` command-line option.
 
- - `json`: The tables will each be a member of a JSON dictionary, printed to standard outputv
  - `csv`: Each table will be a CSV file within a Zip archive.
  - `xls`: Each table will be a sheet in an old-format Excel spreadsheet.
  - `xlsx`: Each table will be a sheet in a new-format Excel spreadsheet.
+ - `json`: The tables will each be a member of a JSON dictionary, printed to standard output
+ - `markdown`: The tables will be streamed to standard output in Markdown format (very handy for debugging your queries)
+ - `sql`: All data will be idempotently "upserted" into the SQL database you specify, including creating the needed tables and columns.
 
 
 Dependencies
