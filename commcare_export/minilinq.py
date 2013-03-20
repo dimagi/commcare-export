@@ -344,8 +344,9 @@ class Emit(MiniLinq):
     correct, nor does it try to ensure that the things being emitted
     are actually lists - it is just crashy instead.
     """
+
     def __init__(self, table, headings, source):
-        "(str, [(str, MiniLinq)]) -> MiniLinq"
+        "(str, [str], [MiniLinq]) -> MiniLinq"
         self.table = table
         self.headings = headings
         self.source = source

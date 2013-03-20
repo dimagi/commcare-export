@@ -2,6 +2,7 @@
     "Emit": {
         "table": "Registrations",
         "headings": [
+            {"Lit": "id"},
             {"Lit": "Received On"},
             {"Lit": "Mother's Name"},
             {"Lit": "Age"},
@@ -11,6 +12,7 @@
         "source": {"Map": {
             "body": {
                 "List": [
+                    {"Ref": "id"},
                     {"Ref": "received_on"},
                     {"Ref": "form.name"},
                     {"Ref": "form.age"},
@@ -23,7 +25,7 @@
                 "args": [
                     {"Lit": "form"}, 
                     {"Lit": {"filter": {"and":[
-                        {"term": {"app_id": "YOUR_APP_ID_HERE"}},
+                        {"term": {"app_id": "YOUR_DEMO_APP_ID"}},
                         {"term": {"xmlns.exact": "http://openrosa.org/formdesigner/dd3190c7dd7e9e7d469a9705709f2f6b4e27f1d8"}}
                     ]}}}
                 ]

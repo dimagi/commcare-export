@@ -168,7 +168,7 @@ class SqlTableWriter(TableWriter):
                             "command:  pip install sqlalchemy alembic")
 
         if isinstance(url_or_connection, basestring):
-            self.base_connection = self.sqlalchemy.create_engine(url_or_engine)
+            self.base_connection = self.sqlalchemy.create_engine(url_or_connection)
         else:
             self.base_connection = url_or_connection
 

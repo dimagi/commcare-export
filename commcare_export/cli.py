@@ -79,7 +79,7 @@ def main_with_args(args):
                 with open(args.query) as fh:
                     query = MiniLinq.from_jvalue(json.loads(fh.read()))
         else:
-            query = MiniLinq.from_jvalue(json.loads(fh.read()))
+            query = MiniLinq.from_jvalue(json.loads(args.query))
     else:
         query = MiniLinq.from_jvalue(json.loads(sys.stdin.read()))
 

@@ -7,8 +7,8 @@ https://github.com/dimagi/commcare-export
 
 A Python library and command-line tool to generate customized exports from CommCareHQ.
 
-Installation
-------------
+Installation & Quick Start
+--------------------------
 
 ```
 $ pip install commcare-export
@@ -22,6 +22,25 @@ $ cd commcare-export
 $ mkvirtualenv commcare-export
 $ pip install -e .
 ```
+
+Now the fastest way to try it out is follow these steps:
+
+1. Sign up for CommCare!
+2. Create a project space.
+3. Go to the CommCareHq Exchange and add the "Simple CommCare Demo/Tutorial" app to your project space.
+4. Go to the app and enable CloudCare for the app and save it.
+5. Go to the release manager, make a build, click the star to release it.
+6. Go to cloudcare and in the registration module fill out a few registration forms.
+7. Edit examples/demo-registrations.json to set the app_id to your app (it is in the URL bar when you are viewing the app)
+8. Run this on the command line, with your info provided where indicated:
+
+```
+$ commcare-export \
+     --query examples/demo-registration.json \
+     --domain YOUR_DOMAIN \
+     --output-format markdown
+```
+
 
 Command-line Usage
 ------------------

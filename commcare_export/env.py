@@ -234,7 +234,6 @@ class BuiltInEnv(DictEnv):
             '<'   : operator.__lt__,
             '<='  : operator.__le__,
             'len' : len,
-            'id'  : lambda x: x
         })
 
     def bind(self, name, value): raise CannotBind()
