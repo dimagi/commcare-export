@@ -29,7 +29,7 @@ commcare_hq_aliases = {
 def main(argv):
     parser = argparse.ArgumentParser('commcare-hq-export', 'Output a customized export of CommCareHQ data.')
 
-    parser.add_argument('--query', help='JSON string or file name. If omitted, reads from standard input (--username must be provided)')
+    parser.add_argument('--query', help='JSON or Excel query file, or a literal JSON string. If omitted, JSON string is read from stdin.')
     parser.add_argument('--dump-query', default=False, action='store_true')
     parser.add_argument('--commcare-hq', default='prod')
     parser.add_argument('--api-version', default=LATEST_KNOWN_VERSION)
@@ -71,10 +71,10 @@ def main_with_args(args):
     # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
     if args.query:
         if os.path.exists(args.query):
-            if os.path.splitext(args.query)[1] in ['xls', 'xlsx']:
+            if os.path.splitext(args.query)[1] in ['.xls', '.xlsx']:
                 import openpyxl
                 workbook = openpyxl.load_workbook(args.query)
-                query = excel_query.compile(workbook)
+                query = excel_query.compile_workbook(workbook)
             else:
                 with open(args.query) as fh:
                     query = MiniLinq.from_jvalue(json.loads(fh.read()))
@@ -84,7 +84,7 @@ def main_with_args(args):
         query = MiniLinq.from_jvalue(json.loads(sys.stdin.read()))
 
     if args.dump_query:
-        pprint.pprint(json.dumps(query.to_jvalue()), indent=4)
+        print json.dumps(query.to_jvalue(), indent=4)
         exit(0)
 
     if not args.username:

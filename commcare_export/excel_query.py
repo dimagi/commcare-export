@@ -2,6 +2,16 @@ from collections import defaultdict
 
 from commcare_export.minilinq import *
 
+def take_while(pred, iterator):
+    for v in iterator:
+        if pred(v):
+            yield v
+        else:
+            return
+
+def nonempty_prefix(cells):
+    return list(take_while(lambda v: v and v.value, cells))
+
 def map_value(mappings_sheet, mapping_name, source_value):
     "From the mappings_sheet, replaces the source_value with appropriate output value"
     return source_value
@@ -9,7 +19,7 @@ def map_value(mappings_sheet, mapping_name, source_value):
 def get_column_by_name(worksheet, column_name):
     for col in xrange(0, worksheet.get_highest_column()):
         if column_name == worksheet.cell(row=0, column=col).value:
-            return [worksheet.cell(row=i, column=col) for i in xrange(1, worksheet.get_highest_row())]
+            return nonempty_prefix([worksheet.cell(row=i, column=col) for i in xrange(1, worksheet.get_highest_row())])
 
 def compile_mappings(worksheet):
     mapping_names = get_column_by_name(worksheet, "Mapping Name")
@@ -48,7 +58,7 @@ def compile_field(field, source_field, map_via=None, format_via=None, mappings=N
     return expr
 
 def compile_fields(worksheet, mappings=None):
-    fields = get_column_by_name(worksheet, 'Field')
+    fields = nonempty_prefix(get_column_by_name(worksheet, 'Field'))
 
     if not fields:
         return []
@@ -59,8 +69,8 @@ def compile_fields(worksheet, mappings=None):
 
     return [compile_field(field        = field.value, 
                           source_field = source_field.value,
-                          map_via      = map_via.value, 
-                          format_via   = format_via.value,
+                          map_via      = map_via.value if map_via else None, 
+                          format_via   = format_via.value if format_via else None,
                           mappings     = mappings)
             for field, source_field, map_via, format_via in zip(fields, source_fields, map_vias, format_vias)]
 
@@ -103,18 +113,16 @@ def compile_workbook(workbook):
 
     2. Each other sheet represents one data table to emit
     """
+    #mappings = workbook.get_sheet_by_name('Mappings')
+
     queries = [] # A lit of queries will be built up; one per emit sheet
     
     emit_sheets = [sheet_name for sheet_name in workbook.get_sheet_names() if sheet_name != 'Mappings']
 
     for sheet in emit_sheets:
-        queries.append(compile_sheet(sheet))
+        queries.append(compile_sheet(workbook.get_sheet_by_name(sheet)))
 
     return List(queries) # Moderate hack
     
-    #mappings = workbook.get_sheet_by_name('Mappings')
-    data_tables = workbook.get_sheet_by_name('Data Tables')
-    columns = workbook.get_sheet_by_name('Columns')
-
     
     
