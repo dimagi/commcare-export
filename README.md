@@ -31,8 +31,17 @@ Now the fastest way to try it out is follow these steps:
 4. Go to the app and enable CloudCare for the app and save it.
 5. Go to the release manager, make a build, click the star to release it.
 6. Go to cloudcare and in the registration module fill out a few registration forms.
-7. Edit examples/demo-registrations.json to set the app_id to your app (it is in the URL bar when you are viewing the app)
-8. Run this on the command line, with your info provided where indicated:
+7. Edit examples/demo-registrations.json and examples/demo-registrations.xlsx to set the app_id to your app (it is in the URL bar when you are viewing the app)
+8. Run the example Excel configuration on the command line, with your info provided where indicated:
+
+```
+$ commcare-export \
+     --query examples/demo-registration.xlsx \
+     --domain YOUR_DOMAIN \
+     --output-format markdown
+```
+
+or, equivalently
 
 ```
 $ commcare-export \
@@ -41,6 +50,8 @@ $ commcare-export \
      --output-format markdown
 ```
 
+You'll see the tables printed out. Change to `--output-format sql --output URL_TO_YOUR_DB --since DATE` to
+sync all forms submitted since that date.
 
 Command-line Usage
 ------------------
@@ -61,6 +72,26 @@ See `commcare-export --help` for the full list of options.
 
 There are example query files for the CommCare Demo App (available on the CommCareHq Exchange) in the `examples/`
 directory.
+
+
+Excel Queries
+-------------
+
+An excel query is any `.xlsx` workbook. Each sheet in the workbook represents one table you wish
+to create. There are two grouping of columns to configure the table:
+
+ - **Data Source**: Set this to `form` to export form data, or `case` for case data.
+ - **Filter Name** / *Filter Value*: These columns are paired up to filter the input cases or forms.
+ - **Field**: The destination in your SQL database for the value.
+ - **Source Field**: The particular field from the form you wish to extract. This can be any JSON path.
+
+
+JSON Queries
+------------
+
+JSON queries are a described in the table below. You build a JSON object that represents the query you have in mind.
+A good way to get started is to work from the examples, or you could make an excel query and run the tool
+with `--dump-query` to see the resulting JSON query.
 
 
 Python Library Usage
@@ -147,13 +178,6 @@ Here is a description of the astract syntax and semantics
 
 Built in functions like `api_data` and basic arithmetic and comparison are provided via the environment,
 referred to be name using `Ref`, and utilized via `Apply`
-
-
-Excel Queries
--------------
-
-There is an excel configuration format in progress. Small examples can be found via the unit tests. Excel queries are
-always intend to be user-facing, and are always compiled to Minilinq before being run.
 
 
 Output Formats
