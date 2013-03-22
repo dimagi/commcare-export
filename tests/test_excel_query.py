@@ -56,7 +56,7 @@ class TestExcelQuery(unittest.TestCase):
                 print '!='
                 pprint.pprint(mappings)
             assert flatten(compiled) == mappings
-        
+
     def test_compile_sheet(self):
 
         test_cases = [
@@ -88,6 +88,7 @@ class TestExcelQuery(unittest.TestCase):
         ]
 
         for filename, minilinq in test_cases:
+            print 'Compiling sheet', filename # This output will be captured by pytest and printed in case of failure; helpful to isolate which test case
             abs_path = os.path.join(os.path.dirname(__file__), filename)
             compiled = compile_sheet(openpyxl.load_workbook(abs_path).get_active_sheet()) 
             # Print will be suppressed by pytest unless it fails

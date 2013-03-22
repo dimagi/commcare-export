@@ -9,8 +9,20 @@ def take_while(pred, iterator):
         else:
             return
 
-def nonempty_prefix(cells):
-    return list(take_while(lambda v: v and v.value, cells))
+def drop_while(pred, iterator):
+    for v in iterator:
+        if not pred(v):
+            yield v
+            break
+
+    for v in iterator:
+        yield v
+
+def without_empty_tail(cells):
+    """
+    Returns the prefix of a column that is not entirely empty.
+    """
+    return list(reversed(list(drop_while(lambda v: (not v) or (not v.value), reversed(cells)))))
 
 def map_value(mappings_sheet, mapping_name, source_value):
     "From the mappings_sheet, replaces the source_value with appropriate output value"
@@ -19,7 +31,7 @@ def map_value(mappings_sheet, mapping_name, source_value):
 def get_column_by_name(worksheet, column_name):
     for col in xrange(0, worksheet.get_highest_column()):
         if column_name == worksheet.cell(row=0, column=col).value:
-            return nonempty_prefix([worksheet.cell(row=i, column=col) for i in xrange(1, worksheet.get_highest_row())])
+            return without_empty_tail([worksheet.cell(row=i, column=col) for i in xrange(1, worksheet.get_highest_row())])
 
 def compile_mappings(worksheet):
     mapping_names = get_column_by_name(worksheet, "Mapping Name")
@@ -58,7 +70,7 @@ def compile_field(field, source_field, map_via=None, format_via=None, mappings=N
     return expr
 
 def compile_fields(worksheet, mappings=None):
-    fields = nonempty_prefix(get_column_by_name(worksheet, 'Field'))
+    fields = without_empty_tail(get_column_by_name(worksheet, 'Field') or [])
 
     if not fields:
         return []

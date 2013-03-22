@@ -390,6 +390,9 @@ class Emit(MiniLinq):
     def __eq__(self, other):
         return isinstance(other, Emit) and self.table == other.table and self.headings == other.headings and self.source == other.source
 
+    def __repr__(self):
+        return '%s(table=%r, headings=%r, source=%r)' % (self.__class__.__name__, self.table, self.headings, self.source)
+
 ### Register everything with the root parser ###
 
 MiniLinq.register(Reference, slug='Ref')
