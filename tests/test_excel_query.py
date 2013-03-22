@@ -98,3 +98,24 @@ class TestExcelQuery(unittest.TestCase):
                 print '!='
                 pprint.pprint(minilinq.to_jvalue())
             assert compiled == minilinq
+
+    def test_compile_workbook(self):
+        test_cases = [
+            ('004_TwoDataSources.xlsx', 
+             List([ 
+                Emit(table='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form"))),
+                Emit(table='Cases', headings=[], source=Apply(Reference("api_data"), Literal("case")))
+             ]))
+        ]
+
+        for filename, minilinq in test_cases:
+            print 'Compiling workbook', filename # This output will be captured by pytest and printed in case of failure; helpful to isolate which test case
+            abs_path = os.path.join(os.path.dirname(__file__), filename)
+            compiled = compile_workbook(openpyxl.load_workbook(abs_path))
+            # Print will be suppressed by pytest unless it fails
+            if not (compiled == minilinq):
+                print 'In', filename, ':'
+                pprint.pprint(compiled.to_jvalue())
+                print '!='
+                pprint.pprint(minilinq.to_jvalue())
+            assert compiled == minilinq
