@@ -30,7 +30,7 @@ class TestMiniLinq(unittest.TestCase):
         "Test that we have turned on the jsonpath_rw.jsonpath.auto_id field properly"
         env = BuiltInEnv()
         assert list(Reference("foo.id").eval(JsonPathEnv({'foo': [2]}))) == ['foo']
-        assert list(Reference("foo.id").eval(JsonPathEnv({'foo': {'id': 2}}))) == [2]
+        assert list(Reference("foo.id").eval(JsonPathEnv({'foo': {'id': 2}}))) == ['2'] # When auto id is on, this always becomes a string. Sorry!
 
     def test_eval_collapsed_list(self):
         """
