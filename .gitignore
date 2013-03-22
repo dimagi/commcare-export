@@ -3,6 +3,9 @@
 \#*
 .\#*
 
+# README.txt is just for the Cheeseshop; README.md is the authoritative one
+/README.txt
+
 # OSX droppings
 .DS_Store
 
