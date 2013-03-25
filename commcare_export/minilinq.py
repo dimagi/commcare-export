@@ -141,14 +141,17 @@ class Bind(MiniLinq):
     @classmethod
     def from_jvalue(cls, jvalue):
         fields = jvalue['Bind']
-        return cls(name=field['name'],
-                   value=MiniLinq.from_jvalue(field['value']),
-                   body=MiniLinq.from_jvalue(field['body']))
+        return cls(name=fields['name'],
+                   value=MiniLinq.from_jvalue(fields['value']),
+                   body=MiniLinq.from_jvalue(fields['body']))
 
     def to_jvalue(self):
         return {'Bind':{'name': self.name,
                         'value': self.value.to_jvalue(),
                         'body': self.body.to_jvalue()}}
+
+    def __repr__(self):
+        return '%s(name=%r, value=%r, body=%r)' % (self.__class__.__name__, self.name, self.value, self.body)
 
 
 class Filter(MiniLinq):
@@ -240,7 +243,7 @@ class Map(MiniLinq):
         def iterate(env=env, source_result=source_result): # Python closure workaround
             if self.name:
                 for item in source_result:
-                    yield self.body.eval(env.bind(name, item))
+                    yield self.body.eval(env.bind(self.name, item))
             else:
                 for item in source_result:
                     yield self.body.eval(env.replace(item)) 
@@ -419,3 +422,4 @@ MiniLinq.register(FlatMap)
 MiniLinq.register(Apply)
 MiniLinq.register(Emit)
 MiniLinq.register(List)
+MiniLinq.register(Bind)
