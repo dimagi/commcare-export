@@ -4,6 +4,8 @@ import os.path
 from collections import defaultdict
 
 import openpyxl
+from jsonpath_rw import jsonpath
+from jsonpath_rw.parser import parse as parse_jsonpath
 
 from commcare_export.minilinq import *
 from commcare_export.excel_query import *
@@ -13,6 +15,13 @@ class TestExcelQuery(unittest.TestCase):
     @classmethod
     def setup_class(cls):
         pass
+
+    def test_split_leftmost(self):
+        assert split_leftmost(parse_jsonpath('foo')) == (jsonpath.Fields('foo'), jsonpath.This())
+        assert split_leftmost(parse_jsonpath('foo.baz')) == (jsonpath.Fields('foo'), jsonpath.Fields('baz'))
+        assert split_leftmost(parse_jsonpath('foo.baz.bar')) == (jsonpath.Fields('foo'), jsonpath.Fields('baz').child(jsonpath.Fields('bar')))
+        assert split_leftmost(parse_jsonpath('[*].baz')) == (jsonpath.Slice(), jsonpath.Fields('baz'))
+        assert split_leftmost(parse_jsonpath('foo[*].baz')) == (jsonpath.Fields('foo'), jsonpath.Slice().child(jsonpath.Fields('baz')))
 
     def test_compile_mappings(self):
         test_cases = [
@@ -85,6 +94,12 @@ class TestExcelQuery(unittest.TestCase):
                                      Apply(Reference("FormatDate"), Reference("date_of_birth")),
                                      Apply(Reference("sexo"), Reference("gender"))
                                  ])))),
+
+            ('005_DataSourcePath.xlsx',
+             Emit(table    = 'Forms',
+                  headings = [],
+                  source   = FlatMap(source = Apply(Reference("api_data"), Literal("form")),
+                                     body   = Reference('form.delivery_information.child_questions.[*]'))))
         ]
 
         for filename, minilinq in test_cases:

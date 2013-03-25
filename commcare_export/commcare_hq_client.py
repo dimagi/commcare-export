@@ -120,7 +120,6 @@ class MockCommCareHqClient(object):
     def __init__(self, mock_data):
         self.mock_data = dict([(resource, dict([(urllib.urlencode(params), result) for params, result in resource_results]))
                               for resource, resource_results in mock_data.items()])
-        print self.mock_data
 
     def authenticated(self, *args, **kwargs):
         return self

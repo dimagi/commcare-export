@@ -1,5 +1,8 @@
+import re
 from collections import defaultdict
 
+from jsonpath_rw import jsonpath
+from jsonpath_rw.parser import parse as parse_jsonpath
 from commcare_export.minilinq import *
 
 def take_while(pred, iterator):
@@ -86,11 +89,45 @@ def compile_fields(worksheet, mappings=None):
                           mappings     = mappings)
             for field, source_field, map_via, format_via in zip(fields, source_fields, map_vias, format_vias)]
 
-def compile_sheet(worksheet, mappings=None):
-    mappings = mappings or {}
-    data_source = get_column_by_name(worksheet, 'Data Source')[0].value
+def split_leftmost(jsonpath_expr):
+    if isinstance(jsonpath_expr, jsonpath.Child):
+        further_leftmost, rest = split_leftmost(jsonpath_expr.left)
+        return further_leftmost, rest.child(jsonpath_expr.right)
+    else:
+        return (jsonpath_expr, jsonpath.This())
+
+def compile_source(worksheet):
+    """
+    Compiles just the part of the Excel Spreadsheet that
+    indicates the API endpoint to hit along with optional filters
+    and an optional JSONPath within that endpoint, 
+
+    For example, this spreadsheet
+    
+    Data Source                    Filter Name   Filter Value
+    -----------------------------  ------------  ------------------
+    form[*].form.child_questions   app_id        <app id>   
+                                   xmlns.exact   <some form xmlns>
+
+    Should fetch from api/form?app_id=<app id>&xmlns.exact=<some form xmlns>
+    and then iterate (FlatMap) over all child questions.
+    """
+    
+    data_source_str = get_column_by_name(worksheet, 'Data Source')[0].value
     filters = compile_filters(worksheet)
 
+    data_source, data_source_jsonpath = split_leftmost(parse_jsonpath(data_source_str))
+    maybe_redundant_slice, remaining_jsonpath = split_leftmost(data_source_jsonpath)
+
+    # The leftmost _must_ be of type Fields with one field and will pull out the first field
+    if not isinstance(data_source, jsonpath.Fields) or len(data_source.fields) > 1:
+        raise Exception('Bad value for data source: %s' % str(data_source))
+
+    data_source = data_source.fields[0]
+
+    if isinstance(maybe_redundant_slice, jsonpath.Slice):
+        data_source_jsonpath = remaining_jsonpath
+    
     if filters:
         api_query = Apply(Reference("api_data"), Literal(data_source), Literal(
             {'filter': {'and': [{'term': {filter_name: filter_value}} for filter_name, filter_value in filters]}}
@@ -98,16 +135,26 @@ def compile_sheet(worksheet, mappings=None):
     else:
         api_query = Apply(Reference("api_data"), Literal(data_source))
 
+    if data_source_jsonpath is None or isinstance(data_source_jsonpath, jsonpath.This) or isinstance(data_source_jsonpath, jsonpath.Root):
+        return api_query
+    else:
+        return FlatMap(source=api_query,
+                       body=Reference(str(data_source_jsonpath)))
+
+def compile_sheet(worksheet, mappings=None):
+    mappings = mappings or {}
+    source_expr = compile_source(worksheet)
+
     output_table_name = worksheet.title
     output_headings = get_column_by_name(worksheet, 'Field') # It is unfortunate that this is duplicated here and in `compile_fields`
     output_fields = compile_fields(worksheet, mappings=mappings)
 
     if not output_fields:
         headings = headings = []
-        source = api_query
+        source = source_expr
     else:
         headings = [Literal(output_heading.value) for output_heading in output_headings]
-        source = Map(source=api_query, body=List(output_fields))
+        source = Map(source=source_expr, body=List(output_fields))
 
     return Emit(table    = output_table_name, 
                 headings = headings,

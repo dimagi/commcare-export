@@ -85,6 +85,9 @@ class Reference(MiniLinq):
     def to_jvalue(self):
         return {'Ref': self.ref}
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.ref)
+
 class Literal(MiniLinq):
     """
     An MiniLinq wrapper around a python value. Returns exactly the
@@ -100,6 +103,9 @@ class Literal(MiniLinq):
 
     def __eq__(self, other):
         return isinstance(other, Literal) and self.v == other.v
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.v)
 
     @classmethod
     def from_jvalue(cls, jvalue):
@@ -128,6 +134,9 @@ class Bind(MiniLinq):
 
     def __eq__(self, other):
         return isinstance(other, Bind) and self.name == other.name and self.value == other.value and self.body == other.body
+
+    def __repr__(self):
+        return '%s(name=%r, value=%r, body=%r)' % (self.__class__.__name__, self.name, self.value, self.body)
 
     @classmethod
     def from_jvalue(cls, jvalue):
@@ -178,9 +187,13 @@ class Filter(MiniLinq):
                    name   = fields.get('name'))
 
     def to_jvalue(self):
-        return {'Filter': {'predicate': self.predicate,
-                           'source': self.source,
+        return {'Filter': {'predicate': self.predicate.to_jvalue(),
+                           'source': self.source.to_jvalue(),
                            'name': self.name}}
+
+    def __repr__(self):
+        return '%s(source=%r, name=%r, predicate=%r)' % (self.__class__.__name__, self.source, self.name, self.predicate)
+
 
 class List(MiniLinq):
     """
@@ -299,8 +312,8 @@ class FlatMap(MiniLinq):
                    name   = fields.get('name'))
 
     def to_jvalue(self):
-        return {'FlatMap': {'body': self.body,
-                            'source': self.source,
+        return {'FlatMap': {'body': self.body.to_jvalue(),
+                            'source': self.source.to_jvalue(),
                             'name': self.name}}
 
 class Apply(MiniLinq):
@@ -332,6 +345,9 @@ class Apply(MiniLinq):
     def to_jvalue(self):
         return {'Apply': {'fn': self.fn.to_jvalue(),
                           'args': [arg.to_jvalue() for arg in self.args]}}
+
+    def __repr__(self):
+        return '%s(%r, *%r)' % (self.__class__.__name__, self.fn, self.args)
 
 
 class Emit(MiniLinq):
