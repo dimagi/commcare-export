@@ -1,8 +1,10 @@
+from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+import operator
+import six
+from itertools import chain
+
 from jsonpath_rw import jsonpath
 from jsonpath_rw.parser import parse as parse_jsonpath
-
-import operator
-from itertools import chain
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
@@ -171,7 +173,7 @@ class JsonPathEnv(Env):
         
     def lookup(self, name):
         "str|JsonPath -> ??"
-        if isinstance(name, basestring):
+        if isinstance(name, six.string_types):
             jsonpath_expr = self.parse(name)
         elif isinstance(name, jsonpath.JSONPath):
             jsonpath_expr = name
@@ -195,7 +197,7 @@ class JsonPathEnv(Env):
             new_bindings.update(args[0])
             return self.__class__(new_bindings)
         
-        elif isinstance(args[0], basestring):
+        elif isinstance(args[0], six.string_types):
             new_bindings[args[0]] = args[1]
             return self.__class__(new_bindings)
 

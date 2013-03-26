@@ -1,5 +1,8 @@
+from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 from datetime import datetime
-from itertools import imap
+
+import six
+from six.moves import map
 
 from jsonpath_rw.parser import parse as parse_jsonpath
 
@@ -41,11 +44,8 @@ class MiniLinq(object):
         if not issubclass(MiniLinq, cls):
             raise NotImplementedError()
     
-        if isinstance(jvalue, unicode):
+        if isinstance(jvalue, six.string_types):
             return jvalue
-
-        elif isinstance(jvalue, basestring):
-            return unicode(jvalue)
     
         elif isinstance(jvalue, list):
             # Leverage for literal lists of data in the code
@@ -56,7 +56,7 @@ class MiniLinq(object):
             # one entry and it must be the AST node class
             if len(jvalue.values()) != 1:
                 raise ValueError('JValue serialization of AST contains dict with number of slugs != 1')
-            slug = jvalue.keys()[0]
+            slug = list(jvalue.keys())[0]
 
             if slug not in cls._node_classes:
                 raise ValueError('JValue serialization of AST contains unknown node type: %s' % slug)
@@ -390,7 +390,7 @@ class Emit(MiniLinq):
         rows = self.source.eval(env)
         env.emit_table({'name': self.table,
                         'headings': [heading.eval(env) for heading in self.headings],
-                        'rows': imap(self.coerce_row, rows)})
+                        'rows': map(self.coerce_row, rows)})
         return rows
 
     @classmethod

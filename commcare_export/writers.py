@@ -1,10 +1,12 @@
 import re
 import sys
 import zipfile
-from StringIO import StringIO
 import csv
 import json
 import logging
+
+import six
+from six import StringIO
 
 from itertools import chain
 
@@ -167,7 +169,7 @@ class SqlTableWriter(TableWriter):
                             "SQL export. To export to excel you have to run the "
                             "command:  pip install sqlalchemy alembic")
 
-        if isinstance(url_or_connection, basestring):
+        if isinstance(url_or_connection, six.string_types):
             self.base_connection = self.sqlalchemy.create_engine(url_or_connection)
         else:
             self.base_connection = url_or_connection
@@ -193,7 +195,7 @@ class SqlTableWriter(TableWriter):
     def best_type_for(self, val):
         if isinstance(val, int):
             return self.sqlalchemy.Integer()
-        elif isinstance(val, basestring):
+        elif isinstance(val, six.string_types):
             if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
                 return self.sqlalchemy.String(len(val))
             else:

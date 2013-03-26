@@ -1,7 +1,14 @@
+from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 import requests
-import urlparse
-import urllib
 import logging
+
+# This import pattern supports Python 2 and 3
+try:
+    from urllib.request import urlopen
+    from urllib.parse import urlparse, urlencode
+except ImportError:
+    from urlparse import urlparse
+    from urllib import urlopen, urlencode
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
@@ -118,15 +125,15 @@ class MockCommCareHqClient(object):
     })
     """    
     def __init__(self, mock_data):
-        self.mock_data = dict([(resource, dict([(urllib.urlencode(params), result) for params, result in resource_results]))
+        self.mock_data = dict([(resource, dict([(urlencode(params), result) for params, result in resource_results]))
                               for resource, resource_results in mock_data.items()])
 
     def authenticated(self, *args, **kwargs):
         return self
 
     def get(self, resource, params=None):
-        return self.mock_data[resource][urllib.urlencode(params)]
+        return self.mock_data[resource][urlencode(params)]
     
     def iterate(self, resource, params=None):
-        return self.mock_data[resource][urllib.urlencode(params)]
+        return self.mock_data[resource][urlencode(params)]
 

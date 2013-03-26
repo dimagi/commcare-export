@@ -1,5 +1,6 @@
-import unittest
+from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 from itertools import *
+import unittest
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
@@ -26,17 +27,17 @@ class TestRepeatableIterator(unittest.TestCase):
         # First make sure that we've properly set up a situation that fails
         # without RepeatableIterator
         iterator = test1()
-        assert list(iterator) == range(1, 100)
+        assert list(iterator) == list(range(1, 100))
         assert list(iterator) == []
         
         # Now test that the RepeatableIterator restores functionality
         iterator = RepeatableIterator(test1)
-        assert list(iterator) == range(1, 100)
-        assert list(iterator) == range(1, 100)
+        assert list(iterator) == list(range(1, 100))
+        assert list(iterator) == list(range(1, 100))
 
         # Ensure that laziness is maintained
         iterator = RepeatableIterator(test2)
-        assert list(islice(iterator, 5)) == range(1, 6)
+        assert list(islice(iterator, 5)) == list(range(1, 6))
 
         try:
             list(islice(iterator, 15))

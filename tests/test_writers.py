@@ -4,8 +4,6 @@ import uuid
 import pprint
 import os.path
 
-import openpyxl
-import xlwt
 import sqlalchemy
 
 from commcare_export.writers import *

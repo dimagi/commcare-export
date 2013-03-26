@@ -1,5 +1,6 @@
 import unittest
 from itertools import *
+from six.moves import map, xrange
 
 from commcare_export.minilinq import *
 from commcare_export.repeatable_iterator import RepeatableIterator

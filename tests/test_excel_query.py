@@ -1,3 +1,4 @@
+from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 import unittest
 import pprint
 import os.path
@@ -60,9 +61,9 @@ class TestExcelQuery(unittest.TestCase):
             compiled = compile_mappings(openpyxl.load_workbook(abs_path).get_sheet_by_name('Mappings'))
             # Print will be suppressed by pytest unless it fails
             if not (flatten(compiled) == mappings):
-                print 'In', filename, ':'
+                print('In %s:' % filename)
                 pprint.pprint(flatten(compiled))
-                print '!='
+                print('!=')
                 pprint.pprint(mappings)
             assert flatten(compiled) == mappings
 
@@ -103,14 +104,14 @@ class TestExcelQuery(unittest.TestCase):
         ]
 
         for filename, minilinq in test_cases:
-            print 'Compiling sheet', filename # This output will be captured by pytest and printed in case of failure; helpful to isolate which test case
+            print('Compiling sheet %s' % filename) # This output will be captured by pytest and printed in case of failure; helpful to isolate which test case
             abs_path = os.path.join(os.path.dirname(__file__), filename)
             compiled = compile_sheet(openpyxl.load_workbook(abs_path).get_active_sheet()) 
             # Print will be suppressed by pytest unless it fails
             if not (compiled == minilinq):
-                print 'In', filename, ':'
+                print('In %s:' % filename)
                 pprint.pprint(compiled.to_jvalue())
-                print '!='
+                print('!=')
                 pprint.pprint(minilinq.to_jvalue())
             assert compiled == minilinq
 
@@ -124,13 +125,13 @@ class TestExcelQuery(unittest.TestCase):
         ]
 
         for filename, minilinq in test_cases:
-            print 'Compiling workbook', filename # This output will be captured by pytest and printed in case of failure; helpful to isolate which test case
+            print('Compiling workbook %s' % filename) # This output will be captured by pytest and printed in case of failure; helpful to isolate which test case
             abs_path = os.path.join(os.path.dirname(__file__), filename)
             compiled = compile_workbook(openpyxl.load_workbook(abs_path))
             # Print will be suppressed by pytest unless it fails
             if not (compiled == minilinq):
-                print 'In', filename, ':'
+                print('In %s:' % filename)
                 pprint.pprint(compiled.to_jvalue())
-                print '!='
+                print('!=')
                 pprint.pprint(minilinq.to_jvalue())
             assert compiled == minilinq

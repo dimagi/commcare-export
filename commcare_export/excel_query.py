@@ -1,5 +1,8 @@
+from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 import re
 from collections import defaultdict
+
+from six.moves import xrange
 
 from jsonpath_rw import jsonpath
 from jsonpath_rw.parser import parse as parse_jsonpath

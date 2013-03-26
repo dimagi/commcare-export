@@ -10,6 +10,10 @@ A Python library and command-line tool to generate customized exports from the C
 Installation & Quick Start
 --------------------------
 
+0. Install Python and `pip`. We recommend a version beginning with "2.7". (This tool is tested with Python 2.6, 2.7, and 3.3)
+
+1. Install CommCare Export via `pip`
+
 ```
 $ pip install commcare-export
 ```
