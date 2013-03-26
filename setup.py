@@ -11,7 +11,7 @@ readme = 'README.txt' if os.path.exists('README.txt') else 'README.md'
 
 setuptools.setup(   
     name = "commcare-export",
-    version = "0.2",
+    version = "0.3",
     description = 'A command-line tool (and Python library) to extract data from CommCareHQ into a SQL database or Excel workbook',
     long_description = open(readme).read(),
     author = 'Dimagi',
@@ -28,4 +28,23 @@ setuptools.setup(
                         'simplejson',
                         'python-dateutil',
                         'argparse'],
+    classifiers = [
+        'Development Status :: 4 - Beta',
+        'Environment :: Console',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Healthcare Industry'
+        'Intended Audience :: Science/Research',
+        'Intended Audience :: System Administrators',
+        'Intended Audience :: End Users/Desktop',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.3',
+        'Topic :: Database',
+        'Topic :: Software Development :: Interpreters',
+        'Topic :: System :: Archiving',
+        'Topic :: System :: Distributed Computing',
+    ],
 )
