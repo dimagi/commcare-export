@@ -32,7 +32,7 @@ setuptools.setup(
         'Development Status :: 4 - Beta',
         'Environment :: Console',
         'Intended Audience :: Developers',
-        'Intended Audience :: Healthcare Industry'
+        'Intended Audience :: Healthcare Industry',
         'Intended Audience :: Science/Research',
         'Intended Audience :: System Administrators',
         'Intended Audience :: End Users/Desktop',
