@@ -3,6 +3,8 @@ import simplejson
 import urllib
 from itertools import *
 
+from jsonpath_rw import jsonpath
+
 from commcare_export.minilinq import *
 from commcare_export.env import *
 from commcare_export.commcare_hq_client import MockCommCareHqClient
@@ -15,8 +17,8 @@ class TestCommCareMiniLinq(unittest.TestCase):
         pass
 
     def check_case(self, val, result):
-        if isinstance(val, list):
-            assert [datum.value for datum in val] == list(result)
+        if isinstance(result, list):
+            assert [datum.value if isinstance(datum, jsonpath.DatumInContext) else datum for datum in val] == result
 
     def test_eval(self):
         def die(msg): raise Exception(msg)
@@ -38,6 +40,17 @@ class TestCommCareMiniLinq(unittest.TestCase):
                 (
                     {'limit': 100, '_search': simplejson.dumps({'filter':'laziness-test'}, separators=(',', ':'))},
                     (i if i < 5 else die('Not lazy enough') for i in range(12))
+                )
+            ],
+
+            'case': [
+                (
+                    {'limit': 100, 'type': 'foo'},
+                    [
+                        { 'x': 1 },
+                        { 'x': 2 },
+                        { 'x': 3 },
+                    ]
                 )
             ]
         })
@@ -67,3 +80,9 @@ class TestCommCareMiniLinq(unittest.TestCase):
                                  Literal('form'),
                                  Literal({"filter": "laziness-test"})).eval(env), 5),
                         [0, 1, 2, 3, 4])
+
+        self.check_case(FlatMap(source=Apply(Reference('api_data'),
+                                             Literal('case'),
+                                             Literal({'type': 'foo'})),
+                                body=Reference('x')).eval(env),
+                        [1, 2, 3])

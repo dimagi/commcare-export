@@ -132,9 +132,12 @@ def compile_source(worksheet):
         data_source_jsonpath = remaining_jsonpath
     
     if filters:
-        api_query = Apply(Reference("api_data"), Literal(data_source), Literal(
-            {'filter': {'and': [{'term': {filter_name: filter_value}} for filter_name, filter_value in filters]}}
-        ))
+        if data_source == 'form':
+            api_query = Apply(Reference("api_data"), Literal(data_source), Literal(
+                {'filter': {'and': [{'term': {filter_name: filter_value}} for filter_name, filter_value in filters]}}
+            ))
+        elif data_source == 'case':
+            api_query = Apply(Reference("api_data"), Literal(data_source), Literal(dict(filters)))
     else:
         api_query = Apply(Reference("api_data"), Literal(data_source))
 

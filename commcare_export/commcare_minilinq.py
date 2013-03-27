@@ -24,27 +24,32 @@ class CommCareHqEnv(DictEnv):
 
     def api_data(self, resource, payload=None):
         payload = dict(payload or {}) # Do not mutate passed-in dicts
-
-        if self.since:
-            if resource == 'form':
-                key = 'received_on'
-            elif resource == 'case':
-                key = 'server_modified_date'
-            else:
-                raise ValueError('Cannot use `since` with resource %s' % resource)
-            
-            if 'filter' not in payload: payload['filter'] = {}
-            payload['filter'] = {
-                "and": [
-                    payload.get("filter", {"match_all":{}}),
-                    {'range': {key: {'from': self.since.isoformat()}}},
-                ]
-            }
-
         params = {'limit': 100}
 
-        if payload:
-            params.update({'_search': simplejson.dumps(payload, separators=(',',':'))}) # compact encoding
+        # Currently the form resource endpoint and the case resource endpoint are completely different
+        if resource == 'form':
+            if self.since:
+                if 'filter' not in payload: payload['filter'] = {}
+
+                payload['filter'] = {
+                    "and": [
+                        payload.get("filter", {"match_all":{}}),
+                        {'range': {'received_on': {'from': self.since.isoformat()}}},
+                    ]
+                }
+
+            if payload:
+                params.update({'_search': simplejson.dumps(payload, separators=(',',':'))}) # compact encoding
+                
+        elif resource == 'case':
+            if self.since:
+                payload['server_date_modified_start'] = self.since.isoformat()
+
+            if payload:
+                params.update(payload)
+
+        else:
+            raise ValueError('I do not know how to access the API resource "%s"' % resource)
         
         return self.commcare_hq_client.iterate(resource, params=params)
 
