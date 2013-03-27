@@ -55,25 +55,7 @@ sync all forms submitted since that date.
 
 All examples are present in Excel and also equivalent JSON.
 
-Command-line Usage
-------------------
-
-The basic usage of the command-line tool is with a saved Excel or JSON query (see how to write these, below)
-
-```
-$ commcare-export --commcare-hq <URL or alias like "local" or "prod"> \
-                  --username <username> \
-                  --domain <domain> \
-                  --version <api version, defaults to latest known> \
-                  --query <excel file, json file, or raw json> \
-                  --output-format <csv, xls, xlsx, json, markdown, sql> \
-                  --output <file name or SQL database URL>
-```
-
-See `commcare-export --help` for the full list of options.
-
-There are example query files for the CommCare Demo App (available on the CommCareHq Exchange) in the `examples/`
-directory.
+6\. Read the output of `commcare-export --help` to see all the available options.
 
 
 Excel Queries
@@ -82,7 +64,8 @@ Excel Queries
 An excel query is any `.xlsx` workbook. Each sheet in the workbook represents one table you wish
 to create. There are two grouping of columns to configure the table:
 
- - **Data Source**: Set this to `form` to export form data, or `case` for case data.
+ - **Data Source**: Set this to `form` to export form data, or `case` for case data. You can also reference
+   deep within the data source; see `examples/demo-deliveries.xlsx` for an example.
  - **Filter Name** / *Filter Value*: These columns are paired up to filter the input cases or forms.
  - **Field**: The destination in your SQL database for the value.
  - **Source Field**: The particular field from the form you wish to extract. This can be any JSON path.
@@ -93,7 +76,7 @@ JSON Queries
 
 JSON queries are a described in the table below. You build a JSON object that represents the query you have in mind.
 A good way to get started is to work from the examples, or you could make an excel query and run the tool
-with `--dump-query` to see the resulting JSON query.
+with `--dump-query` to see the resulting JSON query. Otherwise, see the MiniLinq reference below.
 
 
 Python Library Usage
@@ -205,20 +188,21 @@ via the `--output-format <format>` option, and it can be directed to a file with
 Dependencies
 ------------
 
-Required dependencies will be automatically installed via pip. But since
-you may not care about all export formats, the various dependencies there
-are optional. Here is how you might install them:
+Required dependencies will be automatically installed via pip. However, this
+will not necessarily install the drivers for your SQL database. As an example,
+if you are accessing a PostgreSQL database you may need to run the following:
 
 ```
-# To export "xlsx"
-$ pip install openpyxl
-
-# To export "xls"
-$ pip install xlwt
-
-# To sync with a SQL database
-$ pip install SQLAlchemy alembic
+$ pip install psycopg2
 ```
+
+The database driver will be inferred from the URL to the database. For example,
+`--output 'sqlite:////tmp/some-sqlite.db'` will use the SQLite driver that
+ships with Python, while `--output 'postgresql://my-db-server/my_database_name'`
+will use a PostgreSQL driver appropriate to your system. We cannot maintain
+a list of all possible drivers; we depend on SQLAlchemy to manage this, so it
+is up to you to ensure these libraries are available.
+
 
 Contributing
 ------------
@@ -239,7 +223,7 @@ $ git checkout -b my-super-duper-feature
 
 3\. Make your edits.
 
-4\. Make sure the tests pass. The best way to test for all versions is to sign up for https://travis-ci.org and turn on automatic continuous testing for your fork.
+4\. Make sure the tests pass. The best way to test for all versions of Python is to sign up for https://travis-ci.org and turn on automatic continuous testing for your fork.
 
 ```
 $ py.test
