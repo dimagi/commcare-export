@@ -2,12 +2,25 @@ import os.path
 import sys
 import subprocess
 import setuptools 
+from setuptools.command.test import test as TestCommand
 
 # Build README.txt from README.md if not present, and if we are actually building for distribution to pypi
 if not os.path.exists('README.txt') and 'sdist' in sys.argv:
     subprocess.call(['pandoc', '--to=rst', '--smart', '--output=README.txt', 'README.md'])
 
 readme = 'README.txt' if os.path.exists('README.txt') else 'README.md'
+
+class PyTest(TestCommand):
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+        self.test_args = []
+        self.test_suite = True
+
+    def run_tests(self):
+        #import here, cause outside the eggs aren't loaded
+        import pytest
+        errno = pytest.main(['tests/'] + self.test_args)
+        sys.exit(errno)
 
 setuptools.setup(   
     name = "commcare-export",
@@ -27,7 +40,11 @@ setuptools.setup(
                         'requests',
                         'simplejson',
                         'python-dateutil',
+                        'sqlalchemy',
+                        'alembic',
                         'argparse'],
+    tests_require = ['pytest', 'psycopg2'],
+    cmdclass = {'test': PyTest},
     classifiers = [
         'Development Status :: 4 - Beta',
         'Environment :: Console',

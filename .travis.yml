@@ -3,10 +3,7 @@ python:
  - "2.6"
  - "2.7"
  - "3.3"
-install: 
- - "pip install . --use-mirrors"
- - "pip install psycopg2 sqlalchemy alembic pytest --use-mirrors"
-script: py.test
+script: python setup.py test
 services:
  - postgres
 notifications:
