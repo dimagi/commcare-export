@@ -5,57 +5,55 @@ https://github.com/dimagi/commcare-export
 
 [![Build status](https://travis-ci.org/dimagi/commcare-export.png)](https://travis-ci.org/dimagi/commcare-export)
 
-A Python library and command-line tool to generate customized exports from the CommCareHQ REST API.
+A command-line tool (and Python library) to generate customized exports from the CommCareHQ REST API.
 
 Installation & Quick Start
 --------------------------
 
-0. Install Python and `pip`. We recommend a version beginning with "2.7". (This tool is tested with Python 2.6, 2.7, and 3.3)
+0a\. Install Python and `pip`. This tool is [tested with Python 2.6, 2.7, and 3.3](https://travis-ci.org/dimagi/commcare-export).
 
-1. Install CommCare Export via `pip`
+0b\. Sign up for CommCareHQ at https://www.commcarehq.org/register/user if you have not already.
+
+1\. Install CommCare Export via `pip`
 
 ```
 $ pip install commcare-export
 ```
 
-Or, during development:
+2\. Visit the CommCareHQ Exchange and add the [Simple CommCare Demo/Tutorial"](https://www.commcarehq.org/exchange/611422532c7ab89d22cca54d57ae89aa/info/) app to a new project space.
 
-```
-$ git clone git@github.com:dimagi/commcare-export.git
-$ cd commcare-export
-$ mkvirtualenv commcare-export
-$ pip install -e .
-```
+3\. Visit the Release Manager, make a build, click the star to release it.
 
-Now the fastest way to try it out is follow these steps:
+4\. Visit CloudCare and fill out a bunch of forms.
 
-1. Sign up for CommCare!
-2. Create a project space.
-3. Go to the CommCareHq Exchange and add the "Simple CommCare Demo/Tutorial" app to your project space.
-4. Go to the app and enable CloudCare for the app and save it.
-5. Go to the release manager, make a build, click the star to release it.
-6. Go to cloudcare and in the registration module fill out a few registration forms.
-7. Edit examples/demo-registrations.json and examples/demo-registrations.xlsx to set the app_id to your app (it is in the URL bar when you are viewing the app)
-8. Run the example Excel configuration on the command line, with your info provided where indicated:
+5\. Try out the example queries in the `examples/` directory, providing your domain on the command line:
 
 ```
 $ commcare-export \
      --query examples/demo-registration.xlsx \
      --domain YOUR_DOMAIN \
      --output-format markdown
-```
 
-or, equivalently
-
-```
 $ commcare-export \
      --query examples/demo-registration.json \
+     --domain YOUR_DOMAIN \
+     --output-format markdown
+
+$ commcare-export \
+     --query examples/demo-deliveries.xlsx \
+     --domain YOUR_DOMAIN \
+     --output-format markdown
+
+$ commcare-export \
+     --query examples/demo-deliveries.json \
      --domain YOUR_DOMAIN \
      --output-format markdown
 ```
 
 You'll see the tables printed out. Change to `--output-format sql --output URL_TO_YOUR_DB --since DATE` to
 sync all forms submitted since that date.
+
+All examples are present in Excel and also equivalent JSON.
 
 Command-line Usage
 ------------------
@@ -221,4 +219,50 @@ $ pip install xlwt
 # To sync with a SQL database
 $ pip install SQLAlchemy alembic
 ```
+
+Contributing
+------------
+
+0\. Sign up for github, if you have not already, at https://github.com.
+
+1\. Fork the repository at https://github.com/dimagi/commcare-export.
+
+2\. Clone your fork, install into a `virtualenv`, and start a feature branch
+
+```
+$ mkvirtualenv commcare-export
+$ git clone git@github.com:YOUR_USERNAME/commcare-export.git
+$ cd commcare-export
+$ pip install -e .
+$ git checkout -b my-super-duper-feature
+```
+
+3\. Make your edits.
+
+4\. Make sure the tests pass. The best way to test for all versions is to sign up for https://travis-ci.org and turn on automatic continuous testing for your fork.
+
+```
+$ py.test
+=============== test session starts ===============
+platform darwin -- Python 2.7.3 -- pytest-2.3.4
+collected 17 items
+
+tests/test_commcare_minilinq.py .
+tests/test_excel_query.py ....
+tests/test_minilinq.py ........
+tests/test_repeatable_iterator.py .
+tests/test_writers.py ...
+
+============ 17 passed in 2.09 seconds ============
+```
+
+5\. Push the feature branch up
+
+```
+$ git push -u origin my-super-duper-feature`
+```
+
+6\. Visit https://github.com/YOUR_USERNAME/commcare-export and submit a pull request.
+
+7\. Accept our gratitude for contributing: Thanks!
 
