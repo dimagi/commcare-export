@@ -33,7 +33,7 @@ setuptools.setup(
     entry_points = { 'console_scripts': ['commcare-export = commcare_export.cli:entry_point'] },
     packages = ['commcare_export'],
     license = 'MIT',
-    install_requires = ['jsonpath_rw>=0.8',
+    install_requires = ['jsonpath_rw>=1.0',
                         'openpyxl',
                         'six',
                         'openpyxl',

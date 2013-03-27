@@ -186,7 +186,7 @@ class JsonPathEnv(Env):
                 # so just slap it on if not present
                 if isinstance(datum.value, dict) and 'id' not in datum.value:
                     datum.value['id'] = jsonpath.AutoIdForDatum(datum).value
-                yield datum.value
+                yield datum
         return RepeatableIterator(iter)
 
     def bind(self, *args):

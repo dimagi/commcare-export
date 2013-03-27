@@ -2,6 +2,8 @@ import unittest
 from itertools import *
 from six.moves import map, xrange
 
+from jsonpath_rw import jsonpath
+
 from commcare_export.minilinq import *
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.env import *
@@ -15,6 +17,10 @@ class TestMiniLinq(unittest.TestCase):
     def setup_class(cls):
         pass
 
+    def check_case(self, val, expected):
+        if isinstance(expected, list):
+            assert [datum.value if isinstance(datum, jsonpath.DatumInContext) else datum for datum in val] == expected
+
     def test_eval_literal(self):
         env = BuiltInEnv()
         assert Literal("foo").eval(env) == "foo"
@@ -24,21 +30,27 @@ class TestMiniLinq(unittest.TestCase):
     def test_eval_reference(self):
         env = BuiltInEnv()
         assert Reference("foo").eval(DictEnv({'foo': 2})) == 2
-        assert list(Reference("foo[*]").eval(JsonPathEnv({'foo': [2]}))) == [2]
-        assert list(Reference("foo[*]").eval(JsonPathEnv({'foo': xrange(0, 1)}))) == [0] # Should work the same w/ iterators as with lists
+        self.check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': [2]})), [2])
+        self.check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': xrange(0, 1)})), [0]) # Should work the same w/ iterators as with lists
+
+        # Should be able to get back out to the root, as the JsonPathEnv actually passes the full datum around
+        self.check_case(Reference("foo.$.baz").eval(JsonPathEnv({'foo': [2], 'baz': 3})), [3])
 
     def test_eval_auto_id_reference(self):
         "Test that we have turned on the jsonpath_rw.jsonpath.auto_id field properly"
         env = BuiltInEnv()
-        assert list(Reference("foo.id").eval(JsonPathEnv({'foo': [2]}))) == ['foo']
-        assert list(Reference("foo.id").eval(JsonPathEnv({'foo': {'id': 2}}))) == ['2'] # When auto id is on, this always becomes a string. Sorry!
+
+        self.check_case(Reference("foo.id").eval(JsonPathEnv({'foo': [2]})), ['foo'])
+
+        # When auto id is on, this always becomes a string. Sorry!
+        self.check_case(Reference("foo.id").eval(JsonPathEnv({'foo': {'id': 2}})), ['2'])
 
     def test_eval_collapsed_list(self):
         """
         Special case to handle XML -> JSON conversion where there just happened to be a single value at save time
         """
         env = BuiltInEnv()
-        assert list(Reference("foo[*]").eval(JsonPathEnv({'foo': 2}))) == [2]
+        self.check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': 2})), [2])
         assert Apply(Reference("*"), Literal(2), Literal(3)).eval(env) == 6
         assert Apply(Reference(">"), Literal(56), Literal(23.5)).eval(env) == True
         assert Apply(Reference("len"), Literal([1, 2, 3])).eval(env) == 3
@@ -77,7 +89,18 @@ class TestMiniLinq(unittest.TestCase):
         except LazinessException:
             pass
 
+    def test_emit(self):
+        env = BuiltInEnv() | JsonPathEnv({'foo': {'baz': 3}})
+        Emit(table='Foo',
+             headings=[Literal('foo')],
+             source=List([
+                 List([ Reference('foo.baz') ])
+             ])).eval(env)
+
+        assert list(list(env.emitted_tables())[0]['rows']) == [['3']]
+
     def test_from_jvalue(self):
         assert MiniLinq.from_jvalue({"Ref": "form.log_subreport"}) == Reference("form.log_subreport")
         assert (MiniLinq.from_jvalue({"Apply": {"fn":   {"Ref":"len"}, "args": [{"Ref": "form.log_subreport"}]}})
                 == Apply(Reference("len"), Reference("form.log_subreport")))
+

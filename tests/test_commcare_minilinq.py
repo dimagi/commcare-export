@@ -14,6 +14,10 @@ class TestCommCareMiniLinq(unittest.TestCase):
     def setup_class(cls):
         pass
 
+    def check_case(self, val, result):
+        if isinstance(val, list):
+            assert [datum.value for datum in val] == list(result)
+
     def test_eval(self):
         def die(msg): raise Exception(msg)
         
@@ -53,12 +57,13 @@ class TestCommCareMiniLinq(unittest.TestCase):
                     { 'x': [{ 'y': 5 }] }
                 ]
 
-        assert list(FlatMap(source=Apply(Reference('api_data'),
-                                     Literal('form'),
-                                     Literal({"filter": 'test2'})),
-                        body=Reference('x[*].y')).eval(env)) == [1, 2, 3, 5]
+        self.check_case(FlatMap(source=Apply(Reference('api_data'),
+                                             Literal('form'),
+                                             Literal({"filter": 'test2'})),
+                                body=Reference('x[*].y')).eval(env),
+                        [1, 2, 3, 5])
 
-        assert list(islice(Apply(Reference('api_data'),
+        self.check_case(islice(Apply(Reference('api_data'),
                                  Literal('form'),
-                                 Literal({"filter": "laziness-test"})).eval(env),
-                           5)) == [0, 1, 2, 3, 4]
+                                 Literal({"filter": "laziness-test"})).eval(env), 5),
+                        [0, 1, 2, 3, 4])
