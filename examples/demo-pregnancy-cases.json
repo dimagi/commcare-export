@@ -1,0 +1,126 @@
+{
+    "List": [
+        {
+            "Emit": {
+                "table": "Pregnant Mother Cases", 
+                "headings": [
+                    {
+                        "Lit": "id"
+                    }, 
+                    {
+                        "Lit": "Case Opened On"
+                    }, 
+                    {
+                        "Lit": "Mother's Name"
+                    }, 
+                    {
+                        "Lit": "Age"
+                    }, 
+                    {
+                        "Lit": "Estimated Delivery Date"
+                    }, 
+                    {
+                        "Lit": "Actual Delivery Date"
+                    }
+                ], 
+                "source": {
+                    "Map": {
+                        "body": {
+                            "List": [
+                                {
+                                    "Ref": "case_id"
+                                }, 
+                                {
+                                    "Ref": "properties.date_opened"
+                                }, 
+                                {
+                                    "Ref": "properties.case_name"
+                                }, 
+                                {
+                                    "Ref": "properties.age"
+                                }, 
+                                {
+                                    "Ref": "properties.edd"
+                                }, 
+                                {
+                                    "Ref": "properties.delivery_date"
+                                }
+                            ]
+                        }, 
+                        "source": {
+                            "Apply": {
+                                "args": [
+                                    {
+                                        "Lit": "case"
+                                    }, 
+                                    {
+                                        "Lit": {
+                                            "type": "pregnant_mother"
+                                        }
+                                    }
+                                ], 
+                                "fn": {
+                                    "Ref": "api_data"
+                                }
+                            }
+                        }, 
+                        "name": null
+                    }
+                }
+            }
+        }, 
+        {
+            "Emit": {
+                "table": "CaseToForm", 
+                "headings": [
+                    {
+                        "Lit": "Case ID"
+                    }, 
+                    {
+                        "Lit": "Form ID"
+                    }
+                ], 
+                "source": {
+                    "Map": {
+                        "body": {
+                            "List": [
+                                {
+                                    "Ref": "$.id"
+                                }, 
+                                {
+                                    "Ref": "`this`"
+                                }
+                            ]
+                        }, 
+                        "source": {
+                            "FlatMap": {
+                                "body": {
+                                    "Ref": "xform_ids.[*]"
+                                }, 
+                                "source": {
+                                    "Apply": {
+                                        "args": [
+                                            {
+                                                "Lit": "case"
+                                            }, 
+                                            {
+                                                "Lit": {
+                                                    "type": "pregnant_mother"
+                                                }
+                                            }
+                                        ], 
+                                        "fn": {
+                                            "Ref": "api_data"
+                                        }
+                                    }
+                                }, 
+                                "name": null
+                            }
+                        }, 
+                        "name": null
+                    }
+                }
+            }
+        }
+    ]
+}
