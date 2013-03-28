@@ -18,13 +18,13 @@ LATEST_KNOWN_VERSION='0.4'
 
 class CommCareHqClient(object):
     """
-    A connection to CommCareHQ for a particular version, domain, and user.
+    A connection to CommCareHQ for a particular version, project, and user.
     """
 
-    def __init__(self, url, domain, version=LATEST_KNOWN_VERSION, session=None):
+    def __init__(self, url, project, version=LATEST_KNOWN_VERSION, session=None):
         self.version = version
         self.url = url
-        self.domain = domain
+        self.project = project
         self.__session = session
 
     @property
@@ -35,7 +35,7 @@ class CommCareHqClient(object):
 
     @property
     def api_url(self):
-        return '%s/a/%s/api/v%s' % (self.url, self.domain, self.version)
+        return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
 
     def authenticated(self, username=None, password=None):
         """
@@ -60,7 +60,7 @@ class CommCareHqClient(object):
         if response.status_code != 200:
             raise Exception('Authentication failed (%s): %s' % (response.status_code, response.text))
         
-        return CommCareHqClient(url = self.url, domain = self.domain, version = self.version, session = session)
+        return CommCareHqClient(url = self.url, project = self.project, version = self.version, session = session)
 
     def get(self, resource, params=None):
         """
