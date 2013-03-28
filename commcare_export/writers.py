@@ -246,7 +246,7 @@ class SqlTableWriter(TableWriter):
                 current_ty = columns[column].type
 
                 if not self.compatible(ty, current_ty):
-                    op.alter_column(table_name, column, type_ = self.least_upper_bound(column_type(table_name_column), ty))
+                    op.alter_column(table_name, column, type_ = self.least_upper_bound(current_ty, ty))
                     self.metadata.clear()
                     self.metadata.reflect()
 
