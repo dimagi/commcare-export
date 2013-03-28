@@ -33,7 +33,7 @@ def main(argv):
     parser.add_argument('--dump-query', default=False, action='store_true')
     parser.add_argument('--commcare-hq', default='prod')
     parser.add_argument('--api-version', default=LATEST_KNOWN_VERSION)
-    parser.add_argument('--domain', required=True)
+    parser.add_argument('--project', required=True)
     parser.add_argument('--username')
     parser.add_argument('--password')
     parser.add_argument('--since')
@@ -95,7 +95,7 @@ def main_with_args(args):
 
     # Build an API client using either the URL provided, or the URL for a known alias
     api_client = CommCareHqClient(url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq), 
-                                  domain = args.domain,
+                                  project = args.project,
                                   version = args.api_version)
 
     api_client = api_client.authenticated(username=args.username, password=args.password)
