@@ -1,3 +1,4 @@
+from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 import argparse
 import sys
 import json
@@ -6,8 +7,7 @@ import requests
 import pprint
 import os.path
 import logging
-import hotshot
-import hotshot.stats
+from six.moves import input
 
 import dateutil.parser
 
@@ -52,6 +52,9 @@ def main(argv):
                             format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
     if args.profile:
+        # hotshot is gone in Python 3
+        import hotshot
+        import hotshot.stats
         profile = hotshot.Profile(args.profile)
         profile.start()
 
@@ -84,11 +87,11 @@ def main_with_args(args):
         query = MiniLinq.from_jvalue(json.loads(sys.stdin.read()))
 
     if args.dump_query:
-        print json.dumps(query.to_jvalue(), indent=4)
+        print(json.dumps(query.to_jvalue(), indent=4))
         exit(0)
 
     if not args.username:
-        args.username = raw_input('Please provide a username: ')
+        args.username = input('Please provide a username: ')
 
     if not args.password:
         args.password = getpass.getpass('Please enter your password: ')
@@ -124,9 +127,9 @@ def main_with_args(args):
                 writer.write_table(table)
 
         if args.output_format == 'json':
-            print json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue)
+            print(json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue))
     else:
-        print json.dumps(list(results), indent=4, default=RepeatableIterator.to_jvalue)
+        print(json.dumps(list(results), indent=4, default=RepeatableIterator.to_jvalue))
 
 def entry_point():
     main(sys.argv[1:])
