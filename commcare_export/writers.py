@@ -156,6 +156,7 @@ class SqlTableWriter(TableWriter):
     (TODO) with "upsert" based on primary key.
     """
 
+    MIN_VARCHAR_LEN=32  # Since SQLite does not actually support ALTER COLUMN type, let's maximize the chance that we do not have to write workarounds by starting medium
     MAX_VARCHAR_LEN=255 # Arbitrary point at which we switch to TEXT; for postgres VARCHAR == TEXT anyhow and for Sqlite it doesn't matter either
 
     def __init__(self, url_or_connection):
@@ -197,7 +198,7 @@ class SqlTableWriter(TableWriter):
             return self.sqlalchemy.Integer()
         elif isinstance(val, six.string_types):
             if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
-                return self.sqlalchemy.String(len(val))
+                return self.sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN) )
             else:
                 return self.sqlalchemty.Text()
 
@@ -210,8 +211,9 @@ class SqlTableWriter(TableWriter):
         if isinstance(source_type, self.sqlalchemy.Integer):
             # Integers can be cast to varch
             return True
+
         if isinstance(source_type, self.sqlalchemy.String):
-            return isinstance(dest_type, self.sqlalchemy.VARCHAR) and dest_type.length >= source_type.length
+            return isinstance(dest_type, self.sqlalchemy.String) and (dest_type.length >= source_type.length)
 
     def least_upper_bound(self, source_type, dest_type):
         """
@@ -221,7 +223,7 @@ class SqlTableWriter(TableWriter):
         """
 
         # FIXME: Don't be so silly
-        return self.sqlalchemy.Text()
+        return self.sqlalchemy.UnicodeText()
 
     def make_table_compatible(self, table_name, row_dict):
         # FIXME: This does lots of redundant checks in a tight loop. Stop doing that.
@@ -230,7 +232,7 @@ class SqlTableWriter(TableWriter):
         op = self.alembic.operations.Operations(ctx)
 
         if not table_name in self.metadata.tables:
-            op.create_table(table_name, self.sqlalchemy.Column('id', self.sqlalchemy.String(255), primary_key=True))
+            op.create_table(table_name, self.sqlalchemy.Column('id', self.sqlalchemy.Unicode(255), primary_key=True))
             self.metadata.reflect()
 
         for column, val in row_dict.items():
@@ -246,7 +248,7 @@ class SqlTableWriter(TableWriter):
                 current_ty = columns[column].type
 
                 if not self.compatible(ty, current_ty):
-                    op.alter_column(table_name, column, type_ = self.least_upper_bound(column_type(table_name_column), ty))
+                    op.alter_column(table_name, column, type_ = self.least_upper_bound(current_ty, ty))
                     self.metadata.clear()
                     self.metadata.reflect()
 

@@ -78,6 +78,9 @@
                     }, 
                     {
                         "Lit": "Form ID"
+                    },
+                    {
+                        "Lit": "id"
                     }
                 ], 
                 "source": {
@@ -87,6 +90,9 @@
                                 {
                                     "Ref": "$.id"
                                 }, 
+                                {
+                                    "Ref": "`this`"
+                                },
                                 {
                                     "Ref": "`this`"
                                 }
