@@ -26,27 +26,27 @@ $ pip install commcare-export
 
 4\. Visit CloudCare and fill out a bunch of forms.
 
-5\. Try out the example queries in the `examples/` directory, providing your domain on the command line:
+5\. Try out the example queries in the `examples/` directory, providing your project name on the command line:
 
 ```
 $ commcare-export \
      --query examples/demo-registration.xlsx \
-     --domain YOUR_DOMAIN \
+     --project YOUR_PROJECT \
      --output-format markdown
 
 $ commcare-export \
      --query examples/demo-registration.json \
-     --domain YOUR_DOMAIN \
+     --project YOUR_PROJECT \
      --output-format markdown
 
 $ commcare-export \
      --query examples/demo-deliveries.xlsx \
-     --domain YOUR_DOMAIN \
+     --project YOUR_PROJECT \
      --output-format markdown
 
 $ commcare-export \
      --query examples/demo-deliveries.json \
-     --domain YOUR_DOMAIN \
+     --project YOUR_PROJECT \
      --output-format markdown
 ```
 
@@ -63,7 +63,7 @@ The basic usage of the command-line tool is with a saved Excel or JSON query (se
 ```
 $ commcare-export --commcare-hq <URL or alias like "local" or "prod"> \
                   --username <username> \
-                  --domain <domain> \
+                  --project <project> \
                   --version <api version, defaults to latest known> \
                   --query <excel file, json file, or raw json> \
                   --output-format <csv, xls, xlsx, json, markdown, sql> \
@@ -111,7 +111,7 @@ To directly access the CommCareHq REST API:
 ```python
 >>> import getpass
 >>> from commcare_export.commcare_hq_client import CommCareHqClient
->>> api_client = CommCareHqClient('http://commcarehq.org', domain='your_domain').authenticated('your_username', getpass.getpass())
+>>> api_client = CommCareHqClient('http://commcarehq.org', project='your_project').authenticated('your_username', getpass.getpass())
 >>> forms = api_client.iterate('form', {'app_id': "whatever"})
 >>> [ (form['received_on'], form['form.gender']) for form in forms ]
 ```
@@ -125,7 +125,7 @@ To issue a `minilinq` query against it, and then print out that query in a JSON 
 >>> from commcare_export.commcare_hq_client import CommCareHqClient
 >>> from commcare_export.commcare_minilinq import CommCareHqEnv
 >>> from commcare_export.env import BuiltInEnv
->>> api_client = CommCareHqClient('http://commcarehq.org', domain='your_domain').authenticated('your_username', getpass.getpass())
+>>> api_client = CommCareHqClient('http://commcarehq.org', project='your_project').authenticated('your_username', getpass.getpass())
 >>> saved_query = Map(source=Apply(Reference("api_data"), [Literal("form"), Literal({"filter": {"term": {"app_id": "whatever"}}})])
                       body=List([Reference("received_on"), Reference("form.gender")]))
 
