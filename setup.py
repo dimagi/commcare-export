@@ -1,5 +1,6 @@
 import os.path
 import sys
+import glob
 import subprocess
 import setuptools 
 from setuptools.command.test import test as TestCommand
@@ -32,6 +33,7 @@ setuptools.setup(
     url = "https://github.com/dimagi/commcare-export",
     entry_points = { 'console_scripts': ['commcare-export = commcare_export.cli:entry_point'] },
     packages = ['commcare_export'],
+    data_files = [(os.path.join('share', 'commcare-export', 'examples'), glob.glob('examples/*.json') + glob.glob('examples/*.xlsx'))],
     license = 'MIT',
     install_requires = ['jsonpath_rw>=1.1',
                         'openpyxl',
