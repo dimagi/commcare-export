@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 import unittest
 import time
 import uuid
@@ -45,19 +47,19 @@ class TestWriters(unittest.TestCase):
         writer = JValueTableWriter()
         writer.write_table({
             'name': 'foo',
-            'headings': ['a', 'b', 'c'],
+            'headings': ['a', 'bjørn', 'c'],
             'rows': [
-                [1, 2, 3],
-                [4, 5, 6],
+                [1, '2', 3],
+                [4, '日本', 6],
             ]
         })
 
         assert writer.tables == [{
             'name': 'foo',
-            'headings': ['a', 'b', 'c'],
+            'headings': ['a', 'bjørn', 'c'],
             'rows': [
-                [1, 2, 3],
-                [4, 5, 6],
+                [1, '2', 3],
+                [4, '日本', 6],
             ],
         }]
 
@@ -65,7 +67,7 @@ class TestWriters(unittest.TestCase):
         writer = SqlTableWriter(engine) 
         with writer:
             writer.write_table({
-                'name': 'foo',
+                'name': 'foo_insert',
                 'headings': ['id', 'a', 'b', 'c'],
                 'rows': [
                     ['bizzle', 1, 2, 3],
@@ -74,7 +76,7 @@ class TestWriters(unittest.TestCase):
             })
 
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
-        result = dict([(row['id'], row) for row in engine.execute('SELECT id, a, b, c FROM foo')])
+        result = dict([(row['id'], row) for row in engine.execute('SELECT id, a, b, c FROM foo_insert')])
 
         assert len(result) == 2
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 2, 'c': 3}
@@ -84,36 +86,36 @@ class TestWriters(unittest.TestCase):
         writer = SqlTableWriter(connection)
         with writer:
             writer.write_table({
-                'name': 'foo',
+                'name': 'foo_upsert',
                 'headings': ['id', 'a', 'b', 'c'],
                 'rows': [
-                    ['bizzle', 1, 2, 3],
-                    ['bazzle', 4, 5, 6],
-                    ]
-                })
-            
-        # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
-        result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c FROM foo')])
-            
-        assert len(result) == 2
-        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 2, 'c': 3}
-        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': 5, 'c': 6}
-
-        with writer:
-            writer.write_table({
-                'name': 'foo',
-                'headings': ['id', 'a', 'b', 'c'],
-                'rows': [
-                    ['bizzle', 7, 8, 9],
+                    ['bizzle', 1, 'yo', 3],
+                    ['bazzle', 4, '日本', 6],
                 ]
             })
             
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
-        result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c FROM foo')])
+        result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c FROM foo_upsert')])
             
         assert len(result) == 2
-        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 7, 'b': 8, 'c': 9}
-        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': 5, 'c': 6}
+        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 'yo', 'c': 3}
+        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': 6}
+
+        with writer:
+            writer.write_table({
+                'name': 'foo_upsert',
+                'headings': ['id', 'a', 'b', 'c'],
+                'rows': [
+                    ['bizzle', 7, '本', 9],
+                ]
+            })
+            
+        # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
+        result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c FROM foo_upsert')])
+            
+        assert len(result) == 2
+        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 7, 'b': '本', 'c': 9}
+        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': 6}
 
     def test_SqlWriter_insert(self):
         for url in [self.TEST_SQLITE_URL, self.TEST_POSTGRES_URL]:
