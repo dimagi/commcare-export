@@ -94,7 +94,8 @@ def main_with_args(args):
         args.username = input('Please provide a username: ')
 
     if not args.password:
-        args.password = getpass.getpass('Please enter your password: ')
+        # Windows getpass does not accept unicode
+        args.password = getpass.getpass('Please enter your password: '.encode('ascii', 'ignore'))
 
     # Build an API client using either the URL provided, or the URL for a known alias
     api_client = CommCareHqClient(url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq), 
