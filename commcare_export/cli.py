@@ -1,12 +1,16 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 import argparse
 import sys
+import uuid
 import json
 import getpass
 import requests
+import hashlib
 import pprint
 import os.path
 import logging
+import sqlalchemy
+from datetime import datetime
 from six.moves import input
 
 import dateutil.parser
@@ -37,6 +41,8 @@ def main(argv):
     parser.add_argument('--username')
     parser.add_argument('--password')
     parser.add_argument('--since')
+    parser.add_argument('--start-over', default=False, action='store_true', 
+                        help='When saving to a SQL database; the default is to pick up since the last success. This disables that.')
     parser.add_argument('--profile')
     parser.add_argument('--verbose', default=False, action='store_true')
     parser.add_argument('--output-format', default='json', choices=['json', 'csv', 'xls', 'xlsx', 'sql', 'markdown'], help='Output format')
@@ -70,10 +76,16 @@ def main(argv):
             
 
 def main_with_args(args):
+    # Grab the timestamp here so that anything that comes in while this runs will be grabbed next time.
+    run_start = datetime.utcnow()
+    
     # Reads as excel if it is a file name that looks like excel, otherwise reads as JSON, 
     # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
     if args.query:
         if os.path.exists(args.query):
+            with open(args.query) as fh:
+                query_file_md5 = hashlib.md5(fh.read()).hexdigest()
+
             if os.path.splitext(args.query)[1] in ['.xls', '.xlsx']:
                 import openpyxl
                 workbook = openpyxl.load_workbook(args.query)
@@ -116,6 +128,24 @@ def main_with_args(args):
     elif args.output_format == 'sql':
         writer = writers.SqlTableWriter(args.output) # Output should be a connection URL
 
+        if not args.since and not args.start_over and os.path.exists(args.query):
+            connection = sqlalchemy.create_engine(args.output)
+
+            # Grab the current list of tables to see if we have already run & written to it
+            metadata = sqlalchemy.MetaData()
+            metadata.bind = connection
+            metadata.reflect()
+
+            if 'commcare_export_runs' in metadata.tables:
+                cursor = connection.execute('SELECT time_of_run FROM commcare_export_runs WHERE query_file_md5 = ? ORDER BY time_of_run DESC', query_file_md5)
+                for row in cursor:
+                    args.since = row[0]
+                    logger.debug('Last successful run was %s', args.since)
+                    break
+                cursor.close()
+
+    if args.since:
+        logger.debug('Starting from %s', args.since)
     env = BuiltInEnv() | CommCareHqEnv(api_client, since=dateutil.parser.parse(args.since) if args.since else None) | JsonPathEnv({}) 
     results = query.eval(env)
 
@@ -123,8 +153,15 @@ def main_with_args(args):
     if len(list(env.emitted_tables())) > 0:
         with writer:
             for table in env.emitted_tables():
-                logging.debug('Writing %s', table['name'])
+                logger.debug('Writing %s', table['name'])
                 writer.write_table(table)
+
+            if args.output_format == 'sql' and os.path.exists(args.query):
+                writer.write_table({
+                    'name': 'commcare_export_runs',
+                    'headings': ['id', 'query_file_name', 'query_file_md5', 'time_of_run'],
+                    'rows': [ [uuid.uuid4().hex, args.query, query_file_md5, run_start.isoformat()] ]
+                })
 
         if args.output_format == 'json':
             print(json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue))
