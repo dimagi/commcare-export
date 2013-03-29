@@ -25,7 +25,7 @@ class PyTest(TestCommand):
 
 setuptools.setup(   
     name = "commcare-export",
-    version = "0.6",
+    version = "0.7",
     description = 'A command-line tool (and Python library) to extract data from CommCareHQ into a SQL database or Excel workbook',
     long_description = open(readme).read(),
     author = 'Dimagi',
