@@ -200,7 +200,7 @@ class SqlTableWriter(TableWriter):
             if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
                 return self.sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN) )
             else:
-                return self.sqlalchemty.Text()
+                return self.sqlalchemy.Text()
 
     def compatible(self, source_type, dest_type):
         """
