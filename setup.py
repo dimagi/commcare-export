@@ -1,6 +1,7 @@
 import os.path
 import sys
 import glob
+import io
 import subprocess
 import setuptools 
 from setuptools.command.test import test as TestCommand
@@ -27,7 +28,7 @@ setuptools.setup(
     name = "commcare-export",
     version = "0.8",
     description = 'A command-line tool (and Python library) to extract data from CommCareHQ into a SQL database or Excel workbook',
-    long_description = open(readme).read(),
+    long_description = io.open(readme, encoding='utf-8').read(),
     author = 'Dimagi',
     author_email = 'information@dimagi.com',
     url = "https://github.com/dimagi/commcare-export",
