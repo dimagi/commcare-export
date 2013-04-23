@@ -138,12 +138,14 @@ def main_with_args(args):
             metadata.reflect()
 
             if 'commcare_export_runs' in metadata.tables:
-                cursor = connection.execute('SELECT time_of_run FROM commcare_export_runs WHERE query_file_md5 = ? ORDER BY time_of_run DESC', query_file_md5)
+                cursor = connection.execute(sqlalchemy.sql.text('SELECT time_of_run FROM commcare_export_runs WHERE query_file_md5 = :query_file_md5 ORDER BY time_of_run DESC'), query_file_md5=query_file_md5)
                 for row in cursor:
                     args.since = row[0]
                     logger.debug('Last successful run was %s', args.since)
                     break
                 cursor.close()
+            else:
+                logger.warn('No successful runs found, and --since not specified: will import ALL data')
 
     if args.since:
         logger.debug('Starting from %s', args.since)
