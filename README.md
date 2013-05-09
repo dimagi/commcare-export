@@ -3,7 +3,10 @@ CommCare Export
 
 https://github.com/dimagi/commcare-export 
 
-[![Build status](https://travis-ci.org/dimagi/commcare-export.png)](https://travis-ci.org/dimagi/commcare-export)
+[![Build Status](https://travis-ci.org/dimagi/commcare-export.png)](https://travis-ci.org/dimagi/commcare-export)
+[![Test coverage](https://coveralls.io/repos/dimagi/commcare-export/badge.png?branch=master)](https://coveralls.io/r/dimagi/commcare-export)
+[![PyPi version](https://pypip.in/v/commcare-export/badge.png)](https://pypi.python.org/pypi/commcare-export)
+[![PyPi downloads](https://pypip.in/d/commcare-export/badge.png)](https://pypi.python.org/pypi/commcare-export)
 
 A command-line tool (and Python library) to generate customized exports from the CommCareHQ REST API.
 
