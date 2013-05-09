@@ -4,8 +4,8 @@ python:
  - "2.7"
  - "3.3"
 install:
- - pip install -e .
- - pip install coverage coveralls
+ - pip install -e . --use-mirrors
+ - pip install coverage coveralls --use-mirrors
 script: coverage run setup.py test
 after_success:
  - coveralls
