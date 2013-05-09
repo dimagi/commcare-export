@@ -1,0 +1,6 @@
+[run]
+branch = True
+source = commcare_export
+
+[html]
+directory = coverage-report

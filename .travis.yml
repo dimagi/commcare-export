@@ -3,6 +3,11 @@ python:
  - "2.6"
  - "2.7"
  - "3.3"
-script: python setup.py test
+install:
+ - pip install -e .
+ - pip install coverage coveralls
+script: coverage run setup.py test
+after_success:
+ - coveralls
 services:
  - postgres
