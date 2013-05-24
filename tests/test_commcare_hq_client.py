@@ -1,3 +1,5 @@
+from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+
 import unittest
 import simplejson
 from itertools import *
@@ -21,7 +23,7 @@ class FakeSession(object):
 
         # Mutatey construction method required by requests.Response
         response = requests.Response()
-        response._content = simplejson.dumps(result)
+        response._content = simplejson.dumps(result).encode('utf-8')
         response.status_code = 200
         return response
 
