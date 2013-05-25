@@ -5,9 +5,9 @@ import logging
 # This import pattern supports Python 2 and 3
 try:
     from urllib.request import urlopen
-    from urllib.parse import urlparse, urlencode
+    from urllib.parse import urlparse, urlencode, parse_qs
 except ImportError:
-    from urlparse import urlparse
+    from urlparse import urlparse, parse_qs
     from urllib import urlopen, urlencode
 
 from commcare_export.repeatable_iterator import RepeatableIterator
@@ -98,7 +98,7 @@ class CommCareHqClient(object):
                     yield obj
                     
                 if batch['meta']['next']:
-                    params = urlparse.parse_qs(urlparse.urlparse(batch['meta']['next']).query)
+                    params = parse_qs(urlparse(batch['meta']['next']).query)
                 else:
                     more_to_fetch = False
                 
