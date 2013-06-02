@@ -10,6 +10,7 @@ import pprint
 import os.path
 import logging
 import sqlalchemy
+import io
 from datetime import datetime
 from six.moves import input
 
@@ -83,15 +84,17 @@ def main_with_args(args):
     # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
     if args.query:
         if os.path.exists(args.query):
-            with open(args.query) as fh:
-                query_file_md5 = hashlib.md5(fh.read()).hexdigest()
-
             if os.path.splitext(args.query)[1] in ['.xls', '.xlsx']:
+                with io.open(args.query, 'rb') as fh:
+                    query_file_md5 = hashlib.md5(fh.read()).hexdigest()
+
                 import openpyxl
                 workbook = openpyxl.load_workbook(args.query)
                 query = excel_query.compile_workbook(workbook)
             else:
-                with open(args.query) as fh:
+                with io.open(args.query, encoding='utf-8') as fh:
+                    query_file_md5 = hashlib.md5(fh.read()).hexdigest()
+                    fh.seek(0)
                     query = MiniLinq.from_jvalue(json.loads(fh.read()))
         else:
             query = MiniLinq.from_jvalue(json.loads(args.query))
