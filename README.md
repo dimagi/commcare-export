@@ -262,7 +262,7 @@ tests/test_writers.py ...
 5\. Push the feature branch up
 
 ```
-$ git push -u origin my-super-duper-feature`
+$ git push -u origin my-super-duper-feature
 ```
 
 6\. Visit https://github.com/YOUR_USERNAME/commcare-export and submit a pull request.
