@@ -110,7 +110,7 @@ def main_with_args(args):
 
     if not args.password:
         # Windows getpass does not accept unicode
-        args.password = getpass.getpass('Please enter your password: '.encode('ascii', 'ignore'))
+        args.password = getpass.getpass()
 
     # Build an API client using either the URL provided, or the URL for a known alias
     api_client = CommCareHqClient(url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq), 
