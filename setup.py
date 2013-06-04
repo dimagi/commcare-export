@@ -8,7 +8,7 @@ from setuptools.command.test import test as TestCommand
 
 # Build README.txt from README.md if not present, and if we are actually building for distribution to pypi
 if not os.path.exists('README.txt') and 'sdist' in sys.argv:
-    subprocess.call(['pandoc', '--to=rst', '--smart', '--output=README.txt', 'README.md'])
+    subprocess.call(['pandoc', '--to=rst', '--output=README.txt', 'README.md'])
 
 readme = 'README.txt' if os.path.exists('README.txt') else 'README.md'
 
@@ -26,7 +26,7 @@ class PyTest(TestCommand):
 
 setuptools.setup(   
     name = "commcare-export",
-    version = "0.10.2",
+    version = "0.10.3",
     description = 'A command-line tool (and Python library) to extract data from CommCareHQ into a SQL database or Excel workbook',
     long_description = io.open(readme, encoding='utf-8').read(),
     author = 'Dimagi',
