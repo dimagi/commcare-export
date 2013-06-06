@@ -14,6 +14,14 @@ logger = logging.getLogger(__name__)
 
 MAX_COLUMN_SIZE = 2000
 
+def ensure_text(v):
+    if isinstance(v, six.text_type):
+        return v
+    elif isinstance(v, six.binary_type):
+        return u(v)
+    else:
+        return u(str(v))
+
 class TableWriter(object):
     """
     Interface for export writers: Usable in a "with"
@@ -87,9 +95,9 @@ class Excel2007TableWriter(TableWriter):
         sheet = self.book.create_sheet()
         sheet.title = table['name'][:self.max_table_name_size]
 
-        sheet.append([u(v) for v in table['headings']])
+        sheet.append([ensure_text(v) for v in table['headings']])
         for row in table['rows']:
-            sheet.append([u(v) for v in row])
+            sheet.append([ensure_text(v) for v in row])
         
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.book.save(self.file)
@@ -116,7 +124,7 @@ class Excel2003TableWriter(TableWriter):
 
         for rownum, row in enumerate(chain([table['headings']], table['rows'])):
             for colnum, val in enumerate(row):
-                sheet.write(rownum, colnum, u(val))
+                sheet.write(rownum, colnum, ensure_text(val))
         
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.book.save(self.file)
