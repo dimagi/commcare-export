@@ -6,13 +6,21 @@ import json
 import logging
 
 import six
-from six import StringIO
+from six import StringIO, u
 
 from itertools import chain
 
 logger = logging.getLogger(__name__)
 
 MAX_COLUMN_SIZE = 2000
+
+def ensure_text(v):
+    if isinstance(v, six.text_type):
+        return v
+    elif isinstance(v, six.binary_type):
+        return u(v)
+    else:
+        return u(str(v))
 
 class TableWriter(object):
     """
@@ -51,7 +59,7 @@ class CsvTableWriter(TableWriter):
         writer = csv.writer(tempfile, dialect=csv.excel)
         writer.writerow(table['headings'])
         for row in table['rows']:
-            writer.writerow([val.encode('utf-8') if isinstance(val, unicode) else val
+            writer.writerow([val.encode('utf-8') if isinstance(val, six.text_type) else val
                              for val in row])
 
         # TODO: make this a polite zip and put everything in a subfolder with the same basename
@@ -87,9 +95,9 @@ class Excel2007TableWriter(TableWriter):
         sheet = self.book.create_sheet()
         sheet.title = table['name'][:self.max_table_name_size]
 
-        sheet.append([unicode(v) for v in table['headings']])
+        sheet.append([ensure_text(v) for v in table['headings']])
         for row in table['rows']:
-            sheet.append([unicode(v) for v in row])
+            sheet.append([ensure_text(v) for v in row])
         
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.book.save(self.file)
@@ -116,7 +124,7 @@ class Excel2003TableWriter(TableWriter):
 
         for rownum, row in enumerate(chain([table['headings']], table['rows'])):
             for colnum, val in enumerate(row):
-                sheet.write(rownum, colnum, unicode(val))
+                sheet.write(rownum, colnum, ensure_text(val))
         
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.book.save(self.file)
