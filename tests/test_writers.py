@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 import unittest
+import tempfile
 import time
 import uuid
 import pprint
+import openpyxl
 import os.path
 
 import sqlalchemy
@@ -62,6 +64,28 @@ class TestWriters(unittest.TestCase):
                 [4, '日本', 6],
             ],
         }]
+
+    def test_Excel2007TableWriter(self):
+        with tempfile.NamedTemporaryFile() as file:
+            with Excel2007TableWriter(file=file) as writer:
+                writer.write_table({
+                    'name': 'foo',
+                    'headings': ['a', 'bjørn', 'c'],
+                    'rows': [
+                        [1, '2', 3],
+                        [4, '日本', 6],
+                    ]
+                })
+
+            output_wb = openpyxl.load_workbook(file.name)
+
+            assert list(output_wb.get_sheet_names()) == ['foo']
+            foo_sheet = output_wb.get_sheet_by_name('foo')
+            assert [ [cell.value for cell in row] for row in foo_sheet.range('A1:C3')] == [
+                ['a', 'bjørn', 'c'],
+                [1, 2, 3], # Note how pyxl does some best-effort parsing to *whatever* type
+                [4, '日本', 6],
+            ]
 
     def SqlWriter_insert_tests(self, engine):
         writer = SqlTableWriter(engine) 
