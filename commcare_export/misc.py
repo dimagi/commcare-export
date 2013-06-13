@@ -4,5 +4,11 @@ import io
 import json
 
 def digest_file(path):
-    with io.open(path, encoding='utf-8') as fh:
-        query_file_md5 = hashlib.md5(fh.read()).hexdigest()
+    with io.open(path, 'rb') as filehandle:
+        digest = hashlib.md5()
+        while True:
+            chunk = filehandle.read(4096) # Arbitrary choice of size to be ~filesystem block size friendly
+            if not chunk:
+                break
+            digest.update(chunk)
+        return digest.hexdigest()
