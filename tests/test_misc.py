@@ -27,4 +27,4 @@ class TestDigestFile(unittest.TestCase):
         self.check_digest('Miércoles'.encode('utf-8'))
 
     def test_digest_file_binary(self):
-        self.check_digest(struct.pack('III', 1, 2, 3))
+        self.check_digest(struct.pack('III'.encode('ascii'), 1, 2, 3))
