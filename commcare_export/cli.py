@@ -23,6 +23,7 @@ from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VE
 from commcare_export.commcare_minilinq import CommCareHqEnv
 from commcare_export import writers
 from commcare_export import excel_query
+from commcare_export import misc
 
 logger = logging.getLogger(__name__)
 
@@ -84,17 +85,13 @@ def main_with_args(args):
     # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
     if args.query:
         if os.path.exists(args.query):
+            query_file_md5 = misc.digest_file(args.query)
             if os.path.splitext(args.query)[1] in ['.xls', '.xlsx']:
-                with io.open(args.query, 'rb') as fh:
-                    query_file_md5 = hashlib.md5(fh.read()).hexdigest()
-
                 import openpyxl
                 workbook = openpyxl.load_workbook(args.query)
                 query = excel_query.compile_workbook(workbook)
             else:
                 with io.open(args.query, encoding='utf-8') as fh:
-                    query_file_md5 = hashlib.md5(fh.read()).hexdigest()
-                    fh.seek(0)
                     query = MiniLinq.from_jvalue(json.loads(fh.read()))
         else:
             query = MiniLinq.from_jvalue(json.loads(args.query))
