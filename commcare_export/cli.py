@@ -23,6 +23,7 @@ from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VE
 from commcare_export.commcare_minilinq import CommCareHqEnv
 from commcare_export import writers
 from commcare_export import excel_query
+from commcare_export import misc
 
 logger = logging.getLogger(__name__)
 
