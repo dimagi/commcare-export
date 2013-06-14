@@ -36,7 +36,7 @@ setuptools.setup(
     packages = ['commcare_export'],
     data_files = [(os.path.join('share', 'commcare-export', 'examples'), glob.glob('examples/*.json') + glob.glob('examples/*.xlsx'))],
     license = 'MIT',
-    dependency_links = ['hg+ssh://hg@bitbucket.org/KennKnowles/openpyxl#egg=openpyxl-1.6.2-r1'],
+    dependency_links = ['hg+https://bitbucket.org/KennKnowles/openpyxl#egg=openpyxl-1.6.2-r1'],
     install_requires = ['jsonpath-rw>=1.1',
                         'openpyxl',
                         'six',
