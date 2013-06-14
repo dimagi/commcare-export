@@ -216,6 +216,9 @@ class List(MiniLinq):
     def __eq__(self, other):
         return isinstance(other, List) and self.items == other.items
 
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, self.items)
+
     @classmethod
     def from_jvalue(cls, jvalue):
         return cls([MiniLinq.from_jvalue(item) for item in jvalue['List']])

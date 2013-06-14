@@ -22,7 +22,7 @@ class CommCareHqEnv(DictEnv):
             'api_data' : self.api_data
         })
 
-    def api_data(self, resource, payload=None):
+    def api_data(self, resource, payload=None, include_referenced_items=None):
         payload = dict(payload or {}) # Do not mutate passed-in dicts
         params = {'limit': 100}
 
@@ -50,6 +50,9 @@ class CommCareHqEnv(DictEnv):
 
         else:
             raise ValueError('I do not know how to access the API resource "%s"' % resource)
+
+        if include_referenced_items:
+            params.update([ ('%s__full' % referenced_item, 'true') for referenced_item in include_referenced_items])
         
         return self.commcare_hq_client.iterate(resource, params=params)
 
