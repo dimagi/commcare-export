@@ -85,7 +85,7 @@ class TestExcelQuery(unittest.TestCase):
                                            {'term': { 'type': 'intake' }}
                                         ]
                                    }
-                        })))),
+                               })))),
 
             ('003_DataSourceAndEmitColumns.xlsx',
              Emit(table    = 'Forms',
@@ -101,7 +101,15 @@ class TestExcelQuery(unittest.TestCase):
              Emit(table    = 'Forms',
                   headings = [],
                   source   = FlatMap(source = Apply(Reference("api_data"), Literal("form")),
-                                     body   = Reference('form.delivery_information.child_questions.[*]'))))
+                                     body   = Reference('form.delivery_information.child_questions.[*]')))),
+
+            ('006_IncludeReferencedItems.xlsx',
+             Emit(table='Forms',
+                  headings=[],
+                  source=Apply(Reference("api_data"), 
+                               Literal("form"),
+                               Literal(None),
+                               Literal(['foo', 'bar', 'bizzle']))))
         ]
 
         for filename, minilinq in test_cases:
