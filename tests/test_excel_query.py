@@ -71,6 +71,7 @@ class TestExcelQuery(unittest.TestCase):
 
         test_cases = [
             ('001_JustDataSource.xlsx', Emit(table='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form")))),
+            ('001a_JustDataSource_LibreOffice.xlsx', Emit(table='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form")))),
             
             ('002_DataSourceAndFilters.xlsx', 
              Emit(table='Forms', 
