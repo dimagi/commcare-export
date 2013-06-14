@@ -40,6 +40,10 @@ class TestCommCareMiniLinq(unittest.TestCase):
                 (
                     {'limit': 100, '_search': simplejson.dumps({'filter':'laziness-test'}, separators=(',', ':'))},
                     (i if i < 5 else die('Not lazy enough') for i in range(12))
+                ),
+                (
+                    {'limit': 100, 'cases__full': 'true'},
+                    [1, 2, 3, 4, 5]
                 )
             ],
 
@@ -80,6 +84,12 @@ class TestCommCareMiniLinq(unittest.TestCase):
                                  Literal('form'),
                                  Literal({"filter": "laziness-test"})).eval(env), 5),
                         [0, 1, 2, 3, 4])
+
+        self.check_case(Apply(Reference('api_data'),
+                                     Literal('form'),
+                                     Literal(None),
+                                     Literal(['cases'])).eval(env),
+                        [1, 2, 3, 4, 5])
 
         self.check_case(FlatMap(source=Apply(Reference('api_data'),
                                              Literal('case'),
