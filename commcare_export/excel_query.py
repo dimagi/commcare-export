@@ -107,17 +107,18 @@ def compile_source(worksheet):
 
     For example, this spreadsheet
     
-    Data Source                    Filter Name   Filter Value
-    -----------------------------  ------------  ------------------
-    form[*].form.child_questions   app_id        <app id>   
+    Data Source                    Filter Name   Filter Value        Include Referenced Items
+    -----------------------------  ------------  ------------------  --------------------------
+    form[*].form.child_questions   app_id        <app id>            cases
                                    xmlns.exact   <some form xmlns>
 
-    Should fetch from api/form?app_id=<app id>&xmlns.exact=<some form xmlns>
+    Should fetch from api/form?app_id=<app id>&xmlns.exact=<some form xmlns>&cases__full=true
     and then iterate (FlatMap) over all child questions.
     """
     
     data_source_str = get_column_by_name(worksheet, 'Data Source')[0].value
     filters = compile_filters(worksheet)
+    include_referenced_items = [cell.value for cell in (get_column_by_name(worksheet, 'Include Referenced Items') or [])]
 
     data_source, data_source_jsonpath = split_leftmost(parse_jsonpath(data_source_str))
     maybe_redundant_slice, remaining_jsonpath = split_leftmost(data_source_jsonpath)
@@ -130,16 +131,22 @@ def compile_source(worksheet):
 
     if isinstance(maybe_redundant_slice, jsonpath.Slice):
         data_source_jsonpath = remaining_jsonpath
+
+    api_query_args = [Reference("api_data"), Literal(data_source)]
     
-    if filters:
-        if data_source == 'form':
-            api_query = Apply(Reference("api_data"), Literal(data_source), Literal(
-                {'filter': {'and': [{'term': {filter_name: filter_value}} for filter_name, filter_value in filters]}}
-            ))
-        elif data_source == 'case':
-            api_query = Apply(Reference("api_data"), Literal(data_source), Literal(dict(filters)))
+    if not filters:
+        if include_referenced_items:
+            api_query_args.append(Literal(None)) # Pad the argument list if we have further args; keeps tests and user code more readable at the expense of this conditional
     else:
-        api_query = Apply(Reference("api_data"), Literal(data_source))
+        if data_source == 'form':
+            api_query_args.append(Literal( {'filter': {'and': [{'term': {filter_name: filter_value}} for filter_name, filter_value in filters]}}))
+        elif data_source == 'case':
+            api_query_args.append(Literal(dict(filters)))
+
+    if include_referenced_items:
+        api_query_args.append(Literal(include_referenced_items))
+
+    api_query = Apply(*api_query_args)
 
     if data_source_jsonpath is None or isinstance(data_source_jsonpath, jsonpath.This) or isinstance(data_source_jsonpath, jsonpath.Root):
         return api_query
