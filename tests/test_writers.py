@@ -141,13 +141,61 @@ class TestWriters(unittest.TestCase):
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 7, 'b': '本', 'c': 9}
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': 6}
 
+    def SqlWriter_fancy_tests(self, connection):
+        writer = SqlTableWriter(connection)
+        with writer:
+            writer.write_table({
+                'name': 'foo_fancy',
+                'headings': ['id', 'a', 'b', 'c'],
+                'rows': [
+                    ['bizzle', 1, 'yo', 3],
+                    ['bazzle', 4, '日本', 6],
+                ]
+            })
+            
+        # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
+        result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c FROM foo_fancy')])
+            
+        assert len(result) == 2
+        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 'yo', 'c': 3}
+        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': 6}
+
+        writer = SqlTableWriter(connection)
+        with writer:
+            writer.write_table({
+                'name': 'foo_fancy',
+                'headings': ['id', 'a', 'b', 'c'],
+                'rows': [
+                    ['bizzle', 'yo dude', '本', 9],
+                ]
+            })
+            
+        # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
+        result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c FROM foo_fancy')])
+            
+        assert len(result) == 2
+        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 'yo dude', 'b': '本', 'c': 9}
+        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': '4', 'b': '日本', 'c': 6}
+
     def test_SqlWriter_insert(self):
         for url in [self.TEST_SQLITE_URL, self.TEST_POSTGRES_URL]:
             connection = sqlalchemy.create_engine(url, poolclass=sqlalchemy.pool.NullPool).connect()
             self.SqlWriter_insert_tests(connection)
+            connection.close()
 
     def test_SqlWriter_upsert(self):
         for url in [self.TEST_SQLITE_URL, self.TEST_POSTGRES_URL]:
             connection = sqlalchemy.create_engine(url, poolclass=sqlalchemy.pool.NullPool).connect()
             self.SqlWriter_upsert_tests(connection)
             connection.close()
+
+    def test_SqlWriter_fancy_tests(self):
+        '''
+        These tests cannot be accomplished with Sqlite because it does not support these
+        core features such as column type changes
+        '''
+        for url in [self.TEST_POSTGRES_URL]:
+            connection = sqlalchemy.create_engine(url, poolclass=sqlalchemy.pool.NullPool).connect()
+            self.SqlWriter_fancy_tests(connection)
+            connection.close()
+
