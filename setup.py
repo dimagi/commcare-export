@@ -26,7 +26,7 @@ class PyTest(TestCommand):
 
 setuptools.setup(   
     name = "commcare-export",
-    version = "0.10.6",
+    version = "0.11.0",
     description = 'A command-line tool (and Python library) to extract data from CommCareHQ into a SQL database or Excel workbook',
     long_description = io.open(readme, encoding='utf-8').read(),
     author = 'Dimagi',
@@ -37,7 +37,7 @@ setuptools.setup(
     data_files = [(os.path.join('share', 'commcare-export', 'examples'), glob.glob('examples/*.json') + glob.glob('examples/*.xlsx'))],
     license = 'MIT',
     dependency_links = ['hg+https://bitbucket.org/KennKnowles/openpyxl#egg=openpyxl-1.6.2-r1'],
-    install_requires = ['jsonpath-rw>=1.1',
+    install_requires = ['jsonpath-rw>=1.2',
                         'openpyxl',
                         'six',
                         'openpyxl',
