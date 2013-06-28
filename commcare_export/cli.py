@@ -35,7 +35,7 @@ commcare_hq_aliases = {
 def main(argv):
     parser = argparse.ArgumentParser('commcare-hq-export', 'Output a customized export of CommCareHQ data.')
 
-    parser.add_argument('--query', help='JSON or Excel query file, or a literal JSON string. If omitted, JSON string is read from stdin.')
+    parser.add_argument('--query', help='JSON or Excel query file. If omitted, JSON string is read from stdin.')
     parser.add_argument('--dump-query', default=False, action='store_true')
     parser.add_argument('--commcare-hq', default='prod')
     parser.add_argument('--api-version', default=LATEST_KNOWN_VERSION)
@@ -94,7 +94,8 @@ def main_with_args(args):
                 with io.open(args.query, encoding='utf-8') as fh:
                     query = MiniLinq.from_jvalue(json.loads(fh.read()))
         else:
-            query = MiniLinq.from_jvalue(json.loads(args.query))
+            print('Query file not found: %s' % args.query)
+            exit(1)
     else:
         query = MiniLinq.from_jvalue(json.loads(sys.stdin.read()))
 
