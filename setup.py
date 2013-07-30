@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os.path
 import sys
 import glob
@@ -27,7 +28,7 @@ version = commcare_export.__version__
 # Crash if the VERSION is not a simple version and it is going to register or upload
 if 'register' in sys.argv or 'upload' in sys.argv:
     if not re.match('\d+\.\d+\.\d+', version):
-        print 'Version %s is not an appropriate version for publicizing!' % version
+        print('Version %s is not an appropriate version for publicizing!' % version)
         sys.exit(1)
 
 readme = 'README.txt' if os.path.exists('README.txt') else 'README.md'
