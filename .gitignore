@@ -5,6 +5,7 @@
 
 # README.txt is just for the Cheeseshop; README.md is the authoritative one
 /README.txt
+/commcare_export/VERSION
 
 # OSX droppings
 .DS_Store

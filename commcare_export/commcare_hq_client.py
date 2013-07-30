@@ -10,6 +10,7 @@ except ImportError:
     from urlparse import urlparse, parse_qs
     from urllib import urlopen, urlencode
 
+import commcare_export
 from commcare_export.repeatable_iterator import RepeatableIterator
 
 logger = logging.getLogger(__file__)
@@ -30,7 +31,7 @@ class CommCareHqClient(object):
     @property
     def session(self):
         if self.__session == None:
-            self.__session = requests.Session()
+            self.__session = requests.Session(headers={'User-Agent': 'commcare-export/%s' % commcare_export.__version__})
         return self.__session
 
     @property
