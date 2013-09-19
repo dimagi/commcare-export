@@ -224,7 +224,16 @@ class SqlTableWriter(TableWriter):
             return True
 
         if isinstance(source_type, self.sqlalchemy.String):
-            return isinstance(dest_type, self.sqlalchemy.String) and (dest_type.length >= source_type.length)
+            if not isinstance(dest_type, self.sqlalchemy.String):
+                False
+            elif (source_type.length is None) and (dest_type.length is not None):
+                # The length being None means that we are looking at indefinite strings aka TEXT.
+                # This tool will never create strings with bounds, but if a target DB has one then
+                # we cannot insert to it.
+                # We will request that whomever uses this tool convert to TEXT type.
+                return False
+            else:
+                return (dest_type.length >= source_type.length)
 
     def least_upper_bound(self, source_type, dest_type):
         """
@@ -243,7 +252,7 @@ class SqlTableWriter(TableWriter):
         op = self.alembic.operations.Operations(ctx)
 
         if not table_name in self.metadata.tables:
-            op.create_table(table_name, self.sqlalchemy.Column('id', self.sqlalchemy.Unicode(255), primary_key=True))
+            op.create_table(table_name, self.sqlalchemy.Column('id', self.sqlalchemy.Text(), primary_key=True))
             self.metadata.reflect()
 
         for column, val in row_dict.items():
