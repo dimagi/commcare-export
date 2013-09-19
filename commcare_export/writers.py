@@ -205,10 +205,13 @@ class SqlTableWriter(TableWriter):
         if isinstance(val, int):
             return self.sqlalchemy.Integer()
         elif isinstance(val, six.string_types):
-            if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
-                return self.sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN) )
-            else:
-                return self.sqlalchemy.Text()
+            # We used to do VARCHAR for short strings, but SQLite cannot alter to TEXT and
+            # for PostgreSQL they are the same under the hood. We can get crazier later if necessary.
+            return self.sqlalchemy.Text()
+        else:
+            # We do not have a name for "bottom" in SQL aka the type whose least upper bound
+            # with any other type is the other type.
+            return None
 
     def compatible(self, source_type, dest_type):
         """
@@ -221,7 +224,16 @@ class SqlTableWriter(TableWriter):
             return True
 
         if isinstance(source_type, self.sqlalchemy.String):
-            return isinstance(dest_type, self.sqlalchemy.String) and (dest_type.length >= source_type.length)
+            if not isinstance(dest_type, self.sqlalchemy.String):
+                False
+            elif source_type.length is None:
+                # The length being None means that we are looking at indefinite strings aka TEXT.
+                # This tool will never create strings with bounds, but if a target DB has one then
+                # we cannot insert to it.
+                # We will request that whomever uses this tool convert to TEXT type.
+                return dest_type.length is None
+            else:
+                return (dest_type.length >= source_type.length)
 
     def least_upper_bound(self, source_type, dest_type):
         """
@@ -240,13 +252,16 @@ class SqlTableWriter(TableWriter):
         op = self.alembic.operations.Operations(ctx)
 
         if not table_name in self.metadata.tables:
-            op.create_table(table_name, self.sqlalchemy.Column('id', self.sqlalchemy.Unicode(255), primary_key=True))
+            op.create_table(table_name, self.sqlalchemy.Column('id', self.sqlalchemy.Text(), primary_key=True))
             self.metadata.reflect()
 
         for column, val in row_dict.items():
             ty = self.best_type_for(val)
             
             if not column in [c.name for c in self.table(table_name).columns]:
+                # If we are creating the column, a None crashes things even though it is the "empty" type
+                # but SQL does not have such a type. So we have to guess a liberal type for future use.
+                ty = ty or self.sqlalchemy.Text()
                 op.add_column(table_name, self.sqlalchemy.Column(column, ty, nullable=True))
                 self.metadata.clear()
                 self.metadata.reflect()
