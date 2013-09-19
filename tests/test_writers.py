@@ -108,6 +108,20 @@ class TestWriters(unittest.TestCase):
 
     def SqlWriter_upsert_tests(self, connection):
         writer = SqlTableWriter(connection)
+
+        with writer:
+            writer.write_table({
+                'name': 'foo_upsert',
+                'headings': ['id', 'a', 'b', 'c'],
+                'rows': [
+                    ['zing', 3, None, 5] # The None is allowed only in string fields as it defaults the col to text
+                ]
+            })
+
+        result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c FROM foo_upsert')])
+        assert len(result) == 1
+        assert dict(result['zing']) == {'id': 'zing', 'a': 3, 'b': None, 'c': 5}
+
         with writer:
             writer.write_table({
                 'name': 'foo_upsert',
@@ -121,7 +135,7 @@ class TestWriters(unittest.TestCase):
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
         result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c FROM foo_upsert')])
             
-        assert len(result) == 2
+        assert len(result) == 3
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 'yo', 'c': 3}
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': 6}
 
@@ -137,7 +151,7 @@ class TestWriters(unittest.TestCase):
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
         result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c FROM foo_upsert')])
             
-        assert len(result) == 2
+        assert len(result) == 3
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 7, 'b': '本', 'c': 9}
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': 6}
 
