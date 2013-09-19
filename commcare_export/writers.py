@@ -226,12 +226,12 @@ class SqlTableWriter(TableWriter):
         if isinstance(source_type, self.sqlalchemy.String):
             if not isinstance(dest_type, self.sqlalchemy.String):
                 False
-            elif (source_type.length is None) and (dest_type.length is not None):
+            elif source_type.length is None:
                 # The length being None means that we are looking at indefinite strings aka TEXT.
                 # This tool will never create strings with bounds, but if a target DB has one then
                 # we cannot insert to it.
                 # We will request that whomever uses this tool convert to TEXT type.
-                return False
+                return dest_type.length is None
             else:
                 return (dest_type.length >= source_type.length)
 
