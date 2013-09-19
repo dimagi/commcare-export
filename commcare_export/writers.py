@@ -205,10 +205,13 @@ class SqlTableWriter(TableWriter):
         if isinstance(val, int):
             return self.sqlalchemy.Integer()
         elif isinstance(val, six.string_types):
-            if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
-                return self.sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN) )
-            else:
-                return self.sqlalchemy.Text()
+            # We used to do VARCHAR for short strings, but SQLite cannot alter to TEXT and
+            # for PostgreSQL they are the same under the hood. We can get crazier later if necessary.
+            return self.sqlalchemy.Text()
+        else:
+            # We do not have a name for "bottom" in SQL aka the type whose least upper bound
+            # with any other type is the other type.
+            return None
 
     def compatible(self, source_type, dest_type):
         """
@@ -247,6 +250,9 @@ class SqlTableWriter(TableWriter):
             ty = self.best_type_for(val)
             
             if not column in [c.name for c in self.table(table_name).columns]:
+                # If we are creating the column, a None crashes things even though it is the "empty" type
+                # but SQL does not have such a type. So we have to guess a liberal type for future use.
+                ty = ty or self.sqlalchemy.Text()
                 op.add_column(table_name, self.sqlalchemy.Column(column, ty, nullable=True))
                 self.metadata.clear()
                 self.metadata.reflect()
