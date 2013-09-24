@@ -61,7 +61,7 @@ setuptools.setup(
     install_requires = [
         'alembic',
         'argparse',
-        'jsonpath-rw>=1.2',
+        'jsonpath-rw>=1.2.1',
         'openpyxl',
         'python-dateutil',
         'requests',
