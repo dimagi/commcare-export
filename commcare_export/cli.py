@@ -128,7 +128,11 @@ def main_with_args(args):
     elif args.output_format == 'markdown':
         writer = writers.StreamingMarkdownTableWriter(sys.stdout) 
     elif args.output_format == 'sql':
-        writer = writers.SqlTableWriter(args.output) # Output should be a connection URL
+        # Output should be a connection URL
+        # Writer had bizarre issues so we use a full connection instead of passing in a URL or engine
+        import sqlalchemy
+        engine = sqlalchemy.create_engine(args.output)
+        writer = writers.SqlTableWriter(engine.connect())
 
         if not args.since and not args.start_over and os.path.exists(args.query):
             connection = sqlalchemy.create_engine(args.output)
