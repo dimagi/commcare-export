@@ -5,9 +5,11 @@ python:
  - "3.3"
 install:
  - pip install -e . --use-mirrors
+ - pip install MySQL-Python psycopg2
  - pip install coverage coveralls --use-mirrors
 script: coverage run setup.py test
 after_success:
  - coveralls
 services:
  - postgres
+ - mysql

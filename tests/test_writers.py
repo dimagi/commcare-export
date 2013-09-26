@@ -26,50 +26,52 @@ class TestWriters(unittest.TestCase):
         cls.TEST_MYSQL_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
         cls.TEST_MYSQL_URL = 'mysql+mysqldb://travis@/%s' % cls.TEST_MYSQL_DB
 
-        # For SQLite, this should work or the URL is bogus
-        sqlalchemy.create_engine(cls.TEST_SQLITE_URL).connect()
+        # "Engines" are not actual connections, but vend connections
+        cls.postgres_sudo_engine = sqlalchemy.create_engine(cls.SUPERUSER_POSTGRES_URL, poolclass=sqlalchemy.pool.NullPool)
+        cls.postgres_engine = sqlalchemy.create_engine(cls.TEST_POSTGRES_URL, poolclass=sqlalchemy.pool.NullPool)
+        cls.mysql_sudo_engine = sqlalchemy.create_engine(cls.SUPERUSER_MYSQL_URL, poolclass=sqlalchemy.pool.NullPool)
+        cls.mysql_engine = sqlalchemy.create_engine(cls.TEST_MYSQL_URL, poolclass=sqlalchemy.pool.NullPool)
+        cls.sqlite_engine = sqlalchemy.create_engine(cls.TEST_SQLITE_URL, poolclass=sqlalchemy.pool.NullPool)
 
-        # For PostgreSQL, there are some wacky steps, and the DB name is fresh
+        # For SQLite, this should work or the URL is bogus
+        with cls.sqlite_engine.connect() as conn:
+            pass
+
+        # SQLAlchemy starts connections in a transaction, so we need to rollback immediately
+        # before doing database creation and dropping
         # via http://stackoverflow.com/questions/6506578/how-to-create-a-new-database-using-sqlalchemy
+
+        # PostgreSQL
         try:
-            sqlalchemy.create_engine(cls.TEST_POSTGRES_URL).connect()
+            with cls.postgres_engine.connect():
+                pass
         except sqlalchemy.exc.OperationalError:
-            conn = sqlalchemy.create_engine(cls.SUPERUSER_POSTGRES_URL).connect()
-            conn.execute('commit')
-            conn.execute('create database %s' % cls.TEST_POSTGRES_DB)
-            conn.close()
-            # Crash if it did not work
-            conn = sqlalchemy.create_engine(cls.TEST_POSTGRES_URL).connect()
-            conn.close()
+            with cls.postgres_sudo_engine.connect() as conn:
+                conn.execute('rollback')
+                conn.execute('create database %s' % cls.TEST_POSTGRES_DB)
         else:
             raise Exception('Database %s already exists; refusing to overwrite' % cls.TEST_POSTGRES_DB)
 
-        # Try the same stuff for MySQL
+        # MySQL
         try:
-            sqlalchemy.create_engine(cls.TEST_MYSQL_URL).connect()
+            with cls.mysql_engine.connect():
+                pass
         except sqlalchemy.exc.OperationalError:
-            conn = sqlalchemy.create_engine(cls.SUPERUSER_MYSQL_URL).connect()
-            conn.execute('commit')
-            conn.execute('create database %s' % cls.TEST_MYSQL_DB)
-            conn.execute('commit')
-            conn.close()
-            # Crash if it did not work
-            conn = sqlalchemy.create_engine(cls.TEST_MYSQL_URL).connect()
-            conn.close()
+            with cls.mysql_sudo_engine.connect() as conn:
+                conn.execute('rollback')
+                conn.execute('create database %s' % cls.TEST_MYSQL_DB)
         else:
             raise Exception('Database %s already exists; refusing to overwrite' % cls.TEST_MYSQL_DB)
 
     @classmethod
     def teardown_class(cls):
-        conn = sqlalchemy.create_engine(cls.SUPERUSER_POSTGRES_URL).connect()
-        conn.execute('commit')
-        conn.execute('drop database %s' % cls.TEST_POSTGRES_DB)
-        conn.close()
+        with cls.postgres_sudo_engine.connect() as conn:
+            conn.execute('rollback')
+            conn.execute('drop database %s' % cls.TEST_POSTGRES_DB)
 
-        conn = sqlalchemy.create_engine(cls.SUPERUSER_MYSQL_URL).connect()
-        conn.execute('commit')
-        conn.execute('drop database %s' % cls.TEST_MYSQL_DB)
-        conn.close()
+        with cls.mysql_sudo_engine.connect() as conn:
+            conn.execute('rollback')
+            conn.execute('drop database %s' % cls.TEST_MYSQL_DB)
 
     def test_JValueTableWriter(self):
         writer = JValueTableWriter()
@@ -114,7 +116,7 @@ class TestWriters(unittest.TestCase):
             ]
 
     def SqlWriter_insert_tests(self, engine):
-        writer = SqlTableWriter(engine) 
+        writer = SqlTableWriter(engine.connect())
         with writer:
             writer.write_table({
                 'name': 'foo_insert',
@@ -217,25 +219,43 @@ class TestWriters(unittest.TestCase):
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 'yo dude', 'b': '本', 'c': 9}
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': '4', 'b': '日本', 'c': 6}
 
-    def test_SqlWriter_insert(self):
-        for url in [self.TEST_SQLITE_URL, self.TEST_POSTGRES_URL, self.TEST_MYSQL_URL]:
-            connection = sqlalchemy.create_engine(url, poolclass=sqlalchemy.pool.NullPool).connect()
-            self.SqlWriter_insert_tests(connection)
-            connection.close()
+    def test_postgres_insert(self):
+        with self.postgres_engine.connect() as conn:
+            self.SqlWriter_insert_tests(conn)
 
-    def test_SqlWriter_upsert(self):
-        for url in [self.TEST_SQLITE_URL, self.TEST_POSTGRES_URL, self.TEST_MYSQL_URL]:
-            connection = sqlalchemy.create_engine(url, poolclass=sqlalchemy.pool.NullPool).connect()
-            self.SqlWriter_upsert_tests(connection)
-            connection.close()
+    def test_mysql_insert(self):
+        with self.mysql_engine.connect() as conn:
+            self.SqlWriter_insert_tests(conn)
 
-    def test_SqlWriter_fancy_tests(self):
+    def test_sqlite_insert(self):
+        # SQLite requires a connection, not just an engine, or the created tables seem to never commit.
+        with self.sqlite_engine.connect() as conn:
+            self.SqlWriter_insert_tests(conn)
+
+    def test_postgres_upsert(self):
+        with self.postgres_engine.connect() as conn:
+            self.SqlWriter_upsert_tests(conn)
+
+    def test_mysql_upsert(self):
+        with self.mysql_engine.connect() as conn:
+            self.SqlWriter_upsert_tests(conn)
+
+    def test_sqlite_upsert(self):
+        with self.sqlite_engine.connect() as conn:
+            self.SqlWriter_upsert_tests(conn)
+
+    def test_postgres_fancy(self):
         '''
         These tests cannot be accomplished with Sqlite because it does not support these
         core features such as column type changes
         '''
-        for url in [self.TEST_POSTGRES_URL, self.TEST_MYSQL_URL]:
-            connection = sqlalchemy.create_engine(url, poolclass=sqlalchemy.pool.NullPool).connect()
-            self.SqlWriter_fancy_tests(connection)
-            connection.close()
+        with self.postgres_engine.connect() as conn:
+            self.SqlWriter_fancy_tests(conn)
 
+    def test_mysql_fancy(self):
+        '''
+        These tests cannot be accomplished with Sqlite because it does not support these
+        core features such as column type changes
+        '''
+        with self.mysql_engine.connect() as conn:
+            self.SqlWriter_fancy_tests(conn)

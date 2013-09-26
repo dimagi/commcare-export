@@ -157,7 +157,7 @@ class StreamingMarkdownTableWriter(TableWriter):
 
         for row in table['rows']:
             self.output_stream.write('|%s|\n' % '|'.join(row))
-        
+
 class SqlTableWriter(TableWriter):
     """
     Write tables to a database specified by URL
@@ -167,7 +167,7 @@ class SqlTableWriter(TableWriter):
     MIN_VARCHAR_LEN=32  # Since SQLite does not actually support ALTER COLUMN type, let's maximize the chance that we do not have to write workarounds by starting medium
     MAX_VARCHAR_LEN=255 # Arbitrary point at which we switch to TEXT; for postgres VARCHAR == TEXT anyhow and for Sqlite it doesn't matter either
 
-    def __init__(self, url_or_connection):
+    def __init__(self, connection):
         try:
             import sqlalchemy
             import alembic
@@ -175,24 +175,25 @@ class SqlTableWriter(TableWriter):
             self.alembic = alembic
         except ImportError:
             raise Exception("It doesn't look like this machine is configured for "
-                            "SQL export. To export to excel you have to run the "
+                            "SQL export. To export to SQL you have to run the "
                             "command:  pip install sqlalchemy alembic")
 
-        if isinstance(url_or_connection, six.string_types):
-            self.base_connection = self.sqlalchemy.create_engine(url_or_connection)
-        else:
-            self.base_connection = url_or_connection
+        self.base_connection = connection
 
     def __enter__(self):
         self.connection = self.base_connection.connect() # "forks" the SqlAlchemy connection
-        return self # TODO: A safe context manager so this can be called many times
+        return self # TODO: fork the writer so this can be called many times
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.connection.close()
 
     @property
     def metadata(self):
-        if not hasattr(self, '_metadata'):
+        if not hasattr(self, '_metadata') or self._metadata.bind.closed or self._metadata.bind.invalidated:
+            if self.connection.closed:
+                raise Exception('Tried to reflect via a closed connection')
+            if self.connection.invalidated:
+                raise Exception('Tried to reflect via an invalidated connection')
             self._metadata = self.sqlalchemy.MetaData()
             self._metadata.bind = self.connection
             self._metadata.reflect()
@@ -205,9 +206,16 @@ class SqlTableWriter(TableWriter):
         if isinstance(val, int):
             return self.sqlalchemy.Integer()
         elif isinstance(val, six.string_types):
-            # We used to do VARCHAR for short strings, but SQLite cannot alter to TEXT and
-            # for PostgreSQL they are the same under the hood. We can get crazier later if necessary.
-            return self.sqlalchemy.Text()
+            # Notes on the conversions between various string types:
+            # 1. PostgreSQL is the best; you can use TEXT everywhere and it works like a charm.
+            # 2. MySQL cannot build an index on TEXT due to the lack of a field length, so we
+            #    try to use VARCHAR when possible.
+            # 3. But SQLite really barfs on altering columns. Luckily it does actually have real types,
+            #    so we count on other parts of this code to not bother running column alterations
+            if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
+                return self.sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN) )
+            else:
+                return self.sqlalchemy.UnicodeText()
         else:
             # We do not have a name for "bottom" in SQL aka the type whose least upper bound
             # with any other type is the other type.
@@ -252,16 +260,21 @@ class SqlTableWriter(TableWriter):
         op = self.alembic.operations.Operations(ctx)
 
         if not table_name in self.metadata.tables:
-            op.create_table(table_name, self.sqlalchemy.Column('id', self.sqlalchemy.Text(), primary_key=True))
+            id_column = self.sqlalchemy.Column(
+                'id',
+                self.sqlalchemy.Unicode(self.MAX_VARCHAR_LEN),
+                primary_key=True
+            )
+            op.create_table(table_name, id_column)
             self.metadata.reflect()
 
         for column, val in row_dict.items():
             ty = self.best_type_for(val)
-            
+
             if not column in [c.name for c in self.table(table_name).columns]:
                 # If we are creating the column, a None crashes things even though it is the "empty" type
                 # but SQL does not have such a type. So we have to guess a liberal type for future use.
-                ty = ty or self.sqlalchemy.Text()
+                ty = ty or self.sqlalchemy.UnicodeText()
                 op.add_column(table_name, self.sqlalchemy.Column(column, ty, nullable=True))
                 self.metadata.clear()
                 self.metadata.reflect()
@@ -270,7 +283,7 @@ class SqlTableWriter(TableWriter):
                 columns = dict([(c.name, c) for c in self.table(table_name).columns])
                 current_ty = columns[column].type
 
-                if not self.compatible(ty, current_ty):
+                if not self.compatible(ty, current_ty) and not ('sqlite' in self.connection.engine.driver):
                     op.alter_column(table_name, column, type_ = self.least_upper_bound(current_ty, ty))
                     self.metadata.clear()
                     self.metadata.reflect()
