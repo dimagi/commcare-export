@@ -15,13 +15,16 @@ from commcare_export.writers import *
 class TestWriters(unittest.TestCase):
 
     SUPERUSER_POSTGRES_URL = 'postgresql://postgres@/postgres'
-    
+    SUPERUSER_MYSQL_URL = 'mysql+mysqldb://travis@/'
+
     @classmethod
     def setup_class(cls):
         # Ensure that these URLs are good to go
         cls.TEST_SQLITE_URL = 'sqlite:///:memory:'
         cls.TEST_POSTGRES_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
         cls.TEST_POSTGRES_URL = 'postgresql://postgres@/%s' % cls.TEST_POSTGRES_DB
+        cls.TEST_MYSQL_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
+        cls.TEST_MYSQL_URL = 'mysql+mysqldb://travis@/%s' % cls.TEST_MYSQL_DB
 
         # For SQLite, this should work or the URL is bogus
         sqlalchemy.create_engine(cls.TEST_SQLITE_URL).connect()
@@ -35,14 +38,37 @@ class TestWriters(unittest.TestCase):
             conn.execute('commit')
             conn.execute('create database %s' % cls.TEST_POSTGRES_DB)
             conn.close()
+            # Crash if it did not work
+            conn = sqlalchemy.create_engine(cls.TEST_POSTGRES_URL).connect()
+            conn.close()
         else:
             raise Exception('Database %s already exists; refusing to overwrite' % cls.TEST_POSTGRES_DB)
+
+        # Try the same stuff for MySQL
+        try:
+            sqlalchemy.create_engine(cls.TEST_MYSQL_URL).connect()
+        except sqlalchemy.exc.OperationalError:
+            conn = sqlalchemy.create_engine(cls.SUPERUSER_MYSQL_URL).connect()
+            conn.execute('commit')
+            conn.execute('create database %s' % cls.TEST_MYSQL_DB)
+            conn.execute('commit')
+            conn.close()
+            # Crash if it did not work
+            conn = sqlalchemy.create_engine(cls.TEST_MYSQL_URL).connect()
+            conn.close()
+        else:
+            raise Exception('Database %s already exists; refusing to overwrite' % cls.TEST_MYSQL_DB)
 
     @classmethod
     def teardown_class(cls):
         conn = sqlalchemy.create_engine(cls.SUPERUSER_POSTGRES_URL).connect()
         conn.execute('commit')
         conn.execute('drop database %s' % cls.TEST_POSTGRES_DB)
+        conn.close()
+
+        conn = sqlalchemy.create_engine(cls.SUPERUSER_MYSQL_URL).connect()
+        conn.execute('commit')
+        conn.execute('drop database %s' % cls.TEST_MYSQL_DB)
         conn.close()
 
     def test_JValueTableWriter(self):
@@ -192,13 +218,13 @@ class TestWriters(unittest.TestCase):
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': '4', 'b': '日本', 'c': 6}
 
     def test_SqlWriter_insert(self):
-        for url in [self.TEST_SQLITE_URL, self.TEST_POSTGRES_URL]:
+        for url in [self.TEST_SQLITE_URL, self.TEST_POSTGRES_URL, self.TEST_MYSQL_URL]:
             connection = sqlalchemy.create_engine(url, poolclass=sqlalchemy.pool.NullPool).connect()
             self.SqlWriter_insert_tests(connection)
             connection.close()
 
     def test_SqlWriter_upsert(self):
-        for url in [self.TEST_SQLITE_URL, self.TEST_POSTGRES_URL]:
+        for url in [self.TEST_SQLITE_URL, self.TEST_POSTGRES_URL, self.TEST_MYSQL_URL]:
             connection = sqlalchemy.create_engine(url, poolclass=sqlalchemy.pool.NullPool).connect()
             self.SqlWriter_upsert_tests(connection)
             connection.close()
@@ -208,7 +234,7 @@ class TestWriters(unittest.TestCase):
         These tests cannot be accomplished with Sqlite because it does not support these
         core features such as column type changes
         '''
-        for url in [self.TEST_POSTGRES_URL]:
+        for url in [self.TEST_POSTGRES_URL, self.TEST_MYSQL_URL]:
             connection = sqlalchemy.create_engine(url, poolclass=sqlalchemy.pool.NullPool).connect()
             self.SqlWriter_fancy_tests(connection)
             connection.close()
