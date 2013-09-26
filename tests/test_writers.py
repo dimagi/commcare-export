@@ -15,7 +15,7 @@ from commcare_export.writers import *
 class TestWriters(unittest.TestCase):
 
     SUPERUSER_POSTGRES_URL = 'postgresql://postgres@/postgres'
-    SUPERUSER_MYSQL_URL = 'mysql+mysqldb://travis@/'
+    SUPERUSER_MYSQL_URL = 'mysql+mysqldb://travis@/?charset=utf8'
 
     @classmethod
     def setup_class(cls):
@@ -24,7 +24,7 @@ class TestWriters(unittest.TestCase):
         cls.TEST_POSTGRES_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
         cls.TEST_POSTGRES_URL = 'postgresql://postgres@/%s' % cls.TEST_POSTGRES_DB
         cls.TEST_MYSQL_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
-        cls.TEST_MYSQL_URL = 'mysql+mysqldb://travis@/%s' % cls.TEST_MYSQL_DB
+        cls.TEST_MYSQL_URL = 'mysql+mysqldb://travis@/%s?charset=utf8' % cls.TEST_MYSQL_DB
 
         # "Engines" are not actual connections, but vend connections
         cls.postgres_sudo_engine = sqlalchemy.create_engine(cls.SUPERUSER_POSTGRES_URL, poolclass=sqlalchemy.pool.NullPool)
