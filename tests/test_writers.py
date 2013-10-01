@@ -2,12 +2,9 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 import unittest
 import tempfile
-import time
 import uuid
-import pprint
-import openpyxl
-import os.path
 
+import openpyxl
 import sqlalchemy
 
 from commcare_export.writers import *
@@ -15,7 +12,7 @@ from commcare_export.writers import *
 class TestWriters(unittest.TestCase):
 
     SUPERUSER_POSTGRES_URL = 'postgresql://postgres@/postgres'
-    SUPERUSER_MYSQL_URL = 'mysql+mysqldb://travis@/?charset=utf8'
+    SUPERUSER_MYSQL_URL = 'mysql+pymysql://travis@/?charset=utf8'
 
     @classmethod
     def setup_class(cls):
@@ -24,7 +21,7 @@ class TestWriters(unittest.TestCase):
         cls.TEST_POSTGRES_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
         cls.TEST_POSTGRES_URL = 'postgresql://postgres@/%s' % cls.TEST_POSTGRES_DB
         cls.TEST_MYSQL_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
-        cls.TEST_MYSQL_URL = 'mysql+mysqldb://travis@/%s?charset=utf8' % cls.TEST_MYSQL_DB
+        cls.TEST_MYSQL_URL = 'mysql+pymysql://travis@/%s?charset=utf8' % cls.TEST_MYSQL_DB
 
         # "Engines" are not actual connections, but vend connections
         cls.postgres_sudo_engine = sqlalchemy.create_engine(cls.SUPERUSER_POSTGRES_URL, poolclass=sqlalchemy.pool.NullPool)
@@ -56,7 +53,7 @@ class TestWriters(unittest.TestCase):
         try:
             with cls.mysql_engine.connect():
                 pass
-        except sqlalchemy.exc.OperationalError:
+        except (sqlalchemy.exc.OperationalError, sqlalchemy.exc.InternalError) as e:
             with cls.mysql_sudo_engine.connect() as conn:
                 conn.execute('rollback')
                 conn.execute('create database %s' % cls.TEST_MYSQL_DB)
@@ -67,11 +64,11 @@ class TestWriters(unittest.TestCase):
     def teardown_class(cls):
         with cls.postgres_sudo_engine.connect() as conn:
             conn.execute('rollback')
-            conn.execute('drop database %s' % cls.TEST_POSTGRES_DB)
+            conn.execute('drop database if exists %s' % cls.TEST_POSTGRES_DB)
 
         with cls.mysql_sudo_engine.connect() as conn:
             conn.execute('rollback')
-            conn.execute('drop database %s' % cls.TEST_MYSQL_DB)
+            conn.execute('drop database if exists %s' % cls.TEST_MYSQL_DB)
 
     def test_JValueTableWriter(self):
         writer = JValueTableWriter()
