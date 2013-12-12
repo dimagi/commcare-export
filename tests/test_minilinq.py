@@ -103,4 +103,4 @@ class TestMiniLinq(unittest.TestCase):
         assert MiniLinq.from_jvalue({"Ref": "form.log_subreport"}) == Reference("form.log_subreport")
         assert (MiniLinq.from_jvalue({"Apply": {"fn":   {"Ref":"len"}, "args": [{"Ref": "form.log_subreport"}]}})
                 == Apply(Reference("len"), Reference("form.log_subreport")))
-
+        assert MiniLinq.from_jvalue([{"Ref": "form.log_subreport"}]) == [Reference("form.log_subreport")]

@@ -53,7 +53,7 @@ class MiniLinq(object):
     
         elif isinstance(jvalue, list):
             # Leverage for literal lists of data in the code
-            return [from_jvalue(v) for v in jvalue]
+            return [MiniLinq.from_jvalue(v) for v in jvalue]
 
         elif isinstance(jvalue, dict):
             # Dictionaries are reserved; they must always have exactly
