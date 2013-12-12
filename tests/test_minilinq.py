@@ -103,4 +103,10 @@ class TestMiniLinq(unittest.TestCase):
         assert MiniLinq.from_jvalue({"Ref": "form.log_subreport"}) == Reference("form.log_subreport")
         assert (MiniLinq.from_jvalue({"Apply": {"fn":   {"Ref":"len"}, "args": [{"Ref": "form.log_subreport"}]}})
                 == Apply(Reference("len"), Reference("form.log_subreport")))
+        assert MiniLinq.from_jvalue([{"Ref": "form.log_subreport"}]) == [Reference("form.log_subreport")]
 
+    def test_filter(self):
+        env = BuiltInEnv() | DictEnv({})
+        named = [{'n': n} for n in range(1, 5)]
+        assert list(Filter(Literal(named), Apply(Reference('>'), Reference('n'), Literal(2))).eval(env)) == [{'n': 3}, {'n': 4}]
+        assert list(Filter(Literal([1, 2, 3, 4]), Apply(Reference('>'), Reference('n'), Literal(2)), 'n').eval(env)) == [3, 4]
