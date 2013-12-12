@@ -15,4 +15,4 @@ class RepeatableIterator(object):
     def to_jvalue(cls, obj):
         if isinstance(obj, cls):
             return list(obj)
-        raise TypeError(repr(o) + 'is not JSON serializable')
+        raise TypeError(repr(obj) + 'is not JSON serializable')
