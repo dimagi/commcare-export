@@ -175,7 +175,7 @@ class Filter(MiniLinq):
         def iterate(env=env, source_result=source_result): # Python closure workaround
             if self.name:
                 for item in source_result:
-                    if self.predicate.eval(env.bind(name, item)):
+                    if self.predicate.eval(env.bind(self.name, item)):
                         yield item
             else:
                 for item in source_result:
