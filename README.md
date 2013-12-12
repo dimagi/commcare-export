@@ -178,7 +178,7 @@ Here is a description of the astract syntax and semantics
 | `FlatMap(source, name, body)` | `{"FlatMap": {"source" ... etc}}` | Flattens after mapping, like nested list comprehensions |
 | `Filter(source, name, body)`  | etc | |
 | `Bind(value, name, body)`     | etc | Binds the result of `value` to `name` when evaluating `body` |
-| `Emit(table, headings, rows)` | etc | Emits `table` with `headings` and `rows`. Note that `table` is a string, `headings` is a list of expressions, and `rows` is a list of lists of expressions. See explanation belowe for emitted output. |
+| `Emit(table, headings, rows)` | etc | Emits `table` with `headings` and `rows`. Note that `table` is a string, `headings` is a list of expressions, and `rows` is a list of lists of expressions. See explanation below for emitted output. |
 | `Apply(fn, args)` | etc | Evaluates `fn` to a function, and all of `args`, then applies the function to the args. |
 
 Built in functions like `api_data` and basic arithmetic and comparison are provided via the environment,
