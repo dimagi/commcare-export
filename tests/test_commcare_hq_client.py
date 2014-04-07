@@ -9,7 +9,7 @@ import requests
 from commcare_export.commcare_hq_client import CommCareHqClient
 
 class FakeSession(object):
-    def get(self, resource_url, params=None):
+    def get(self, resource_url, params=None, auth=None):
         if params:
             result = {
                 'meta': { 'next': None, 'offset': params['offset'][0], 'limit': 1, 'total_count': 2 },
