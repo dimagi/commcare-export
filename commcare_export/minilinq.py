@@ -386,7 +386,9 @@ class Emit(MiniLinq):
         elif isinstance(cell, int):
             return str(cell)
         elif isinstance(cell, datetime):
-            return cell 
+            return cell
+        elif cell is None:
+            return ''
 
         # In all other cases, coerce to a list and join with ',' for now
         return ','.join([self.coerce_cell(item) for item in list(cell)])
@@ -395,7 +397,7 @@ class Emit(MiniLinq):
         try:
             return self.coerce_cell_blithely(cell)
         except Exception:
-            logger.error('Error converting value to exportable form: %r' % cell)
+            logger.exception('Error converting value to exportable form: %r' % cell)
             return ''
             
     def coerce_row(self, row):

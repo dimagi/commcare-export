@@ -42,6 +42,7 @@ def main(argv):
     parser.add_argument('--project', required=True)
     parser.add_argument('--username')
     parser.add_argument('--password')
+    parser.add_argument('--auth-mode', default='session', help='Use "session" based auth or "digest" auth.')
     parser.add_argument('--since')
     parser.add_argument('--start-over', default=False, action='store_true', 
                         help='When saving to a SQL database; the default is to pick up since the last success. This disables that.')
@@ -115,7 +116,7 @@ def main_with_args(args):
                                   project = args.project,
                                   version = args.api_version)
 
-    api_client = api_client.authenticated(username=args.username, password=args.password)
+    api_client = api_client.authenticated(username=args.username, password=args.password, mode=args.auth_mode)
 
     if args.output_format == 'xlsx':
         writer = writers.Excel2007TableWriter(args.output)
