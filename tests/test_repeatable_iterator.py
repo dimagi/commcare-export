@@ -34,6 +34,10 @@ class TestRepeatableIterator(unittest.TestCase):
         iterator = RepeatableIterator(test1)
         assert list(iterator) == list(range(1, 100))
         assert list(iterator) == list(range(1, 100))
+        assert bool(iterator) is True
+
+        iterator = RepeatableIterator(lambda: (i for i in []))
+        assert bool(iterator) is False
 
         # Ensure that laziness is maintained
         iterator = RepeatableIterator(test2)

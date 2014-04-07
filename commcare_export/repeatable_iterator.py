@@ -12,15 +12,16 @@ class RepeatableIterator(object):
         self.__val = None
 
     def __iter__(self):
-        if self.__val is None:
-            self.__val = self.generator()
-        return self.__val
+        return self.generator()
 
-    def __nonzero__(self):
-        val = self.__iter__()
-        if isinstance(val, GeneratorType):
-            self.__val = list(val)
-        return self.__val.__len__() > 0
+    def __bool__(self):
+        try:
+            self.__iter__().next()
+            return True
+        except StopIteration:
+            return False
+
+    __nonzero__ = __bool__
 
     @classmethod
     def to_jvalue(cls, obj):
