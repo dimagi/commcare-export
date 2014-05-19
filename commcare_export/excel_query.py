@@ -35,9 +35,12 @@ def map_value(mappings_sheet, mapping_name, source_value):
     return source_value
 
 def get_column_by_name(worksheet, column_name):
-    for col in xrange(0, worksheet.get_highest_column()):
-        if column_name == worksheet.cell(row=0, column=col).value:
-            return without_empty_tail([worksheet.cell(row=i, column=col) for i in xrange(1, worksheet.get_highest_row())])
+    # columns and rows are indexed from 1
+    for col in xrange(1, worksheet.get_highest_column() + 1):
+        if column_name == worksheet.cell(row=1, column=col).value:
+            return without_empty_tail([
+                worksheet.cell(row=i, column=col) for i in xrange(2, worksheet.get_highest_row() + 1)
+            ])
 
 def compile_mappings(worksheet):
     mapping_names = get_column_by_name(worksheet, "Mapping Name")
