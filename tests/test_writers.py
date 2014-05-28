@@ -108,8 +108,8 @@ class TestWriters(unittest.TestCase):
             foo_sheet = output_wb.get_sheet_by_name('foo')
             assert [ [cell.value for cell in row] for row in foo_sheet.range('A1:C3')] == [
                 ['a', 'bjørn', 'c'],
-                [1, 2, 3], # Note how pyxl does some best-effort parsing to *whatever* type
-                [4, '日本', 6],
+                ['1', '2', '3'], # Note how pyxl does some best-effort parsing to *whatever* type
+                ['4', '日本', '6'],
             ]
 
     def SqlWriter_insert_tests(self, engine):
