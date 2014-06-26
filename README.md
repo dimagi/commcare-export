@@ -122,41 +122,104 @@ To directly access the CommCareHq REST API:
 To issue a `minilinq` query against it, and then print out that query in a JSON serialization:
 
 ```python
->>> import getpass
->>> import json
->>> from commcare_export.minilinq import *
->>> from commcare_export.commcare_hq_client import CommCareHqClient
->>> from commcare_export.commcare_minilinq import CommCareHqEnv
->>> from commcare_export.env import BuiltInEnv
->>> api_client = CommCareHqClient('http://commcarehq.org', project='your_project').authenticated('your_username', getpass.getpass())
->>> saved_query = Map(source=Apply(Reference("api_data"), [Literal("form"), Literal({"filter": {"term": {"app_id": "whatever"}}})])
-                      body=List([Reference("received_on"), Reference("form.gender")]))
+import getpass
+import json
+from commcare_export.minilinq import *
+from commcare_export.commcare_hq_client import CommCareHqClient
+from commcare_export.commcare_minilinq import CommCareHqEnv
+from commcare_export.env import BuiltInEnv
 
->>> forms = saved_query.eval(BuiltInEnv() | CommCareHqEnv(api_client) | JsonPathEnv())
->>> print json.dumps(saved_query.to_jvalue(), indent=2)
+api_client = CommCareHqClient(
+    url="http://www.commcarehq.org",
+    project='your_project',
+    version='0.5'
+)
+ 
+api_client = api_client.authenticated(username='username', password='password', mode='digest')
+
+source = Map(
+   source=Apply(
+       Reference("api_data"),
+       Literal("form"),
+       Literal({"filter": {"term": {"app_id": "whatever"}}})
+   ),
+   body=List([
+       Reference("received_on"),
+       Reference("form.gender"),
+   ])
+)
+
+query = Emit(
+   'demo-table',
+   [
+       Literal('Received On'),
+       Literal('Gender')
+   ],
+   source
+)
+
+print json.dumps(query.to_jvalue(), indent=2)
+
+results = query.eval(BuiltInEnv() | CommCareHqEnv(api_client) | JsonPathEnv())
+
+if len(list(env.emitted_tables())) > 0:
+    # with writers.Excel2007TableWriter("excel-output.xlsx") as writer:
+    with writers.StreamingMarkdownTableWriter(sys.stdout) as writer:
+        for table in env.emitted_tables():
+            writer.write_table(table)
 ```
 
 Which will output JSON equivalent to this:
 
 ```javascript
 {
-  "Map": {
-    "source": {
-      "Apply": {
-        "fn":   {"Ref": "api_data"},
-        "args": [
-          {"Lit": "form"},
-          {"Lit": {"filter": {"term": {"app_id": "something"}}}}
-        ]
-      }
-    },
-    "body": {
-      "List": [
-        {"Ref": "received_on"},
-        {"Ref": "form.gender"}
-      ]
+    "Emit": {
+        "headings": [
+            {
+                "Lit": "Received On"
+            },
+            {
+                "Lit": "Gender"
+            }
+        ],
+        "source": {
+            "Map": {
+                "body": {
+                    "List": [
+                        {
+                            "Ref": "received_on"
+                        },
+                        {
+                            "Ref": "form.gender"
+                        }
+                    ]
+                },
+                "name": None,
+                "source": {
+                    "Apply": {
+                        "args": [
+                            {
+                                "Lit": "form"
+                            },
+                            {
+                                "Lit": {
+                                    "filter": {
+                                        "term": {
+                                            "app_id": "whatever"
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "fn": {
+                            "Ref": "api_data"
+                        }
+                    }
+                }
+            }
+        },
+        "table": "demo-table"
     }
-  }
 }
 ```
 
