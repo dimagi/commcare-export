@@ -24,7 +24,7 @@ class CommCareHqEnv(DictEnv):
 
     def api_data(self, resource, payload=None, include_referenced_items=None):
         payload = dict(payload or {}) # Do not mutate passed-in dicts
-        params = {'limit': 100}
+        params = {'limit': 1000}
 
         # Currently the form resource endpoint and the case resource endpoint are completely different
         if resource == 'form':
