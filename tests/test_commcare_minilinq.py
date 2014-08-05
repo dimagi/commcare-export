@@ -26,11 +26,11 @@ class TestCommCareMiniLinq(unittest.TestCase):
         client = MockCommCareHqClient({
             'form': [
                 (
-                    {'limit': 100, '_search': simplejson.dumps({"filter":"test1"}, separators=(',',':'))},
+                    {'limit': 1000, '_search': simplejson.dumps({"filter":"test1"}, separators=(',',':'))},
                     [1, 2, 3],
                 ),
                 (
-                    {'limit': 100, '_search': simplejson.dumps({"filter":"test2"}, separators=(',', ':'))},
+                    {'limit': 1000, '_search': simplejson.dumps({"filter":"test2"}, separators=(',', ':'))},
                     [
                         { 'x': [{ 'y': 1 }, {'y': 2}] },
                         { 'x': [{ 'y': 3 }, {'z': 4}] },
@@ -38,18 +38,18 @@ class TestCommCareMiniLinq(unittest.TestCase):
                     ]
                 ),
                 (
-                    {'limit': 100, '_search': simplejson.dumps({'filter':'laziness-test'}, separators=(',', ':'))},
+                    {'limit': 1000, '_search': simplejson.dumps({'filter':'laziness-test'}, separators=(',', ':'))},
                     (i if i < 5 else die('Not lazy enough') for i in range(12))
                 ),
                 (
-                    {'limit': 100, 'cases__full': 'true'},
+                    {'limit': 1000, 'cases__full': 'true'},
                     [1, 2, 3, 4, 5]
                 )
             ],
 
             'case': [
                 (
-                    {'limit': 100, 'type': 'foo'},
+                    {'limit': 1000, 'type': 'foo'},
                     [
                         { 'x': 1 },
                         { 'x': 2 },
