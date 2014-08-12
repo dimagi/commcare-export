@@ -123,6 +123,10 @@ def main_with_args(args):
     elif args.output_format == 'xls':
         writer = writers.Excel2003TableWriter(args.output)
     elif args.output_format == 'csv':
+        if not args.output.endswith(".zip"):
+            print("WARNING: csv output is a zip file, but "
+                  "will be written to %s" % args.output)
+            print("Consider appending .zip to the file name to avoid confusion.")
         writer = writers.CsvTableWriter(args.output)
     elif args.output_format == 'json':
         writer = writers.JValueTableWriter()
