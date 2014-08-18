@@ -47,6 +47,11 @@ class CommCareHqEnv(DictEnv):
 
             if payload:
                 params.update(payload)
+         
+        # these take no since argument       
+        elif resource in ('user','device-logs','application','web-user'):
+            if payload:
+                params.update(payload)
 
         else:
             raise ValueError('I do not know how to access the API resource "%s"' % resource)

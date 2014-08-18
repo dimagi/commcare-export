@@ -56,6 +56,17 @@ class TestCommCareMiniLinq(unittest.TestCase):
                         { 'x': 3 },
                     ]
                 )
+            ],
+            
+            'user': [
+                (
+                    {'limit': 1000},
+                    [
+                        { 'x': 1 },
+                        { 'x': 2 },
+                        { 'x': 3 },
+                    ]
+                )
             ]
         })
 
@@ -94,5 +105,11 @@ class TestCommCareMiniLinq(unittest.TestCase):
         self.check_case(FlatMap(source=Apply(Reference('api_data'),
                                              Literal('case'),
                                              Literal({'type': 'foo'})),
+                                body=Reference('x')).eval(env),
+                        [1, 2, 3])
+        
+        self.check_case(FlatMap(source=Apply(Reference('api_data'),
+                                             Literal('user'),
+                                             Literal(None)),
                                 body=Reference('x')).eval(env),
                         [1, 2, 3])
