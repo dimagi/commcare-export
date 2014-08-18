@@ -49,7 +49,7 @@ class CommCareHqEnv(DictEnv):
                 params.update(payload)
          
         # these take no since argument       
-        elif resource in ('user','device-logs','application','web-user'):
+        elif resource in ('user','device-log','application','web-user'):
             if payload:
                 params.update(payload)
 
