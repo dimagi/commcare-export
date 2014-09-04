@@ -47,9 +47,16 @@ class CommCareHqEnv(DictEnv):
 
             if payload:
                 params.update(payload)
+        
+        elif resource == 'device-log':
+            if self.since:
+                payload['date__gte'] = self.since.isoformat()
+
+            if payload:
+                params.update(payload)
          
         # these take no since argument       
-        elif resource in ('user','device-log','application','web-user'):
+        elif resource in ('user','application','web-user'):
             if payload:
                 params.update(payload)
 
