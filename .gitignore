@@ -49,5 +49,3 @@ nosetests.xml
 
 # Excel
 ~*.xlsx
-
-/env/
