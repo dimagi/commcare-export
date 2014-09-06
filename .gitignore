@@ -49,4 +49,3 @@ nosetests.xml
 
 # Excel
 ~*.xlsx
-

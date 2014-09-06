@@ -20,7 +20,7 @@ from commcare_export.repeatable_iterator import RepeatableIterator
 
 logger = logging.getLogger(__file__)
 
-LATEST_KNOWN_VERSION='0.4'
+LATEST_KNOWN_VERSION='0.5'
 
 class CommCareHqClient(object):
     """
