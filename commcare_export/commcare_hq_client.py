@@ -103,15 +103,16 @@ class CommCareHqClient(object):
 
             while more_to_fetch:
                 batch = self.get(resource, params)
+                total_count = int(batch['meta']['total_count']) if batch['meta']['total_count'] else 'unknown'
                 logger.debug('Received %s-%s of %s', 
                              batch['meta']['offset'], 
                              int(batch['meta']['offset'])+int(batch['meta']['limit']),
-                             int(batch['meta']['total_count']))
+                             total_count)
                 
                 for obj in batch['objects']:
                     yield obj
                     
-                if batch['meta']['next']:
+                if batch['meta']['next'] and len(batch['objects']) > 0:
                     params = parse_qs(urlparse(batch['meta']['next']).query)
                 else:
                     more_to_fetch = False
