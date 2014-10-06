@@ -15,9 +15,10 @@ class CommCareHqEnv(DictEnv):
     CommCareHq API.
     """
     
-    def __init__(self, commcare_hq_client, since=None):
+    def __init__(self, commcare_hq_client, since=None, until=None):
         self.commcare_hq_client = commcare_hq_client
         self.since = since
+        self.until = until
         super(CommCareHqEnv, self).__init__({
             'api_data' : self.api_data
         })
@@ -51,6 +52,9 @@ class CommCareHqEnv(DictEnv):
         elif resource == 'device-log':
             if self.since:
                 payload['date__gte'] = self.since.isoformat()
+                
+            if self.until:
+                payload['date__lte'] = self.until.isoformat()
 
             if payload:
                 params.update(payload)
