@@ -109,13 +109,16 @@ class CommCareHqClient(object):
                              int(batch['meta']['offset'])+int(batch['meta']['limit']),
                              total_count)
                 
-                for obj in batch['objects']:
-                    yield obj
-                    
-                if batch['meta']['next'] and len(batch['objects']) > 0:
-                    params = parse_qs(urlparse(batch['meta']['next']).query)
-                else:
+                if not batch['objects']:
                     more_to_fetch = False
+                else:
+                    for obj in batch['objects']:
+                        yield obj
+
+                    if batch['meta']['next']:
+                        params = parse_qs(urlparse(batch['meta']['next']).query)
+                    else:
+                        more_to_fetch = False
                 
         return RepeatableIterator(iterate_resource)
 
