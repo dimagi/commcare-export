@@ -313,4 +313,3 @@ class SqlTableWriter(TableWriter):
             self.upsert(self.table(table_name), row_dict)
 
         if logger.getEffectiveLevel() == 'DEBUG': sys.stderr.write('\n')
-        

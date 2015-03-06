@@ -1,6 +1,4 @@
 import unittest
-import simplejson
-import urllib
 from itertools import *
 
 from jsonpath_rw import jsonpath
@@ -26,11 +24,11 @@ class TestCommCareMiniLinq(unittest.TestCase):
         client = MockCommCareHqClient({
             'form': [
                 (
-                    {'limit': 1000, '_search': simplejson.dumps({"filter":"test1"}, separators=(',',':'))},
+                    {'limit': 1000, 'filter': 'test1'},
                     [1, 2, 3],
                 ),
                 (
-                    {'limit': 1000, '_search': simplejson.dumps({"filter":"test2"}, separators=(',', ':'))},
+                    {'limit': 1000, 'filter': 'test2'},
                     [
                         { 'x': [{ 'y': 1 }, {'y': 2}] },
                         { 'x': [{ 'y': 3 }, {'z': 4}] },
@@ -38,13 +36,13 @@ class TestCommCareMiniLinq(unittest.TestCase):
                     ]
                 ),
                 (
-                    {'limit': 1000, '_search': simplejson.dumps({'filter':'laziness-test'}, separators=(',', ':'))},
+                    {'limit': 1000, 'filter': 'laziness-test'},
                     (i if i < 5 else die('Not lazy enough') for i in range(12))
                 ),
                 (
                     {'limit': 1000, 'cases__full': 'true'},
                     [1, 2, 3, 4, 5]
-                )
+                ),
             ],
 
             'case': [
