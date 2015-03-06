@@ -144,10 +144,7 @@ def compile_source(worksheet):
         if include_referenced_items:
             api_query_args.append(Literal(None)) # Pad the argument list if we have further args; keeps tests and user code more readable at the expense of this conditional
     else:
-        if data_source == 'form':
-            api_query_args.append(Literal( {'filter': {'and': [{'term': {filter_name: filter_value}} for filter_name, filter_value in filters]}}))
-        elif data_source == 'case':
-            api_query_args.append(Literal(dict(filters)))
+        api_query_args.append(Literal(dict(filters)))
 
     if include_referenced_items:
         api_query_args.append(Literal(include_referenced_items))

@@ -79,13 +79,9 @@ class TestExcelQuery(unittest.TestCase):
                   source=Apply(Reference("api_data"), 
                                Literal("form"),  
                                Literal({
-                                   'filter': {
-                                       'and': [
-                                           {'term': { 'app_id': 'foobizzle' }},
-                                           {'term': { 'type': 'intake' }}
-                                        ]
-                                   }
-                               })))),
+                                   'app_id': 'foobizzle',
+                                   'type': 'intake',
+                               })   ))),
 
             ('003_DataSourceAndEmitColumns.xlsx',
              Emit(table    = 'Forms',
@@ -109,7 +105,7 @@ class TestExcelQuery(unittest.TestCase):
                   source=Apply(Reference("api_data"), 
                                Literal("form"),
                                Literal(None),
-                               Literal(['foo', 'bar', 'bizzle']))))
+                               Literal(['foo', 'bar', 'bizzle'])))),
         ]
 
         for filename, minilinq in test_cases:

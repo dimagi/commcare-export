@@ -5,9 +5,16 @@ To date, this is simply built-ins for querying the
 API directly.
 """
 
-import simplejson
 from commcare_export.env import DictEnv, CannotBind, CannotReplace
 
+resource_since_params = {
+    'form': ('received_on_start', 'received_on_end'),
+    'case': ('server_date_modified_start', 'server_date_modified_end'),
+    'device-log': ('date__gte', 'date__lte'),
+    'user': None,
+    'application': None,
+    'web-user': None,
+}
 
 class CommCareHqEnv(DictEnv):
     """
@@ -27,45 +34,19 @@ class CommCareHqEnv(DictEnv):
         payload = dict(payload or {}) # Do not mutate passed-in dicts
         params = {'limit': 1000}
 
-        # Currently the form resource endpoint and the case resource endpoint are completely different
-        if resource == 'form':
-            if self.since:
-                if 'filter' not in payload: payload['filter'] = {}
-
-                payload['filter'] = {
-                    "and": [
-                        payload.get("filter", {"match_all":{}}),
-                        {'range': {'received_on': {'from': self.since.isoformat()}}},
-                    ]
-                }
-
-            if payload:
-                params.update({'_search': simplejson.dumps(payload, separators=(',',':'))}) # compact encoding
-                
-        elif resource == 'case':
-            if self.since:
-                payload['server_date_modified_start'] = self.since.isoformat()
-
-            if payload:
-                params.update(payload)
-        
-        elif resource == 'device-log':
-            if self.since:
-                payload['date__gte'] = self.since.isoformat()
-                
-            if self.until:
-                payload['date__lte'] = self.until.isoformat()
-
-            if payload:
-                params.update(payload)
-         
-        # these take no since argument       
-        elif resource in ('user','application','web-user'):
-            if payload:
-                params.update(payload)
-
-        else:
+        if resource not in resource_since_params:
             raise ValueError('I do not know how to access the API resource "%s"' % resource)
+
+        if (self.since or self.until) and resource_since_params[resource]:
+            since_param, until_param = resource_since_params[resource]
+            if self.since:
+                payload[since_param] = self.since.isoformat()
+
+            if self.until:
+                payload[until_param] = self.until.isoformat()
+
+        if payload:
+            params.update(payload)
 
         if include_referenced_items:
             params.update([ ('%s__full' % referenced_item, 'true') for referenced_item in include_referenced_items])
