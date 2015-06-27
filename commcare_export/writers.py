@@ -182,7 +182,7 @@ class SqlTableWriter(TableWriter):
     MIN_VARCHAR_LEN=32  # Since SQLite does not actually support ALTER COLUMN type, let's maximize the chance that we do not have to write workarounds by starting medium
     MAX_VARCHAR_LEN=255 # Arbitrary point at which we switch to TEXT; for postgres VARCHAR == TEXT anyhow and for Sqlite it doesn't matter either
 
-    def __init__(self, connection):
+    def __init__(self, connection, strict_types=False):
         try:
             import sqlalchemy
             import alembic
@@ -194,6 +194,7 @@ class SqlTableWriter(TableWriter):
                             "command:  pip install sqlalchemy alembic")
 
         self.base_connection = connection
+        self.strict_types = strict_types
 
     def __enter__(self):
         self.connection = self.base_connection.connect() # "forks" the SqlAlchemy connection
@@ -325,6 +326,10 @@ class SqlTableWriter(TableWriter):
 
                 if not self.compatible(ty, current_ty):
                     new_type = self.least_upper_bound(ty, current_ty)
+                    if self.strict_types:
+                        logger.warn('Type mismatch detected for column %s (%s != %s) '
+                                    'but strict types in use.', columns[column], current_ty, new_type)
+                        continue
                     if self.is_sqllite:
                         logger.warn('Type mismatch detected for column %s (%s != %s) '
                                     'but sqlite does not support changing column types', columns[column], current_ty, new_type)
