@@ -102,14 +102,14 @@ class TestMiniLinq(unittest.TestCase):
             pass
 
     def test_emit(self):
-        env = BuiltInEnv() | JsonPathEnv({'foo': {'baz': 3}})
+        env = BuiltInEnv() | JsonPathEnv({'foo': {'baz': 3, 'bar': True}})
         Emit(table='Foo',
              headings=[Literal('foo')],
              source=List([
-                 List([ Reference('foo.baz') ])
+                 List([ Reference('foo.baz'), Reference('foo.bar') ])
              ])).eval(env)
 
-        assert list(list(env.emitted_tables())[0]['rows']) == [['3']]
+        assert list(list(env.emitted_tables())[0]['rows']) == [[3, True]]
 
     def test_from_jvalue(self):
         assert MiniLinq.from_jvalue({"Ref": "form.log_subreport"}) == Reference("form.log_subreport")
