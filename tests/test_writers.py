@@ -221,7 +221,7 @@ class TestWriters(unittest.TestCase):
         assert dict(result['bazzle']) == self._type_convert(connection, {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': False,
                                           'd': datetime.date(2015, 1, 2), 'e': datetime.datetime(2014, 5, 1, 11, 16, 45)})
 
-    def SqlWriter_change_type_test(self, connection):
+    def SqlWriter_change_type_test(self, connection, expected):
         self.SqlWriter_types_test(connection, 'foo_fancy_type_changes')
 
         writer = SqlTableWriter(connection)
@@ -238,10 +238,9 @@ class TestWriters(unittest.TestCase):
         result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c, d, e FROM foo_fancy_type_changes')])
             
         assert len(result) == 2
-        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 'yo dude', 'b': '本', 'c': '5',
-                                          'd': datetime.date(2015, 2, 13), 'e': '2014-08-01T11:23:45:00.0000Z'}
-        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': '4', 'b': '日本', 'c': 'false',
-                                          'd': datetime.date(2015, 1, 2), 'e': '2014-05-01 11:16:45'}
+        for id, row in result.items():
+            assert id in expected
+            assert dict(row) == expected[id]
 
     def test_postgres_insert(self):
         with self.postgres_engine.connect() as conn:
@@ -273,8 +272,14 @@ class TestWriters(unittest.TestCase):
         These tests cannot be accomplished with Sqlite because it does not support these
         core features such as column type changes
         '''
+        expected = {
+            'bizzle': {'id': 'bizzle', 'a': 'yo dude', 'b': '本', 'c': '5',
+                       'd': datetime.date(2015, 2, 13), 'e': '2014-08-01T11:23:45:00.0000Z'},
+            'bazzle': {'id': 'bazzle', 'a': '4', 'b': '日本', 'c': 'false',
+                       'd': datetime.date(2015, 1, 2), 'e': '2014-05-01 11:16:45'}
+        }
         with self.postgres_engine.connect() as conn:
-            self.SqlWriter_change_type_test(conn)
+            self.SqlWriter_change_type_test(conn, expected)
 
     def test_postgres_types(self):
         '''
@@ -289,8 +294,14 @@ class TestWriters(unittest.TestCase):
         These tests cannot be accomplished with Sqlite because it does not support these
         core features such as column type changes
         '''
+        expected = {
+            'bizzle': {'id': 'bizzle', 'a': 'yo dude', 'b': '本', 'c': '5',
+                       'd': datetime.date(2015, 2, 13), 'e': '2014-08-01T11:23:45:00.0000Z'},
+            'bazzle': {'id': 'bazzle', 'a': '4', 'b': '日本', 'c': '0',
+                       'd': datetime.date(2015, 1, 2), 'e': '2014-05-01 11:16:45'}
+        }
         with self.mysql_engine.connect() as conn:
-            self.SqlWriter_change_type_test(conn)
+            self.SqlWriter_change_type_test(conn, expected)
 
     def test_mysql_types(self):
         '''
