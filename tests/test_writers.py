@@ -6,6 +6,7 @@ import uuid
 
 import openpyxl
 import sqlalchemy
+import datetime
 
 from commcare_export.writers import *
 
@@ -74,19 +75,19 @@ class TestWriters(unittest.TestCase):
         writer = JValueTableWriter()
         writer.write_table({
             'name': 'foo',
-            'headings': ['a', 'bjørn', 'c'],
+            'headings': ['a', 'bjørn', 'c', 'd'],
             'rows': [
-                [1, '2', 3],
-                [4, '日本', 6],
+                [1, '2', 3, datetime.date(2015, 1, 1)],
+                [4, '日本', 6, datetime.date(2015, 1, 2)],
             ]
         })
 
         assert writer.tables == [{
             'name': 'foo',
-            'headings': ['a', 'bjørn', 'c'],
+            'headings': ['a', 'bjørn', 'c', 'd'],
             'rows': [
-                [1, '2', 3],
-                [4, '日本', 6],
+                [1, '2', 3, '2015-01-01'],
+                [4, '日本', 6, '2015-01-02'],
             ],
         }]
 
@@ -180,41 +181,49 @@ class TestWriters(unittest.TestCase):
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 7, 'b': '本', 'c': 9}
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': 6}
 
-    def SqlWriter_fancy_tests(self, connection):
+    def SqlWriter_types_test(self, connection, table_name=None):
+        table_name = table_name or 'foo_fancy_types'
         writer = SqlTableWriter(connection)
         with writer:
             writer.write_table({
-                'name': 'foo_fancy',
-                'headings': ['id', 'a', 'b', 'c'],
+                'name': table_name or 'foo_fancy_types',
+                'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
                 'rows': [
-                    ['bizzle', 1, 'yo', 3],
-                    ['bazzle', 4, '日本', 6],
+                    ['bizzle', 1, 'yo', True, datetime.date(2015, 1, 1), datetime.datetime(2014, 4, 2, 18, 56, 12)],
+                    ['bazzle', 4, '日本', False, datetime.date(2015, 1, 2), datetime.datetime(2014, 5, 1, 11, 16, 45)],
                 ]
             })
-            
+
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
-        result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c FROM foo_fancy')])
-            
+        result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c, d, e FROM %s' % table_name)])
+
         assert len(result) == 2
-        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 'yo', 'c': 3}
-        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': 6}
+        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 'yo', 'c': True,
+                                          'd': datetime.date(2015, 1, 1), 'e': datetime.datetime(2014, 4, 2, 18, 56, 12)}
+        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': False,
+                                          'd': datetime.date(2015, 1, 2), 'e': datetime.datetime(2014, 5, 1, 11, 16, 45)}
+
+    def SqlWriter_change_type_test(self, connection):
+        self.SqlWriter_types_test(connection, 'foo_fancy_type_changes')
 
         writer = SqlTableWriter(connection)
         with writer:
             writer.write_table({
-                'name': 'foo_fancy',
-                'headings': ['id', 'a', 'b', 'c'],
+                'name': 'foo_fancy_type_changes',
+                'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
                 'rows': [
-                    ['bizzle', 'yo dude', '本', 9],
+                    ['bizzle', 'yo dude', '本', 5, datetime.datetime(2015, 2, 13), '2014-08-01T11:23:45:00.0000Z'],
                 ]
             })
             
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
-        result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c FROM foo_fancy')])
+        result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c, d, e FROM foo_fancy_type_changes')])
             
         assert len(result) == 2
-        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 'yo dude', 'b': '本', 'c': 9}
-        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': '4', 'b': '日本', 'c': 6}
+        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 'yo dude', 'b': '本', 'c': '5',
+                                          'd': datetime.date(2015, 2, 13), 'e': '2014-08-01T11:23:45:00.0000Z'}
+        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': '4', 'b': '日本', 'c': 'false',
+                                          'd': datetime.date(2015, 1, 2), 'e': '2014-05-01 11:16:45'}
 
     def test_postgres_insert(self):
         with self.postgres_engine.connect() as conn:
@@ -241,18 +250,34 @@ class TestWriters(unittest.TestCase):
         with self.sqlite_engine.connect() as conn:
             self.SqlWriter_upsert_tests(conn)
 
-    def test_postgres_fancy(self):
+    def test_postgres_type_changes(self):
         '''
         These tests cannot be accomplished with Sqlite because it does not support these
         core features such as column type changes
         '''
         with self.postgres_engine.connect() as conn:
-            self.SqlWriter_fancy_tests(conn)
+            self.SqlWriter_change_type_test(conn)
 
-    def test_mysql_fancy(self):
+    def test_postgres_types(self):
+        '''
+        These tests cannot be accomplished with Sqlite because it does not support these
+        core features such as column type changes
+        '''
+        with self.postgres_engine.connect() as conn:
+            self.SqlWriter_types_test(conn)
+
+    def test_mysql_type_changes(self):
         '''
         These tests cannot be accomplished with Sqlite because it does not support these
         core features such as column type changes
         '''
         with self.mysql_engine.connect() as conn:
-            self.SqlWriter_fancy_tests(conn)
+            self.SqlWriter_change_type_test(conn)
+
+    def test_mysql_types(self):
+        '''
+        These tests cannot be accomplished with Sqlite because it does not support these
+        core features such as column type changes
+        '''
+        with self.mysql_engine.connect() as conn:
+            self.SqlWriter_types_test(conn)

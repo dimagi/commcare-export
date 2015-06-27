@@ -9,6 +9,7 @@ import six
 from six import StringIO, u
 
 from itertools import chain
+import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,20 @@ MAX_COLUMN_SIZE = 2000
 
 def ensure_text(v):
     if isinstance(v, six.text_type):
+        return v
+    elif isinstance(v, six.binary_type):
+        return u(v)
+    elif isinstance(v, datetime.datetime):
+        return v.strftime('%Y-%m-%d %H:%M:%S')
+    elif isinstance(v, datetime.date):
+        return v.isoformat()
+    elif v is None:
+        return ''
+    else:
+        return u(str(v))
+
+def to_jvalue(v):
+    if isinstance(v, (six.text_type,) + six.integer_types):
         return v
     elif isinstance(v, six.binary_type):
         return u(v)
@@ -141,7 +156,7 @@ class JValueTableWriter(TableWriter):
         # Ensures the table is iterable; probably better to create a custom JSON handler that runs in constant space
         self.tables.append(dict(name=table['name'],
                                 headings=list(table['headings']),
-                                rows=[list(row) for row in table['rows']]))
+                                rows=[list([to_jvalue(v) for v in row]) for row in table['rows']]))
 
 class StreamingMarkdownTableWriter(TableWriter):
     """
@@ -156,7 +171,7 @@ class StreamingMarkdownTableWriter(TableWriter):
         self.output_stream.write('|%s|\n' % '|'.join(table['headings']))
 
         for row in table['rows']:
-            self.output_stream.write('|%s|\n' % '|'.join(row))
+            self.output_stream.write('|%s|\n' % '|'.join(ensure_text(val) for val in row))
 
 class SqlTableWriter(TableWriter):
     """
@@ -199,10 +214,22 @@ class SqlTableWriter(TableWriter):
             self._metadata.reflect()
         return self._metadata
 
+    @property
+    def is_sqllite(self):
+        return 'sqlite' in self.connection.engine.driver
+
     def table(self, table_name):
         return self.sqlalchemy.Table(table_name, self.metadata, autoload=True, autoload_with=self.connection)
 
     def best_type_for(self, val):
+        if not self.is_sqllite:
+            if isinstance(val, bool):
+                return self.sqlalchemy.Boolean()
+            elif isinstance(val, datetime.datetime):
+                return self.sqlalchemy.DateTime()
+            elif isinstance(val, datetime.date):
+                return self.sqlalchemy.Date()
+
         if isinstance(val, int):
             return self.sqlalchemy.Integer()
         elif isinstance(val, six.string_types):
@@ -225,15 +252,9 @@ class SqlTableWriter(TableWriter):
         """
         Checks _coercion_ compatibility.
         """
-
-        # FIXME: Add datetime and friends
-        if isinstance(source_type, self.sqlalchemy.Integer):
-            # Integers can be cast to varch
-            return True
-
         if isinstance(source_type, self.sqlalchemy.String):
             if not isinstance(dest_type, self.sqlalchemy.String):
-                False
+                return False
             elif source_type.length is None:
                 # The length being None means that we are looking at indefinite strings aka TEXT.
                 # This tool will never create strings with bounds, but if a target DB has one then
@@ -242,6 +263,18 @@ class SqlTableWriter(TableWriter):
                 return dest_type.length is None
             else:
                 return (dest_type.length >= source_type.length)
+
+        compatibility = {
+            self.sqlalchemy.Integer: (self.sqlalchemy.String,),
+            self.sqlalchemy.Boolean: (self.sqlalchemy.String,),
+            self.sqlalchemy.DateTime: (self.sqlalchemy.String, self.sqlalchemy.Date),
+            self.sqlalchemy.Date: (self.sqlalchemy.String,),
+        }
+
+        for _type, types in compatibility.items():
+            if isinstance(source_type, _type):
+                return isinstance(dest_type, (_type,) + types)
+
 
     def least_upper_bound(self, source_type, dest_type):
         """
@@ -268,25 +301,39 @@ class SqlTableWriter(TableWriter):
             op.create_table(table_name, id_column)
             self.metadata.reflect()
 
-        for column, val in row_dict.items():
-            ty = self.best_type_for(val)
+        def get_cols():
+            return {c.name: c for c in self.table(table_name).columns}
 
-            if not column in [c.name for c in self.table(table_name).columns]:
+        columns = get_cols()
+
+        for column, val in row_dict.items():
+            if val is None:
+                continue
+
+            ty = self.best_type_for(val)
+            if not column in columns:
                 # If we are creating the column, a None crashes things even though it is the "empty" type
                 # but SQL does not have such a type. So we have to guess a liberal type for future use.
                 ty = ty or self.sqlalchemy.UnicodeText()
                 op.add_column(table_name, self.sqlalchemy.Column(column, ty, nullable=True))
                 self.metadata.clear()
                 self.metadata.reflect()
+                columns = get_cols()
 
             else:
-                columns = dict([(c.name, c) for c in self.table(table_name).columns])
                 current_ty = columns[column].type
 
-                if not self.compatible(ty, current_ty) and not ('sqlite' in self.connection.engine.driver):
-                    op.alter_column(table_name, column, type_ = self.least_upper_bound(current_ty, ty))
+                if not self.compatible(ty, current_ty):
+                    new_type = self.least_upper_bound(ty, current_ty)
+                    if self.is_sqllite:
+                        logger.warn('Type mismatch detected for column %s (%s != %s) '
+                                    'but sqlite does not support changing column types', columns[column], current_ty, new_type)
+                        continue
+                    logger.warn('Altering column %s from %s to %s', columns[column], current_ty, new_type)
+                    op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
                     self.metadata.reflect()
+                    columns = get_cols()
 
     def upsert(self, table, row_dict):
 
