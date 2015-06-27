@@ -308,7 +308,7 @@ class SqlTableWriter(TableWriter):
         columns = get_cols()
 
         for column, val in row_dict.items():
-            if val is None:
+            if val is None and self.strict_types:
                 continue
 
             ty = self.best_type_for(val)
