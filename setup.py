@@ -62,7 +62,7 @@ setuptools.setup(
         'alembic',
         'argparse',
         'jsonpath-rw>=1.2.1',
-        'openpyxl>=2.0.3',
+        'openpyxl<2.1.0',
         'python-dateutil',
         'requests',
         'simplejson',
