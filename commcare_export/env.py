@@ -1,10 +1,12 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+import functools
 import operator
 import six
 from itertools import chain
 
 from jsonpath_rw import jsonpath
 from jsonpath_rw.parser import parse as parse_jsonpath
+from commcare_export.misc import unwrap
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
@@ -217,6 +219,36 @@ class JsonPathEnv(Env):
 # Actual concrete environments, basically with built-in functions.
 #
 
+@unwrap
+def str2bool(val):
+    if isinstance(val, bool):
+        return val
+    return val and val.lower() in {'true', 't', '1'}
+
+@unwrap
+def str2num(val):
+    if val is None:
+        return None
+
+    try:
+        return int(val)
+    except ValueError:
+        return float(val)
+
+
+@unwrap
+def str2date(val):
+    import dateutil.parser as parser
+    if not val:
+        return None
+    return parser.parse(val)
+
+
+@unwrap
+def bool2int(val):
+    return int(str2bool(val))
+
+
 class BuiltInEnv(DictEnv):
     """
     A built-in environment of operators and functions
@@ -241,6 +273,10 @@ class BuiltInEnv(DictEnv):
             '<='  : operator.__le__,
             'len' : len,
             'bool': bool,
+            'str2bool': str2bool,
+            'bool2int': bool2int,
+            'str2num': str2num,
+            'str2date': str2date,
         })
 
     def bind(self, name, value): raise CannotBind()
