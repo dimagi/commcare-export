@@ -10,6 +10,10 @@ import datetime
 
 from commcare_export.writers import *
 
+MYSQL_TYPE_MAP = {
+    bool: lambda x: str(int(x))
+}
+
 class TestWriters(unittest.TestCase):
 
     SUPERUSER_POSTGRES_URL = 'postgresql://postgres@/postgres'
@@ -70,6 +74,20 @@ class TestWriters(unittest.TestCase):
         with cls.mysql_sudo_engine.connect() as conn:
             conn.execute('rollback')
             conn.execute('drop database if exists %s' % cls.TEST_MYSQL_DB)
+
+    def _type_convert(self, connection, row):
+        """
+        Different databases store and return values differently so convert the values
+        in the expected row to match the DB.
+        """
+        def convert(type_map, value):
+            func = type_map.get(value.__class__, None)
+            return func(value) if func else value
+
+        if 'mysql' in connection.engine.driver:
+            return {k: convert(MYSQL_TYPE_MAP, v) for k, v in row.items()}
+
+        return row
 
     def test_JValueTableWriter(self):
         writer = JValueTableWriter()
@@ -198,10 +216,10 @@ class TestWriters(unittest.TestCase):
         result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c, d, e FROM %s' % table_name)])
 
         assert len(result) == 2
-        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 'yo', 'c': True,
-                                          'd': datetime.date(2015, 1, 1), 'e': datetime.datetime(2014, 4, 2, 18, 56, 12)}
-        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': False,
-                                          'd': datetime.date(2015, 1, 2), 'e': datetime.datetime(2014, 5, 1, 11, 16, 45)}
+        assert dict(result['bizzle']) == self._type_convert(connection, {'id': 'bizzle', 'a': 1, 'b': 'yo', 'c': True,
+                                          'd': datetime.date(2015, 1, 1), 'e': datetime.datetime(2014, 4, 2, 18, 56, 12)})
+        assert dict(result['bazzle']) == self._type_convert(connection, {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': False,
+                                          'd': datetime.date(2015, 1, 2), 'e': datetime.datetime(2014, 5, 1, 11, 16, 45)})
 
     def SqlWriter_change_type_test(self, connection):
         self.SqlWriter_types_test(connection, 'foo_fancy_type_changes')
