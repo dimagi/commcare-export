@@ -380,17 +380,10 @@ class Emit(MiniLinq):
 
     @unwrap
     def coerce_cell_blithely(self, cell):
-        if isinstance(cell, six.string_types):
+        if isinstance(cell, list):
+            return ','.join([self.coerce_cell(item) for item in cell])
+        else:
             return cell
-        elif isinstance(cell, (int, bool)):
-            return cell
-        elif isinstance(cell, datetime):
-            return cell
-        elif cell is None:
-            return None
-
-        # In all other cases, coerce to a list and join with ',' for now
-        return ','.join([self.coerce_cell(item) for item in list(cell)])
 
     def coerce_cell(self, cell):
         try:

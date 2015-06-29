@@ -20,14 +20,22 @@ def digest_file(path):
 def unwrap(fn):
     @functools.wraps(fn)
     def _inner(*args):
+        # handle case when fn is a class method and first arg is 'self'
         val = args[1] if len(args) == 2 else args[0]
 
         if isinstance(val, RepeatableIterator):
-            val = list(val)[0]
+            val = list(val)
+
+        if isinstance(val, list):
+            if len(val) == 1:
+                val = val[0]
+            else:
+                val = map(_inner, val)
 
         if isinstance(val, jsonpath.DatumInContext):
             val = val.value
 
+        # call fn with 'self' if necessary
         return fn(*([val] if len(args) == 1 else [args[0], val]))
 
     return _inner
