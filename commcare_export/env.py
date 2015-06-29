@@ -222,7 +222,7 @@ class JsonPathEnv(Env):
 def str2bool(val):
     if isinstance(val, bool):
         return val
-    return val and val.lower() in {'true', 't', '1'}
+    return val and str(val).lower() in {'true', 't', '1'}
 
 @unwrap
 def str2num(val):
