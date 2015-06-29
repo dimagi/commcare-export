@@ -65,6 +65,7 @@ setuptools.setup(
         'openpyxl>=2.0.3',
         'python-dateutil',
         'requests',
+        'ndg-httpsclient',
         'simplejson',
         'six',
         'sqlalchemy',
