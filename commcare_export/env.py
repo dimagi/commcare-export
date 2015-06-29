@@ -1,5 +1,4 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
-import functools
 import operator
 import six
 from itertools import chain
