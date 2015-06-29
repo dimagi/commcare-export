@@ -266,12 +266,12 @@ class SqlTableWriter(TableWriter):
                 return (dest_type.length >= source_type.length)
 
         compatibility = {
-            self.sqlalchemy.Integer: (self.sqlalchemy.String,),
-            self.sqlalchemy.Boolean: (self.sqlalchemy.String,),
-            self.sqlalchemy.DateTime: (self.sqlalchemy.String, self.sqlalchemy.Date),
-            self.sqlalchemy.Date: (self.sqlalchemy.String,),
+            self.sqlalchemy.String: (self.sqlalchemy.Text,),
+            self.sqlalchemy.Integer: (self.sqlalchemy.String, self.sqlalchemy.Text),
+            self.sqlalchemy.Boolean: (self.sqlalchemy.String, self.sqlalchemy.Text),
+            self.sqlalchemy.DateTime: (self.sqlalchemy.String, self.sqlalchemy.Text, self.sqlalchemy.Date),
+            self.sqlalchemy.Date: (self.sqlalchemy.String, self.sqlalchemy.Text),
         }
-
         for _type, types in compatibility.items():
             if isinstance(source_type, _type):
                 return isinstance(dest_type, (_type,) + types)
@@ -308,9 +308,6 @@ class SqlTableWriter(TableWriter):
         columns = get_cols()
 
         for column, val in row_dict.items():
-            if val is None and self.strict_types:
-                continue
-
             ty = self.best_type_for(val)
             if not column in columns:
                 # If we are creating the column, a None crashes things even though it is the "empty" type
@@ -320,8 +317,10 @@ class SqlTableWriter(TableWriter):
                 self.metadata.clear()
                 self.metadata.reflect()
                 columns = get_cols()
-
             else:
+                if val is None:
+                    continue
+
                 current_ty = columns[column].type
 
                 if not self.compatible(ty, current_ty):
