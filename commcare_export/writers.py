@@ -156,7 +156,7 @@ class JValueTableWriter(TableWriter):
         # Ensures the table is iterable; probably better to create a custom JSON handler that runs in constant space
         self.tables.append(dict(name=table['name'],
                                 headings=list(table['headings']),
-                                rows=[list([to_jvalue(v) for v in row]) for row in table['rows']]))
+                                rows=[[to_jvalue(v) for v in row] for row in table['rows']]))
 
 class StreamingMarkdownTableWriter(TableWriter):
     """
