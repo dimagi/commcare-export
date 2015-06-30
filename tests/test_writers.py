@@ -158,13 +158,14 @@ class TestWriters(unittest.TestCase):
                 'name': 'foo_upsert',
                 'headings': ['id', 'a', 'b', 'c'],
                 'rows': [
-                    ['zing', 3, None, 5] # The None is allowed only in string fields as it defaults the col to text
+                    ['zing', 3, None, 5]
                 ]
             })
 
-        result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c FROM foo_upsert')])
+        # don't select column 'b' since it hasn't been created yet
+        result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, c FROM foo_upsert')])
         assert len(result) == 1
-        assert dict(result['zing']) == {'id': 'zing', 'a': 3, 'b': None, 'c': 5}
+        assert dict(result['zing']) == {'id': 'zing', 'a': 3, 'c': 5}
 
         with writer:
             writer.write_table({
