@@ -54,6 +54,18 @@ class TestMiniLinq(unittest.TestCase):
         assert Apply(Reference("*"), Literal(2), Literal(3)).eval(env) == 6
         assert Apply(Reference(">"), Literal(56), Literal(23.5)).eval(env) == True
         assert Apply(Reference("len"), Literal([1, 2, 3])).eval(env) == 3
+        assert Apply(Reference("bool"), Literal('a')).eval(env) == True
+        assert Apply(Reference("bool"), Literal('')).eval(env) == False
+        assert Apply(Reference("str2bool"), Literal('true')).eval(env) == True
+        assert Apply(Reference("str2bool"), Literal('t')).eval(env) == True
+        assert Apply(Reference("str2bool"), Literal('1')).eval(env) == True
+        assert Apply(Reference("str2bool"), Literal('0')).eval(env) == False
+        assert Apply(Reference("str2bool"), Literal('false')).eval(env) == False
+        assert Apply(Reference("str2num"), Literal('10')).eval(env) == 10
+        assert Apply(Reference("str2num"), Literal('10.56')).eval(env) == 10.56
+        assert Apply(Reference("str2date"), Literal('2015-01-01')).eval(env) == datetime(2015, 1, 1)
+        assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57')).eval(env) == datetime(2015, 1, 1, 18, 32, 57)
+        assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57.001200')).eval(env) == datetime(2015, 1, 1, 18, 32, 57, 1200)
 
     def test_map(self):
         env = BuiltInEnv() | DictEnv({})
@@ -90,14 +102,14 @@ class TestMiniLinq(unittest.TestCase):
             pass
 
     def test_emit(self):
-        env = BuiltInEnv() | JsonPathEnv({'foo': {'baz': 3}})
+        env = BuiltInEnv() | JsonPathEnv({'foo': {'baz': 3, 'bar': True}})
         Emit(table='Foo',
              headings=[Literal('foo')],
              source=List([
-                 List([ Reference('foo.baz') ])
+                 List([ Reference('foo.baz'), Reference('foo.bar') ])
              ])).eval(env)
 
-        assert list(list(env.emitted_tables())[0]['rows']) == [['3']]
+        assert list(list(env.emitted_tables())[0]['rows']) == [[3, True]]
 
     def test_from_jvalue(self):
         assert MiniLinq.from_jvalue({"Ref": "form.log_subreport"}) == Reference("form.log_subreport")

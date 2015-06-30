@@ -1,7 +1,10 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+import functools
 import hashlib
 import io
-import json
+from jsonpath_rw import jsonpath
+from commcare_export.repeatable_iterator import RepeatableIterator
+
 
 def digest_file(path):
     with io.open(path, 'rb') as filehandle:
@@ -12,3 +15,27 @@ def digest_file(path):
                 break
             digest.update(chunk)
         return digest.hexdigest()
+
+
+def unwrap(fn):
+    @functools.wraps(fn)
+    def _inner(*args):
+        # handle case when fn is a class method and first arg is 'self'
+        val = args[1] if len(args) == 2 else args[0]
+
+        if isinstance(val, RepeatableIterator):
+            val = list(val)
+
+        if isinstance(val, list):
+            if len(val) == 1:
+                val = val[0]
+            else:
+                val = map(_inner, val)
+
+        if isinstance(val, jsonpath.DatumInContext):
+            val = val.value
+
+        # call fn with 'self' if necessary
+        return fn(*([val] if len(args) == 1 else [args[0], val]))
+
+    return _inner

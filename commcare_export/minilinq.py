@@ -7,6 +7,7 @@ from six.moves import map
 
 from jsonpath_rw import jsonpath
 from jsonpath_rw.parser import parse as parse_jsonpath
+from commcare_export.misc import unwrap
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
@@ -377,21 +378,12 @@ class Emit(MiniLinq):
         self.headings = headings
         self.source = source
 
+    @unwrap
     def coerce_cell_blithely(self, cell):
-        if isinstance(cell, jsonpath.DatumInContext):
-            cell = cell.value
-        
-        if isinstance(cell, six.string_types):
+        if isinstance(cell, list):
+            return ','.join([self.coerce_cell(item) for item in cell])
+        else:
             return cell
-        elif isinstance(cell, int):
-            return str(cell)
-        elif isinstance(cell, datetime):
-            return cell
-        elif cell is None:
-            return ''
-
-        # In all other cases, coerce to a list and join with ',' for now
-        return ','.join([self.coerce_cell(item) for item in list(cell)])
 
     def coerce_cell(self, cell):
         try:

@@ -50,6 +50,7 @@ def main(argv):
     parser.add_argument('--verbose', default=False, action='store_true')
     parser.add_argument('--output-format', default='json', choices=['json', 'csv', 'xls', 'xlsx', 'sql', 'markdown'], help='Output format')
     parser.add_argument('--output', metavar='PATH', default='reports.zip', help='Path to output; defaults to `reports.zip`.')
+    parser.add_argument('--strict-types', default=False, action='store_true', help="When saving to a SQL database don't allow changing column types once they are created.")
 
     args = parser.parse_args(argv)
 
@@ -137,7 +138,7 @@ def main_with_args(args):
         # Writer had bizarre issues so we use a full connection instead of passing in a URL or engine
         import sqlalchemy
         engine = sqlalchemy.create_engine(args.output)
-        writer = writers.SqlTableWriter(engine.connect())
+        writer = writers.SqlTableWriter(engine.connect(), args.strict_types)
 
         if not args.since and not args.start_over and os.path.exists(args.query):
             connection = sqlalchemy.create_engine(args.output)
