@@ -1,5 +1,7 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+from datetime import datetime
 import operator
+import pytz
 import six
 from itertools import chain
 
@@ -240,8 +242,13 @@ def str2date(val):
     import dateutil.parser as parser
     if not val:
         return None
-    return parser.parse(val)
+    date = parser.parse(val)
+    try:
+        date = date.astimezone(pytz.utc)
+    except ValueError:
+        pass
 
+    return date.replace(microsecond=0, tzinfo=None)
 
 @unwrap
 def bool2int(val):
