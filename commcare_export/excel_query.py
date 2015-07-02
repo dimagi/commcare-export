@@ -37,15 +37,17 @@ def map_value(mappings_sheet, mapping_name, source_value):
 def get_column_by_name(worksheet, column_name):
     # columns and rows are indexed from 1
     for col in xrange(1, worksheet.get_highest_column() + 1):
-        if column_name == worksheet.cell(row=1, column=col).value:
+        value = worksheet.cell(row=1, column=col).value
+        value = value.lower() if value else value
+        if column_name == value:
             return without_empty_tail([
                 worksheet.cell(row=i, column=col) for i in xrange(2, worksheet.get_highest_row() + 1)
             ])
 
 def compile_mappings(worksheet):
-    mapping_names = get_column_by_name(worksheet, "Mapping Name")
-    sources       = extended_to_len(len(mapping_names), get_column_by_name(worksheet, "Source"))   
-    destinations  = extended_to_len(len(mapping_names), get_column_by_name(worksheet, "Destination"))
+    mapping_names = get_column_by_name(worksheet, "mapping name")
+    sources       = extended_to_len(len(mapping_names), get_column_by_name(worksheet, "source"))
+    destinations  = extended_to_len(len(mapping_names), get_column_by_name(worksheet, "destination"))
 
     mappings = defaultdict(lambda: defaultdict(lambda: None))
     
@@ -55,12 +57,12 @@ def compile_mappings(worksheet):
     return mappings
 
 def compile_filters(worksheet, mappings=None):
-    filter_names  = [cell.value for cell in get_column_by_name(worksheet, 'Filter Name') or []]
+    filter_names  = [cell.value for cell in get_column_by_name(worksheet, 'filter name') or []]
 
     if not filter_names:
         return []
 
-    filter_values = extended_to_len(len(filter_names), [cell.value for cell in get_column_by_name(worksheet, 'Filter Value') or []])
+    filter_values = extended_to_len(len(filter_names), [cell.value for cell in get_column_by_name(worksheet, 'filter value') or []])
     return zip(filter_names, filter_values)
 
 def extended_to_len(desired_len, some_list, value=None):
@@ -79,14 +81,14 @@ def compile_field(field, source_field, map_via=None, format_via=None, mappings=N
     return expr
 
 def compile_fields(worksheet, mappings=None):
-    fields = without_empty_tail(get_column_by_name(worksheet, 'Field') or [])
+    fields = without_empty_tail(get_column_by_name(worksheet, 'field') or [])
 
     if not fields:
         return []
 
-    source_fields = extended_to_len(len(fields), get_column_by_name(worksheet, 'Source Field') or [])
-    map_vias      = extended_to_len(len(fields), get_column_by_name(worksheet, 'Map Via') or [])
-    format_vias   = extended_to_len(len(fields), get_column_by_name(worksheet, 'Format Via') or [])
+    source_fields = extended_to_len(len(fields), get_column_by_name(worksheet, 'source field') or [])
+    map_vias      = extended_to_len(len(fields), get_column_by_name(worksheet, 'map via') or [])
+    format_vias   = extended_to_len(len(fields), get_column_by_name(worksheet, 'format via') or [])
 
     return [compile_field(field        = field.value, 
                           source_field = source_field.value,
@@ -122,9 +124,9 @@ def compile_source(worksheet):
     and then iterate (FlatMap) over all child questions.
     """
     
-    data_source_str = get_column_by_name(worksheet, 'Data Source')[0].value
+    data_source_str = get_column_by_name(worksheet, 'data source')[0].value
     filters = compile_filters(worksheet)
-    include_referenced_items = [cell.value for cell in (get_column_by_name(worksheet, 'Include Referenced Items') or [])]
+    include_referenced_items = [cell.value for cell in (get_column_by_name(worksheet, 'include referenced items') or [])]
 
     data_source, data_source_jsonpath = split_leftmost(parse_jsonpath(data_source_str))
     maybe_redundant_slice, remaining_jsonpath = split_leftmost(data_source_jsonpath)
@@ -162,7 +164,7 @@ def compile_sheet(worksheet, mappings=None):
     source_expr = compile_source(worksheet)
 
     output_table_name = worksheet.title
-    output_headings = get_column_by_name(worksheet, 'Field') # It is unfortunate that this is duplicated here and in `compile_fields`
+    output_headings = get_column_by_name(worksheet, 'field') # It is unfortunate that this is duplicated here and in `compile_fields`
     output_fields = compile_fields(worksheet, mappings=mappings)
 
     if not output_fields:
