@@ -24,6 +24,7 @@ from commcare_export.commcare_minilinq import CommCareHqEnv
 from commcare_export import writers
 from commcare_export import excel_query
 from commcare_export import misc
+from commcare_export.version import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +34,14 @@ commcare_hq_aliases = {
 }
 
 def main(argv):
-    parser = argparse.ArgumentParser('commcare-hq-export', 'Output a customized export of CommCareHQ data.')
+    parser = argparse.ArgumentParser('commcare-export', 'Output a customized export of CommCareHQ data.')
 
+    parser.add_argument('--version', default=False, action='store_true', help='Print the current version of the commcare-export tool.')
     parser.add_argument('--query', help='JSON or Excel query file. If omitted, JSON string is read from stdin.')
     parser.add_argument('--dump-query', default=False, action='store_true')
     parser.add_argument('--commcare-hq', default='prod')
     parser.add_argument('--api-version', default=LATEST_KNOWN_VERSION)
-    parser.add_argument('--project', required=True)
+    parser.add_argument('--project')
     parser.add_argument('--username')
     parser.add_argument('--password')
     parser.add_argument('--auth-mode', default='digest', help='Use "session" based auth or "digest" auth.')
@@ -60,6 +62,15 @@ def main(argv):
     else:
         logging.basicConfig(level=logging.WARN,
                             format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+
+    if args.version:
+        print('commcare-export version {}'.format(__version__))
+        exit(0)
+
+    if not args.project:
+        print('commcare-export: error: argument --project is required')
+        exit(1)
+
 
     if args.profile:
         # hotshot is gone in Python 3
