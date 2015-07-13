@@ -263,7 +263,7 @@ class SqlTableWriter(TableWriter):
                 # We will request that whomever uses this tool convert to TEXT type.
                 return dest_type.length is None
             else:
-                return (dest_type.length >= source_type.length)
+                return dest_type.length is None or (dest_type.length >= source_type.length)
 
         compatibility = {
             self.sqlalchemy.String: (self.sqlalchemy.Text,),
