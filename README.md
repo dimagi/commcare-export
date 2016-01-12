@@ -297,7 +297,7 @@ Contributing
 
 ```
 $ mkvirtualenv commcare-export
-$ git clone git@github.com:YOUR_USERNAME/commcare-export.git
+$ git clone git@github.com:dimagi/commcare-export.git
 $ cd commcare-export
 $ pip install -e .
 $ git checkout -b my-super-duper-feature
@@ -328,7 +328,7 @@ tests/test_writers.py ...
 $ git push -u origin my-super-duper-feature
 ```
 
-6\. Visit https://github.com/YOUR_USERNAME/commcare-export and submit a pull request.
+6\. Visit https://github.com/dimagi/commcare-export and submit a pull request.
 
 7\. Accept our gratitude for contributing: Thanks!
 
