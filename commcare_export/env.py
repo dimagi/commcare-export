@@ -220,13 +220,13 @@ class JsonPathEnv(Env):
 # Actual concrete environments, basically with built-in functions.
 #
 
-@unwrap
+@unwrap('val')
 def str2bool(val):
     if isinstance(val, bool):
         return val
     return val and str(val).lower() in {'true', 't', '1'}
 
-@unwrap
+@unwrap('val')
 def str2num(val):
     if val is None:
         return None
@@ -237,7 +237,7 @@ def str2num(val):
         return float(val)
 
 
-@unwrap
+@unwrap('val')
 def str2date(val):
     import dateutil.parser as parser
     if not val:
@@ -250,12 +250,12 @@ def str2date(val):
 
     return date.replace(microsecond=0, tzinfo=None)
 
-@unwrap
+@unwrap('val')
 def bool2int(val):
     return int(str2bool(val))
 
 
-@unwrap
+@unwrap('val')
 def selected_at(val, index):
     if not val:
         return None
