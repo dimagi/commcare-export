@@ -266,7 +266,7 @@ def selected_at(val, index):
         return "Error: index must be an integer"
 
     try:
-        return str(val).split(' ')[index]
+        return str(val).split()[index]
     except (IndexError, ValueError):
         return None
 
@@ -276,7 +276,7 @@ def selected(val, reference):
     if not val:
         return None
 
-    parts = str(val).split(' ')
+    parts = str(val).split()
     return reference in parts
 
 
@@ -285,7 +285,7 @@ def count_selected(val):
     if not val:
         return None
 
-    return len(str(val).split(' '))
+    return len(str(val).split())
 
 
 class BuiltInEnv(DictEnv):
