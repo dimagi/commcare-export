@@ -6,6 +6,8 @@ from six.moves import xrange
 
 from jsonpath_rw import jsonpath
 from jsonpath_rw.parser import parse as parse_jsonpath
+
+from commcare_export.map_format import compile_map_format_via
 from commcare_export.minilinq import *
 
 def take_while(pred, iterator):
@@ -73,12 +75,13 @@ def compile_field(field, source_field, map_via=None, format_via=None, mappings=N
     expr = Reference(source_field)    
 
     if map_via:
-        expr = Apply(Reference(map_via), expr)
+        expr = compile_map_format_via(expr, map_via)
 
     if format_via:
-        expr = Apply(Reference(format_via), expr)
+        expr = compile_map_format_via(expr, format_via)
 
     return expr
+
 
 def compile_fields(worksheet, mappings=None):
     fields = without_empty_tail(get_column_by_name(worksheet, 'field') or [])

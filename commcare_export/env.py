@@ -255,6 +255,23 @@ def bool2int(val):
     return int(str2bool(val))
 
 
+@unwrap
+def selected_at(val, index):
+    if not val:
+        return None
+
+    print(val, index)
+    try:
+        index = int(index)
+    except ValueError:
+        return "Error: index must be an integer"
+
+    try:
+        return str(val).split(' ')[index]
+    except (IndexError, ValueError):
+        return None
+
+
 class BuiltInEnv(DictEnv):
     """
     A built-in environment of operators and functions
@@ -283,6 +300,7 @@ class BuiltInEnv(DictEnv):
             'bool2int': bool2int,
             'str2num': str2num,
             'str2date': str2date,
+            'selected-at': selected_at,
         })
 
     def bind(self, name, value): raise CannotBind()

@@ -85,12 +85,14 @@ class TestExcelQuery(unittest.TestCase):
 
             ('003_DataSourceAndEmitColumns.xlsx',
              Emit(table    = 'Forms',
-                  headings = [Literal('Form Type'), Literal('Fecha de Nacimiento'), Literal('Sexo')],
+                  headings = [Literal('Form Type'), Literal('Fecha de Nacimiento'), Literal('Sexo'), Literal('Danger 0'), Literal('Danger 1')],
                   source   = Map(source = Apply(Reference("api_data"), Literal("form")),
                                  body   = List([
                                      Reference("type"),
                                      Apply(Reference("FormatDate"), Reference("date_of_birth")),
-                                     Apply(Reference("sexo"), Reference("gender"))
+                                     Apply(Reference("sexo"), Reference("gender")),
+                                     Apply(Reference("selected-at"), Reference("dangers"), Literal(0)),
+                                     Apply(Reference("selected-at"), Reference("dangers"), Literal(1)),
                                  ])))),
 
             ('005_DataSourcePath.xlsx',
