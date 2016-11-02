@@ -260,7 +260,6 @@ def selected_at(val, index):
     if not val:
         return None
 
-    print(val, index)
     try:
         index = int(index)
     except ValueError:
@@ -270,6 +269,23 @@ def selected_at(val, index):
         return str(val).split(' ')[index]
     except (IndexError, ValueError):
         return None
+
+
+@unwrap('val')
+def selected(val, reference):
+    if not val:
+        return None
+
+    parts = str(val).split(' ')
+    return reference in parts
+
+
+@unwrap('val')
+def count_selected(val):
+    if not val:
+        return None
+
+    return len(str(val).split(' '))
 
 
 class BuiltInEnv(DictEnv):
@@ -300,7 +316,9 @@ class BuiltInEnv(DictEnv):
             'bool2int': bool2int,
             'str2num': str2num,
             'str2date': str2date,
+            'selected': selected,
             'selected-at': selected_at,
+            'count-selected': count_selected,
         })
 
     def bind(self, name, value): raise CannotBind()

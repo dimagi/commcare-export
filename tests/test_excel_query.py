@@ -85,7 +85,11 @@ class TestExcelQuery(unittest.TestCase):
 
             ('003_DataSourceAndEmitColumns.xlsx',
              Emit(table    = 'Forms',
-                  headings = [Literal('Form Type'), Literal('Fecha de Nacimiento'), Literal('Sexo'), Literal('Danger 0'), Literal('Danger 1')],
+                  headings = [
+                      Literal('Form Type'), Literal('Fecha de Nacimiento'), Literal('Sexo'),
+                      Literal('Danger 0'), Literal('Danger 1'), Literal('Danger Fever'),
+                      Literal('Danger error'), Literal('Danger error')
+                  ],
                   source   = Map(source = Apply(Reference("api_data"), Literal("form")),
                                  body   = List([
                                      Reference("type"),
@@ -93,6 +97,9 @@ class TestExcelQuery(unittest.TestCase):
                                      Apply(Reference("sexo"), Reference("gender")),
                                      Apply(Reference("selected-at"), Reference("dangers"), Literal(0)),
                                      Apply(Reference("selected-at"), Reference("dangers"), Literal(1)),
+                                     Apply(Reference("selected"), Reference("dangers"), Literal('fever')),
+                                     Literal('Error: selected-at index must be an integer: selected-at(abc)'),
+                                     Literal('Error: Unable to parse: selected(fever'),
                                  ])))),
 
             ('005_DataSourcePath.xlsx',

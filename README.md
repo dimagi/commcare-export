@@ -259,6 +259,8 @@ List of builtin functions:
 | bool2int                     | Convert boolean to integer (0, 1)                                              |                                  |
 | str2num                      | Parse string as a number                                                       |                                  |
 | selected-at                  | Returns the Nth word in a string. N is zero-indexed.                           | selected-at(3) - return 4th word |
+| selected                     | Returns True if the given word is in the value.                                | selected(fever)                  |
+| count-selected               | Count the number of words                                                      |                                  |
 
 Output Formats
 --------------

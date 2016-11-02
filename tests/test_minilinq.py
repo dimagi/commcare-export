@@ -70,6 +70,9 @@ class TestMiniLinq(unittest.TestCase):
         assert Apply(Reference("selected-at"), Literal('a b c'), Literal('1')).eval(env) == 'b'
         assert Apply(Reference("selected-at"), Literal('a b c'), Literal('-1')).eval(env) == 'c'
         assert Apply(Reference("selected-at"), Literal('a b c'), Literal('5')).eval(env) is None
+        assert Apply(Reference("selected"), Literal('a b c'), Literal('b')).eval(env) is True
+        assert Apply(Reference("selected"), Literal('a b c'), Literal('d')).eval(env) is False
+        assert Apply(Reference("selected"), Literal('a bb c'), Literal('b')).eval(env) is False
 
     def test_map(self):
         env = BuiltInEnv() | DictEnv({})
