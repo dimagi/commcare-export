@@ -377,7 +377,7 @@ class Emit(MiniLinq):
         self.headings = headings
         self.source = source
 
-    @unwrap
+    @unwrap('cell')
     def coerce_cell_blithely(self, cell):
         if isinstance(cell, list):
             return ','.join([self.coerce_cell(item) for item in cell])

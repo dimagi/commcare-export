@@ -245,8 +245,22 @@ Here is a description of the astract syntax and semantics
 | `Apply(fn, args)` | etc | Evaluates `fn` to a function, and all of `args`, then applies the function to the args. |
 
 Built in functions like `api_data` and basic arithmetic and comparison are provided via the environment,
-referred to be name using `Ref`, and utilized via `Apply`
+referred to be name using `Ref`, and utilized via `Apply`.
 
+List of builtin functions:
+
+| Function                     | Description                                                                    | Example Usage                    |
+|------------------------------|--------------------------------------------------------------------------------|----------------------------------|
+| +, -, *, //, /, >, <, >=, <= | Standard Math                                                                  |                                  |
+| len                          | Length                                                                         |                                  |
+| bool                         | Bool                                                                           |                                  |
+| str2bool                     | Convert string to boolean. True values are 'true', 't', '1' (case insensitive) |                                  |
+| str2date                     | Convert string to date                                                         |                                  |
+| bool2int                     | Convert boolean to integer (0, 1)                                              |                                  |
+| str2num                      | Parse string as a number                                                       |                                  |
+| selected-at                  | Returns the Nth word in a string. N is zero-indexed.                           | selected-at(3) - return 4th word |
+| selected                     | Returns True if the given word is in the value.                                | selected(fever)                  |
+| count-selected               | Count the number of words                                                      |                                  |
 
 Output Formats
 --------------

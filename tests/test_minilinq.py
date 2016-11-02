@@ -67,6 +67,12 @@ class TestMiniLinq(unittest.TestCase):
         assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57')).eval(env) == datetime(2015, 1, 1, 18, 32, 57)
         assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57.001200')).eval(env) == datetime(2015, 1, 1, 18, 32, 57)
         assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57.001200Z')).eval(env) == datetime(2015, 1, 1, 18, 32, 57)
+        assert Apply(Reference("selected-at"), Literal('a b c'), Literal('1')).eval(env) == 'b'
+        assert Apply(Reference("selected-at"), Literal('a b c'), Literal('-1')).eval(env) == 'c'
+        assert Apply(Reference("selected-at"), Literal('a b c'), Literal('5')).eval(env) is None
+        assert Apply(Reference("selected"), Literal('a b c'), Literal('b')).eval(env) is True
+        assert Apply(Reference("selected"), Literal('a b c'), Literal('d')).eval(env) is False
+        assert Apply(Reference("selected"), Literal('a bb c'), Literal('b')).eval(env) is False
 
     def test_map(self):
         env = BuiltInEnv() | DictEnv({})
