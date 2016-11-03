@@ -4,15 +4,10 @@ import sys
 import glob
 import re
 import io
-import subprocess
-import setuptools 
+import setuptools
 from setuptools.command.test import test as TestCommand
 
 VERSION_PATH='commcare_export/VERSION'
-
-# Build README.txt from README.md if not present, and if we are actually building for distribution to pypi
-if not os.path.exists('README.txt') and 'sdist' in sys.argv:
-    subprocess.call(['pandoc', '--to=rst', '--output=README.txt', 'README.md'])
 
 # Overwrite VERSION if we are actually building for a distribution to pypi
 # This code path requires dependencies, etc, to be available
@@ -28,10 +23,8 @@ version = commcare_export.__version__
 # Crash if the VERSION is not a simple version and it is going to register or upload
 if 'register' in sys.argv or 'upload' in sys.argv:
     if not re.match('\d+\.\d+\.\d+', version):
-        print('Version %s is not an appropriate version for publicizing!' % version)
+        print('Version %s is not an appropriate version for publicizing! Make a tag and then try again.' % version)
         sys.exit(1)
-
-readme = 'README.txt' if os.path.exists('README.txt') else 'README.md'
 
 class PyTest(TestCommand):
     def finalize_options(self):
@@ -49,7 +42,6 @@ setuptools.setup(
     name = "commcare-export",
     version = version,
     description = 'A command-line tool (and Python library) to extract data from CommCareHQ into a SQL database or Excel workbook',
-    long_description = io.open(readme, encoding='utf-8').read(),
     author = 'Dimagi',
     author_email = 'information@dimagi.com',
     url = "https://github.com/dimagi/commcare-export",
