@@ -7,7 +7,7 @@ from itertools import chain
 
 from jsonpath_rw import jsonpath
 from jsonpath_rw.parser import parse as parse_jsonpath
-from commcare_export.misc import unwrap
+from commcare_export.misc import unwrap, unwrap_val
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
@@ -288,6 +288,18 @@ def count_selected(val):
     return len(str(val).split())
 
 
+def join(*args):
+    args = [unwrap_val(arg)for arg in args]
+    return args[0].join(args[1:])
+
+
+@unwrap('val')
+def default(val, default_val):
+    if not val:
+        return default_val
+    return val
+
+
 class BuiltInEnv(DictEnv):
     """
     A built-in environment of operators and functions
@@ -319,6 +331,8 @@ class BuiltInEnv(DictEnv):
             'selected': selected,
             'selected-at': selected_at,
             'count-selected': count_selected,
+            'join': join,
+            'default': default,
         })
 
     def bind(self, name, value): raise CannotBind()

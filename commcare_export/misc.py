@@ -25,22 +25,25 @@ def unwrap(arg_name):
         def _inner(*args):
             callargs = inspect.getcallargs(fn, *args)
             val = callargs[arg_name]
-
-            if isinstance(val, RepeatableIterator):
-                val = list(val)
-
-            if isinstance(val, list):
-                if len(val) == 1:
-                    val = val[0]
-                else:
-                    val = map(_inner, val)
-
-            if isinstance(val, jsonpath.DatumInContext):
-                val = val.value
-
-            callargs[arg_name] = val
+            callargs[arg_name] = unwrap_val(val)
             return fn(**callargs)
 
         return _inner
 
     return unwrapper
+
+
+def unwrap_val(val):
+    if isinstance(val, RepeatableIterator):
+        val = list(val)
+
+    if isinstance(val, list):
+        if len(val) == 1:
+            val = val[0]
+        else:
+            val = map(unwrap_val, val)
+
+    if isinstance(val, jsonpath.DatumInContext):
+        val = val.value
+
+    return val
