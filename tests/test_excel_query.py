@@ -146,7 +146,7 @@ class TestExcelQuery(unittest.TestCase):
                   ],
                   source=Map(source=Apply(Reference("api_data"), Literal("form")),
                              body=List([
-                                 complile_mapped_field(field_mappings, Reference("type"))
+                                 compile_mapped_field(field_mappings, Reference("type"))
                              ])))])),
 
         ]
@@ -165,8 +165,8 @@ class TestExcelQuery(unittest.TestCase):
 
     def test_compile_mapped_field(self):
         env = BuiltInEnv() | JsonPathEnv({'foo': {'bar': 'a', 'baz': 'b'}})
-        expression = complile_mapped_field({'a': 'mapped from a'}, Reference('foo.bar'))
+        expression = compile_mapped_field({'a': 'mapped from a'}, Reference('foo.bar'))
         assert expression.eval(env) == 'mapped from a'
 
-        expression = complile_mapped_field({'a': 'mapped from a'}, Reference('foo.baz'))
+        expression = compile_mapped_field({'a': 'mapped from a'}, Reference('foo.baz'))
         assert list(expression.eval(env))[0].value == 'b'

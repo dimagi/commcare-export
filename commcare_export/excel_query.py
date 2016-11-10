@@ -81,12 +81,12 @@ def compile_field(field, source_field, map_via=None, format_via=None, mappings=N
         expr = compile_map_format_via(expr, format_via)
 
     if mappings and field in mappings:
-        expr = complile_mapped_field(mappings[field], expr)
+        expr = compile_mapped_field(mappings[field], expr)
 
     return expr
 
 
-def complile_mapped_field(field_mappings, field_expression):
+def compile_mapped_field(field_mappings, field_expression):
     # quote the ref in case it has special chars
     quoted_field = Apply(Reference('join'), Literal(''), Literal('"'), field_expression, Literal('"'))
     # produce the mapping reference i.e. 'mapping."X"'
