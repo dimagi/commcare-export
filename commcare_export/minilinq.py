@@ -303,7 +303,7 @@ class FlatMap(MiniLinq):
         def iterate(env=env, source_result=source_result): # Python closure workaround
             if self.name:
                 for item in source_result:
-                    for result_item in self.body.eval(env.bind(name, item)):
+                    for result_item in self.body.eval(env.bind(self.name, item)):
                         yield result_item
             else:
                 for item in source_result:
