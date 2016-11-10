@@ -75,8 +75,12 @@ class Reference(MiniLinq):
     """
     def __init__(self, ref):
         self.ref = ref #parse_jsonpath(ref) #ref
+        self.nested = isinstance(self.ref, MiniLinq)
     
     def eval(self, env):
+        if self.nested:
+            ref = self.ref.eval(env)
+            return env.lookup(ref)
         return env.lookup(self.ref)
 
     def __eq__(self, other):
@@ -84,10 +88,10 @@ class Reference(MiniLinq):
 
     @classmethod
     def from_jvalue(cls, jvalue):
-        return cls(jvalue['Ref'])
+        return cls(MiniLinq.from_jvalue(jvalue['Ref']))
 
     def to_jvalue(self):
-        return {'Ref': self.ref}
+        return {'Ref': self.ref.to_jvalue() if self.nested else self.ref}
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.ref)
@@ -299,7 +303,7 @@ class FlatMap(MiniLinq):
         def iterate(env=env, source_result=source_result): # Python closure workaround
             if self.name:
                 for item in source_result:
-                    for result_item in self.body.eval(env.bind(name, item)):
+                    for result_item in self.body.eval(env.bind(self.name, item)):
                         yield result_item
             else:
                 for item in source_result:

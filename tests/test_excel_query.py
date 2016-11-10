@@ -5,6 +5,8 @@ import os.path
 from collections import defaultdict
 
 import openpyxl
+from commcare_export.env import BuiltInEnv
+from commcare_export.env import JsonPathEnv
 from jsonpath_rw import jsonpath
 from jsonpath_rw.parser import parse as parse_jsonpath
 
@@ -130,12 +132,23 @@ class TestExcelQuery(unittest.TestCase):
             assert compiled == minilinq
 
     def test_compile_workbook(self):
+        field_mappings = {'t1': 'Form 1', 't2': 'Form 2'}
         test_cases = [
             ('004_TwoDataSources.xlsx', 
              List([ 
                 Emit(table='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form"))),
                 Emit(table='Cases', headings=[], source=Apply(Reference("api_data"), Literal("case")))
-             ]))
+             ])),
+            ('007_Mappings.xlsx',
+             List([Emit(table='Forms',
+                  headings=[
+                      Literal('Form Type'),
+                  ],
+                  source=Map(source=Apply(Reference("api_data"), Literal("form")),
+                             body=List([
+                                 complile_mapped_field(field_mappings, Reference("type"))
+                             ])))])),
+
         ]
 
         for filename, minilinq in test_cases:
@@ -149,3 +162,11 @@ class TestExcelQuery(unittest.TestCase):
                 print('!=')
                 pprint.pprint(minilinq.to_jvalue())
             assert compiled == minilinq
+
+    def test_compile_mapped_field(self):
+        env = BuiltInEnv() | JsonPathEnv({'foo': {'bar': 'a', 'baz': 'b'}})
+        expression = complile_mapped_field({'a': 'mapped from a'}, Reference('foo.bar'))
+        assert expression.eval(env) == 'mapped from a'
+
+        expression = complile_mapped_field({'a': 'mapped from a'}, Reference('foo.baz'))
+        assert list(expression.eval(env))[0].value == 'b'
