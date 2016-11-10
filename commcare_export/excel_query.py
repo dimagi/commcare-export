@@ -80,7 +80,21 @@ def compile_field(field, source_field, map_via=None, format_via=None, mappings=N
     if format_via:
         expr = compile_map_format_via(expr, format_via)
 
+    if mappings and field in mappings:
+        expr = complile_mapped_field(mappings[field], expr)
+
     return expr
+
+
+def complile_mapped_field(field_mappings, field_expression):
+    # quote the ref in case it has special chars
+    quoted_field = Apply(Reference('join'), Literal(''), Literal('"'), field_expression, Literal('"'))
+    # produce the mapping reference i.e. 'mapping."X"'
+    mapping_ref = Apply(Reference('join'), Literal('.'), Literal('mapping'), quoted_field)
+    # apply the reference to the field mappings to get the final value
+    mapped_value = FlatMap(source=Literal([field_mappings]), body=Reference(mapping_ref), name='mapping')
+    return Apply(Reference('default'), mapped_value, field_expression)
+
 
 
 def compile_fields(worksheet, mappings=None):
@@ -193,14 +207,15 @@ def compile_workbook(workbook):
 
     2. Each other sheet represents one data table to emit
     """
-    #mappings = workbook.get_sheet_by_name('Mappings')
+    mappings_sheet = workbook.get_sheet_by_name('Mappings')
+    mappings = compile_mappings(mappings_sheet) if mappings_sheet else None
 
     queries = [] # A lit of queries will be built up; one per emit sheet
     
     emit_sheets = [sheet_name for sheet_name in workbook.get_sheet_names() if sheet_name != 'Mappings']
 
     for sheet in emit_sheets:
-        queries.append(compile_sheet(workbook.get_sheet_by_name(sheet)))
+        queries.append(compile_sheet(workbook.get_sheet_by_name(sheet), mappings))
 
     return List(queries) # Moderate hack
     
