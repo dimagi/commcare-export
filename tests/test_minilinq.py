@@ -30,6 +30,7 @@ class TestMiniLinq(unittest.TestCase):
     def test_eval_reference(self):
         env = BuiltInEnv()
         assert Reference("foo").eval(DictEnv({'foo': 2})) == 2
+        assert Reference(Reference(Reference('a'))).eval(DictEnv({'a': 'b', 'b': 'c', 'c': 2})) == 2
         self.check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': [2]})), [2])
         self.check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': xrange(0, 1)})), [0]) # Should work the same w/ iterators as with lists
 
