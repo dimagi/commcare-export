@@ -54,7 +54,8 @@ def compile_mappings(worksheet):
     mappings = defaultdict(lambda: defaultdict(lambda: None))
     
     for mapping_name, source, dest in zip(mapping_names, sources, destinations):
-        mappings[mapping_name.value][source.value] = dest.value
+        if mapping_name and source:
+            mappings[mapping_name.value][source.value] = dest.value if dest else None
 
     return mappings
 
