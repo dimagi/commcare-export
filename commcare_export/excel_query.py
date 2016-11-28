@@ -177,7 +177,7 @@ def compile_source(worksheet):
         return FlatMap(source=api_query,
                        body=Reference(str(data_source_jsonpath)))
 
-def compile_sheet(worksheet, mappings=None):
+def compile_sheet(worksheet, mappings=None, missing_value=None):
     mappings = mappings or {}
     source_expr = compile_source(worksheet)
 
@@ -192,11 +192,14 @@ def compile_sheet(worksheet, mappings=None):
         headings = [Literal(output_heading.value) for output_heading in output_headings]
         source = Map(source=source_expr, body=List(output_fields))
 
-    return Emit(table    = output_table_name, 
-                headings = headings,
-                source   = source)
+    return Emit(
+        table=output_table_name,
+        headings=headings,
+        source=source,
+        missing_value=missing_value
+    )
 
-def compile_workbook(workbook):
+def compile_workbook(workbook, missing_value=None):
     """
     Returns a MiniLinq corresponding to the Excel configuration, which
     consists of the following sheets:
@@ -216,7 +219,7 @@ def compile_workbook(workbook):
     emit_sheets = [sheet_name for sheet_name in workbook.get_sheet_names() if sheet_name != 'Mappings']
 
     for sheet in emit_sheets:
-        queries.append(compile_sheet(workbook.get_sheet_by_name(sheet), mappings))
+        queries.append(compile_sheet(workbook.get_sheet_by_name(sheet), mappings, missing_value))
 
     return List(queries) # Moderate hack
     

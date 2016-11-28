@@ -53,6 +53,7 @@ def main(argv):
     parser.add_argument('--output-format', default='json', choices=['json', 'csv', 'xls', 'xlsx', 'sql', 'markdown'], help='Output format')
     parser.add_argument('--output', metavar='PATH', default='reports.zip', help='Path to output; defaults to `reports.zip`.')
     parser.add_argument('--strict-types', default=False, action='store_true', help="When saving to a SQL database don't allow changing column types once they are created.")
+    parser.add_argument('--missing-value', default='', help="Value to use when a field is missing from the form / case.")
 
     args = parser.parse_args(argv)
 
@@ -102,7 +103,7 @@ def main_with_args(args):
             if os.path.splitext(args.query)[1] in ['.xls', '.xlsx']:
                 import openpyxl
                 workbook = openpyxl.load_workbook(args.query)
-                query = excel_query.compile_workbook(workbook)
+                query = excel_query.compile_workbook(workbook, args.missing_value)
             else:
                 with io.open(args.query, encoding='utf-8') as fh:
                     query = MiniLinq.from_jvalue(json.loads(fh.read()))

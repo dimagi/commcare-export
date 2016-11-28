@@ -375,15 +375,18 @@ class Emit(MiniLinq):
     are actually lists - it is just crashy instead.
     """
 
-    def __init__(self, table, headings, source):
+    def __init__(self, table, headings, source, missing_value=None):
         "(str, [str], [MiniLinq]) -> MiniLinq"
         self.table = table
         self.headings = headings
         self.source = source
+        self.missing_value = missing_value or ''
 
     @unwrap('cell')
     def coerce_cell_blithely(self, cell):
         if isinstance(cell, list):
+            if not cell:  # jsonpath returns empty list when path is not present
+                return self.missing_value
             return ','.join([self.coerce_cell(item) for item in cell])
         else:
             return cell
@@ -411,18 +414,27 @@ class Emit(MiniLinq):
 
         return cls(table    = fields['table'],
                    source   = MiniLinq.from_jvalue(fields['source']),
-                   headings = [MiniLinq.from_jvalue(heading) for heading in fields['headings']])
+                   headings = [MiniLinq.from_jvalue(heading) for heading in fields['headings']],
+                   missing_value=fields.get('missing_value'))
 
     def to_jvalue(self):
         return {'Emit': {'table': self.table,
                          'headings': [heading.to_jvalue() for heading in self.headings],
-                         'source': self.source.to_jvalue()}}
+                         'source': self.source.to_jvalue(),
+                         'missing_value': self.missing_value}}
 
     def __eq__(self, other):
-        return isinstance(other, Emit) and self.table == other.table and self.headings == other.headings and self.source == other.source
+        return (
+            isinstance(other, Emit) and self.table == other.table
+            and self.headings == other.headings
+            and self.source == other.source
+            and self.missing_value == other.missing_value
+        )
 
     def __repr__(self):
-        return '%s(table=%r, headings=%r, source=%r)' % (self.__class__.__name__, self.table, self.headings, self.source)
+        return '%s(table=%r, headings=%r, source=%r, missing_value=%r)' % (
+            self.__class__.__name__, self.table, self.headings, self.source, self.missing_value
+        )
 
 ### Register everything with the root parser ###
 
