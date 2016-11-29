@@ -78,6 +78,21 @@ See `commcare-export --help` for the full list of options.
 There are example query files for the CommCare Demo App (available on the CommCareHq Exchange) in the `examples/`
 directory.
 
+`--output`
+
+CommCare Export uses SQLAlachemy's [create_engine](http://docs.sqlalchemy.org/en/latest/core/engines.html) to establish a database connection. This is based off of the [RFC-1738](https://www.ietf.org/rfc/rfc1738.txt) protocol. Some common examples:
+
+```
+# Postgres
+postgresql://scott:tiger@localhost/mydatabase
+
+# MySQL
+mysql://scott:tiger@localhost/foo
+
+# SQLite
+sqlite:///foo.db
+```
+
 
 Excel Queries
 -------------
