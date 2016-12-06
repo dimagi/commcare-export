@@ -150,7 +150,9 @@ def main_with_args(args):
         # Writer had bizarre issues so we use a full connection instead of passing in a URL or engine
         import sqlalchemy
         engine = sqlalchemy.create_engine(args.output)
-        writer = writers.SqlTableWriter(engine.connect(), args.strict_types)
+        is_mysql = 'mysql' in args.output
+        collation = 'utf8_bin' if is_mysql else None
+        writer = writers.SqlTableWriter(engine.connect(), args.strict_types, collation=collation)
 
         if not args.since and not args.start_over and os.path.exists(args.query):
             connection = sqlalchemy.create_engine(args.output)

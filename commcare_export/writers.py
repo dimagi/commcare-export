@@ -182,7 +182,7 @@ class SqlTableWriter(TableWriter):
     MIN_VARCHAR_LEN=32  # Since SQLite does not actually support ALTER COLUMN type, let's maximize the chance that we do not have to write workarounds by starting medium
     MAX_VARCHAR_LEN=255 # Arbitrary point at which we switch to TEXT; for postgres VARCHAR == TEXT anyhow and for Sqlite it doesn't matter either
 
-    def __init__(self, connection, strict_types=False):
+    def __init__(self, connection, strict_types=False, collation=None):
         try:
             import sqlalchemy
             import alembic
@@ -195,6 +195,7 @@ class SqlTableWriter(TableWriter):
 
         self.base_connection = connection
         self.strict_types = strict_types
+        self.collation = collation
 
     def __enter__(self):
         self.connection = self.base_connection.connect() # "forks" the SqlAlchemy connection
@@ -241,9 +242,9 @@ class SqlTableWriter(TableWriter):
             # 3. But SQLite really barfs on altering columns. Luckily it does actually have real types,
             #    so we count on other parts of this code to not bother running column alterations
             if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
-                return self.sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN) )
+                return self.sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
             else:
-                return self.sqlalchemy.UnicodeText()
+                return self.sqlalchemy.UnicodeText(collation=self.collation)
         else:
             # We do not have a name for "bottom" in SQL aka the type whose least upper bound
             # with any other type is the other type.

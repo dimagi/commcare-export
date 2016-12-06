@@ -131,8 +131,8 @@ class TestWriters(unittest.TestCase):
                 ['4', '日本', '6'],
             ]
 
-    def SqlWriter_insert_tests(self, engine):
-        writer = SqlTableWriter(engine.connect())
+    def SqlWriter_insert_tests(self, engine, is_mysql=False):
+        writer = self.get_sql_writer(engine.connect(), is_mysql)
         with writer:
             writer.write_table({
                 'name': 'foo_insert',
@@ -150,8 +150,8 @@ class TestWriters(unittest.TestCase):
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 2, 'c': 3}
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': 5, 'c': 6}
 
-    def SqlWriter_upsert_tests(self, connection):
-        writer = SqlTableWriter(connection)
+    def SqlWriter_upsert_tests(self, connection, is_mysql=False):
+        writer = self.get_sql_writer(connection, is_mysql)
 
         with writer:
             writer.write_table({
@@ -200,9 +200,9 @@ class TestWriters(unittest.TestCase):
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 7, 'b': '本', 'c': 9}
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': 6}
 
-    def SqlWriter_types_test(self, connection, table_name=None):
+    def SqlWriter_types_test(self, connection, table_name=None, is_mysql=False):
         table_name = table_name or 'foo_fancy_types'
-        writer = SqlTableWriter(connection)
+        writer = self.get_sql_writer(connection, is_mysql)
         with writer:
             writer.write_table({
                 'name': table_name or 'foo_fancy_types',
@@ -222,10 +222,10 @@ class TestWriters(unittest.TestCase):
         assert dict(result['bazzle']) == self._type_convert(connection, {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': False,
                                           'd': datetime.date(2015, 1, 2), 'e': datetime.datetime(2014, 5, 1, 11, 16, 45)})
 
-    def SqlWriter_change_type_test(self, connection, expected):
-        self.SqlWriter_types_test(connection, 'foo_fancy_type_changes')
+    def SqlWriter_change_type_test(self, connection, expected, is_mysql=False):
+        self.SqlWriter_types_test(connection, 'foo_fancy_type_changes', is_mysql=is_mysql)
 
-        writer = SqlTableWriter(connection)
+        writer = self.get_sql_writer(connection, is_mysql)
         with writer:
             writer.write_table({
                 'name': 'foo_fancy_type_changes',
@@ -243,13 +243,18 @@ class TestWriters(unittest.TestCase):
             assert id in expected
             assert dict(row) == expected[id]
 
+    def get_sql_writer(self, connection, is_mysql):
+        collation = 'utf8_bin' if is_mysql else None
+        writer = SqlTableWriter(connection, collation=collation)
+        return writer
+
     def test_postgres_insert(self):
         with self.postgres_engine.connect() as conn:
             self.SqlWriter_insert_tests(conn)
 
     def test_mysql_insert(self):
         with self.mysql_engine.connect() as conn:
-            self.SqlWriter_insert_tests(conn)
+            self.SqlWriter_insert_tests(conn, is_mysql=True)
 
     def test_sqlite_insert(self):
         # SQLite requires a connection, not just an engine, or the created tables seem to never commit.
@@ -262,7 +267,7 @@ class TestWriters(unittest.TestCase):
 
     def test_mysql_upsert(self):
         with self.mysql_engine.connect() as conn:
-            self.SqlWriter_upsert_tests(conn)
+            self.SqlWriter_upsert_tests(conn, is_mysql=True)
 
     def test_sqlite_upsert(self):
         with self.sqlite_engine.connect() as conn:
@@ -302,7 +307,7 @@ class TestWriters(unittest.TestCase):
                        'd': datetime.date(2015, 1, 2), 'e': '2014-05-01 11:16:45'}
         }
         with self.mysql_engine.connect() as conn:
-            self.SqlWriter_change_type_test(conn, expected)
+            self.SqlWriter_change_type_test(conn, expected, is_mysql=True)
 
     def test_mysql_types(self):
         '''
@@ -310,4 +315,4 @@ class TestWriters(unittest.TestCase):
         core features such as column type changes
         '''
         with self.mysql_engine.connect() as conn:
-            self.SqlWriter_types_test(conn)
+            self.SqlWriter_types_test(conn, is_mysql=True)
