@@ -248,7 +248,7 @@ class SqlTableWriter(TableWriter):
         else:
             # We do not have a name for "bottom" in SQL aka the type whose least upper bound
             # with any other type is the other type.
-            return self.sqlalchemy.UnicodeText()
+            return self.sqlalchemy.UnicodeText(collation=self.collation)
 
     def compatible(self, source_type, dest_type):
         """
@@ -286,7 +286,7 @@ class SqlTableWriter(TableWriter):
         """
 
         # FIXME: Don't be so silly
-        return self.sqlalchemy.UnicodeText()
+        return self.sqlalchemy.UnicodeText(collation=self.collation)
 
     def get_id_column(self):
         return self.sqlalchemy.Column(
