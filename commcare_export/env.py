@@ -222,9 +222,17 @@ class JsonPathEnv(Env):
 
 @unwrap('val')
 def str2bool(val):
+    if val is None:
+        return False
+
     if isinstance(val, bool):
         return val
-    return val and str(val).lower() in {'true', 't', '1'}
+
+    if not isinstance(val, six.string_types):
+        val = str(val)
+
+    return val and val.lower() in {'true', 't', '1'}
+
 
 @unwrap('val')
 def str2num(val):
@@ -242,7 +250,15 @@ def str2date(val):
     import dateutil.parser as parser
     if not val:
         return None
-    date = parser.parse(val)
+
+    if not isinstance(val, six.string_types):
+        val = str(val)
+
+    try:
+        date = parser.parse(val)
+    except ValueError:
+        return
+
     try:
         date = date.astimezone(pytz.utc)
     except ValueError:
@@ -265,8 +281,11 @@ def selected_at(val, index):
     except ValueError:
         return "Error: index must be an integer"
 
+    if not isinstance(val, six.string_types):
+        val = str(val)
+
     try:
-        return str(val).split()[index]
+        return val.split()[index]
     except (IndexError, ValueError):
         return None
 
@@ -276,7 +295,10 @@ def selected(val, reference):
     if not val:
         return None
 
-    parts = str(val).split()
+    if not isinstance(val, six.string_types):
+        val = str(val)
+
+    parts = val.split()
     return reference in parts
 
 
@@ -285,7 +307,10 @@ def count_selected(val):
     if not val:
         return None
 
-    return len(str(val).split())
+    if not isinstance(val, six.string_types):
+        val = str(val)
+
+    return len(val.split())
 
 
 def join(*args):
