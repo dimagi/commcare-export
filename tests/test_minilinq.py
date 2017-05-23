@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import unittest
 from itertools import *
 from six.moves import map, xrange
@@ -62,21 +63,25 @@ class TestMiniLinq(unittest.TestCase):
         assert Apply(Reference("str2bool"), Literal('1')).eval(env) == True
         assert Apply(Reference("str2bool"), Literal('0')).eval(env) == False
         assert Apply(Reference("str2bool"), Literal('false')).eval(env) == False
+        assert Apply(Reference("str2bool"), Literal(u'日本')).eval(env) == False
         assert Apply(Reference("str2num"), Literal('10')).eval(env) == 10
         assert Apply(Reference("str2num"), Literal('10.56')).eval(env) == 10.56
         assert Apply(Reference("str2date"), Literal('2015-01-01')).eval(env) == datetime(2015, 1, 1)
         assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57')).eval(env) == datetime(2015, 1, 1, 18, 32, 57)
         assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57.001200')).eval(env) == datetime(2015, 1, 1, 18, 32, 57)
         assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57.001200Z')).eval(env) == datetime(2015, 1, 1, 18, 32, 57)
+        assert Apply(Reference("str2date"), Literal(u'日')).eval(env) == None
         assert Apply(Reference("selected-at"), Literal('a b c'), Literal('1')).eval(env) == 'b'
-        assert Apply(Reference("selected-at"), Literal('a b c'), Literal('-1')).eval(env) == 'c'
+        assert Apply(Reference("selected-at"), Literal(u'a b 日'), Literal('-1')).eval(env) == u'日'
         assert Apply(Reference("selected-at"), Literal('a b c'), Literal('5')).eval(env) is None
         assert Apply(Reference("selected"), Literal('a b c'), Literal('b')).eval(env) is True
-        assert Apply(Reference("selected"), Literal('a b c'), Literal('d')).eval(env) is False
-        assert Apply(Reference("selected"), Literal('a bb c'), Literal('b')).eval(env) is False
+        assert Apply(Reference("selected"), Literal(u'a b 日本'), Literal('d')).eval(env) is False
+        assert Apply(Reference("selected"), Literal(u'a bb 日本'), Literal('b')).eval(env) is False
+        assert Apply(Reference("selected"), Literal(u'a bb 日本'), Literal(u'日本')).eval(env) is True
         assert Apply(Reference("join"), Literal('.'), Literal('a'), Literal('b'), Literal('c')).eval(env) == 'a.b.c'
         assert Apply(Reference("default"), Literal(None), Literal('a')).eval(env) == 'a'
         assert Apply(Reference("default"), Literal('b'), Literal('a')).eval(env) == 'b'
+        assert Apply(Reference("count-selected"), Literal(u'a bb 日本')).eval(env) == 3
 
     def test_map(self):
         env = BuiltInEnv() | DictEnv({})
