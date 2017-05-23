@@ -70,6 +70,7 @@ class TestMiniLinq(unittest.TestCase):
         assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57')).eval(env) == datetime(2015, 1, 1, 18, 32, 57)
         assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57.001200')).eval(env) == datetime(2015, 1, 1, 18, 32, 57)
         assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57.001200Z')).eval(env) == datetime(2015, 1, 1, 18, 32, 57)
+        assert Apply(Reference("str2date"), Literal(u'日'.encode('utf8'))).eval(env) == None
         assert Apply(Reference("str2date"), Literal(u'日')).eval(env) == None
         assert Apply(Reference("selected-at"), Literal('a b c'), Literal('1')).eval(env) == 'b'
         assert Apply(Reference("selected-at"), Literal(u'a b 日'), Literal('-1')).eval(env) == u'日'

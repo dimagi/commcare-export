@@ -254,7 +254,6 @@ def str2date(val):
     if not isinstance(val, six.string_types):
         val = str(val)
 
-    val = val.encode('utf8')
     try:
         date = parser.parse(val)
     except ValueError:
