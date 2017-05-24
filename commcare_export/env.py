@@ -220,6 +220,16 @@ class JsonPathEnv(Env):
 # Actual concrete environments, basically with built-in functions.
 #
 
+
+def _to_unicode(val):
+    if isinstance(val, bytes):
+        return val.decode('utf8')
+    elif not isinstance(val, six.text_type):
+        return six.text_type(val)
+
+    return val
+
+
 @unwrap('val')
 def str2bool(val):
     if val is None:
@@ -228,10 +238,8 @@ def str2bool(val):
     if isinstance(val, bool):
         return val
 
-    if not isinstance(val, six.string_types):
-        val = str(val)
-
-    return val and val.lower() in {'true', 't', '1'}
+    val = _to_unicode(val)
+    return bool(val) and val.lower() in {'true', 't', '1'}
 
 
 @unwrap('val')
@@ -251,8 +259,7 @@ def str2date(val):
     if not val:
         return None
 
-    if not isinstance(val, six.string_types):
-        val = str(val)
+    val = _to_unicode(val)
 
     try:
         date = parser.parse(val)
@@ -281,8 +288,7 @@ def selected_at(val, index):
     except ValueError:
         return "Error: index must be an integer"
 
-    if not isinstance(val, six.string_types):
-        val = str(val)
+    val = _to_unicode(val)
 
     try:
         return val.split()[index]
@@ -295,8 +301,7 @@ def selected(val, reference):
     if not val:
         return None
 
-    if not isinstance(val, six.string_types):
-        val = str(val)
+    val = _to_unicode(val)
 
     parts = val.split()
     return reference in parts
@@ -307,8 +312,7 @@ def count_selected(val):
     if not val:
         return None
 
-    if not isinstance(val, six.string_types):
-        val = str(val)
+    val = _to_unicode(val)
 
     return len(val.split())
 
