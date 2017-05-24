@@ -239,7 +239,7 @@ def str2bool(val):
         return val
 
     val = _to_unicode(val)
-    return val and val.lower() in {'true', 't', '1'}
+    return bool(val) and val.lower() in {'true', 't', '1'}
 
 
 @unwrap('val')
