@@ -45,8 +45,9 @@ def main(argv):
     parser.add_argument('--username')
     parser.add_argument('--password')
     parser.add_argument('--auth-mode', default='digest', help='Use "session" based auth or "digest" auth.')
-    parser.add_argument('--since')
-    parser.add_argument('--start-over', default=False, action='store_true', 
+    parser.add_argument('--since', help='Export all data after this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS')
+    parser.add_argument('--until', help='Export all data up until this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS')
+    parser.add_argument('--start-over', default=False, action='store_true',
                         help='When saving to a SQL database; the default is to pick up since the last success. This disables that.')
     parser.add_argument('--profile')
     parser.add_argument('--verbose', default=False, action='store_true')
@@ -174,7 +175,9 @@ def main_with_args(args):
 
     if args.since:
         logger.debug('Starting from %s', args.since)
-    env = BuiltInEnv() | CommCareHqEnv(api_client, since=dateutil.parser.parse(args.since) if args.since else None) | JsonPathEnv({}) 
+    since = dateutil.parser.parse(args.since) if args.since else None
+    until = dateutil.parser.parse(args.until) if args.until else None
+    env = BuiltInEnv() | CommCareHqEnv(api_client, since=since, until=until) | JsonPathEnv({})
     results = query.eval(env)
 
     # Assume that if any tables were emitted, that is the idea, otherwise print the output
