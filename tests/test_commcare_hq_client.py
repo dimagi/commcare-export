@@ -7,6 +7,8 @@ from itertools import *
 import requests
 
 from commcare_export.commcare_hq_client import CommCareHqClient
+from commcare_export.commcare_minilinq import SimplePaginator
+
 
 class FakeSession(object):
     def get(self, resource_url, params=None, auth=None):
@@ -37,7 +39,7 @@ class TestCommCareHqClient(unittest.TestCase):
         client = CommCareHqClient('/fake/commcare-hq/url', project='fake-project', session = FakeSession())
 
         # Iteration should do two "gets" because the first will have something in the "next" metadata field
-        results = list(client.iterate('/fake/uri'))
+        results = list(client.iterate('/fake/uri', SimplePaginator('fake')))
         self.assertEqual(len(results), 2)
         self.assertEqual(results[0]['foo'], 1)
         self.assertEqual(results[1]['foo'], 2)
