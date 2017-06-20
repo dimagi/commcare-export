@@ -103,6 +103,7 @@ class CommCareHqClient(object):
         params = dict(params or {})
         def iterate_resource(resource=resource, params=params):
             more_to_fetch = True
+            last_batch_ids = set()
 
             while more_to_fetch:
                 batch = self.get(resource, params)
@@ -116,9 +117,11 @@ class CommCareHqClient(object):
                     more_to_fetch = False
                 else:
                     for obj in batch['objects']:
-                        yield obj
+                        if obj['id'] not in last_batch_ids:
+                            yield obj
 
                     if batch['meta']['next']:
+                        last_batch_ids = {obj['id'] for obj in batch['objects']}
                         params = paginator.next_page_params_from_batch(batch)
                         if not params:
                             more_to_fetch = False
