@@ -11,7 +11,7 @@ import datetime
 from commcare_export.writers import *
 
 MYSQL_TYPE_MAP = {
-    bool: lambda x: str(int(x))
+    bool: lambda x: int(x)
 }
 
 class TestWriters(unittest.TestCase):
@@ -231,7 +231,7 @@ class TestWriters(unittest.TestCase):
                 'name': 'foo_fancy_type_changes',
                 'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
                 'rows': [
-                    ['bizzle', 'yo dude', '本', 5, datetime.datetime(2015, 2, 13), '2014-08-01T11:23:45:00.0000Z'],
+                    ['bizzle', 'yo dude', '本', 'true', datetime.datetime(2015, 2, 13), '2014-08-01T11:23:45:00.0000Z'],
                 ]
             })
             
@@ -279,7 +279,7 @@ class TestWriters(unittest.TestCase):
         core features such as column type changes
         '''
         expected = {
-            'bizzle': {'id': 'bizzle', 'a': 'yo dude', 'b': '本', 'c': '5',
+            'bizzle': {'id': 'bizzle', 'a': 'yo dude', 'b': '本', 'c': 'true',
                        'd': datetime.date(2015, 2, 13), 'e': '2014-08-01T11:23:45:00.0000Z'},
             'bazzle': {'id': 'bazzle', 'a': '4', 'b': '日本', 'c': 'false',
                        'd': datetime.date(2015, 1, 2), 'e': '2014-05-01 11:16:45'}
@@ -301,7 +301,7 @@ class TestWriters(unittest.TestCase):
         core features such as column type changes
         '''
         expected = {
-            'bizzle': {'id': 'bizzle', 'a': 'yo dude', 'b': '本', 'c': '5',
+            'bizzle': {'id': 'bizzle', 'a': 'yo dude', 'b': '本', 'c': 'true',
                        'd': datetime.date(2015, 2, 13), 'e': '2014-08-01T11:23:45:00.0000Z'},
             'bazzle': {'id': 'bazzle', 'a': '4', 'b': '日本', 'c': '0',
                        'd': datetime.date(2015, 1, 2), 'e': '2014-05-01 11:16:45'}

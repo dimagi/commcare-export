@@ -269,7 +269,7 @@ class SqlTableWriter(TableWriter):
         compatibility = {
             self.sqlalchemy.String: (self.sqlalchemy.Text,),
             self.sqlalchemy.Integer: (self.sqlalchemy.String, self.sqlalchemy.Text),
-            self.sqlalchemy.Boolean: (self.sqlalchemy.String, self.sqlalchemy.Text),
+            self.sqlalchemy.Boolean: (self.sqlalchemy.String, self.sqlalchemy.Text, self.sqlalchemy.Integer),
             self.sqlalchemy.DateTime: (self.sqlalchemy.String, self.sqlalchemy.Text, self.sqlalchemy.Date),
             self.sqlalchemy.Date: (self.sqlalchemy.String, self.sqlalchemy.Text),
         }
@@ -354,7 +354,7 @@ class SqlTableWriter(TableWriter):
                         logger.warn('Type mismatch detected for column %s (%s != %s) '
                                     'but sqlite does not support changing column types', columns[column], current_ty, new_type)
                         continue
-                    logger.warn('Altering column %s from %s to %s', columns[column], current_ty, new_type)
+                    logger.warn('Altering column %s from %s to %s for value: "%s:%s"', columns[column], current_ty, new_type, type(val), val)
                     op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
                     self.metadata.reflect()
