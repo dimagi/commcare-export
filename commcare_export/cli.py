@@ -182,6 +182,11 @@ def main_with_args(args):
         with writer:
             for table in env.emitted_tables():
                 logger.debug('Writing %s', table['name'])
+                if table['name'] != table['name'].lower():
+                    logger.warning(
+                        "Caution: Using upper case letters in a "
+                        "table name is not advised: {}".format(table['name'])
+                    )
                 writer.write_table(table)
 
             if args.output_format == 'sql' and os.path.exists(args.query):
