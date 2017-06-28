@@ -70,3 +70,14 @@ class TestCommCareHqClient(unittest.TestCase):
     def test_iterate_date(self):
         self._test_iterate(FakeDateSession('form'), DatePaginator('form', 'since_field'))
         self._test_iterate(FakeDateSession('case'), DatePaginator('case', 'since_field'))
+
+
+class TestDatePaginator(unittest.TestCase):
+
+    @classmethod
+    def setup_class(cls):
+        pass
+
+    def test_empty_batch(self):
+        self.assertIsNone(DatePaginator('fake', 'since').next_page_params_from_batch({'objects': []}))
+
