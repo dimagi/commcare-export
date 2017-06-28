@@ -65,6 +65,9 @@ class CommCareHqEnv(DictEnv):
 
 
 class SimplePaginator(object):
+    """
+    Paginate based on the 'next' URL provided in the API response.
+    """
     def __init__(self, resource):
         self.resource = resource
 
@@ -97,6 +100,18 @@ class SimplePaginator(object):
 
 
 class DatePaginator(SimplePaginator):
+    """
+    This paginator is designed to get around the issue of deep paging where the deeper the page the longer
+    the query takes.
+
+    Paginate records according to a date in the record. The params for the next batch will include a filter
+    for the date of the last record in the previous batch.
+
+    This also adds an ordering parameter to ensure that the records are ordered by the date field in ascending order.
+
+    :param resource: The name of the resource being fetched: ``form`` or ``case``.
+    :param since_field: The name of the date field to use for pagination.
+    """
     def __init__(self, resource, since_field):
         super(DatePaginator, self).__init__(resource)
         self.since_field = since_field
