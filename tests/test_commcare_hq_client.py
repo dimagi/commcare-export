@@ -81,3 +81,8 @@ class TestDatePaginator(unittest.TestCase):
     def test_empty_batch(self):
         self.assertIsNone(DatePaginator('fake', 'since').next_page_params_from_batch({'objects': []}))
 
+    def test_bad_date(self):
+        self.assertIsNone(DatePaginator('fake', 'since').next_page_params_from_batch({'objects': [{
+            'since': 'not a date'
+        }]}))
+
