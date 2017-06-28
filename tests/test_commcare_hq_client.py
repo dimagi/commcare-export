@@ -15,12 +15,12 @@ class FakeSession(object):
         if params:
             result = {
                 'meta': { 'next': None, 'offset': params['offset'][0], 'limit': 1, 'total_count': 2 },
-                'objects': [ {'foo': 2} ]
+                'objects': [ {'id': 1, 'foo': 2} ]
             }
         else:
             result = {
                 'meta': { 'next': '?offset=1', 'offset': 0, 'limit': 1, 'total_count': 2 },
-                'objects': [ {'foo': 1} ]
+                'objects': [ {'id': 2, 'foo': 1} ]
             }
 
         # Mutatey construction method required by requests.Response
