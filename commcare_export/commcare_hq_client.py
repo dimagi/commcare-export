@@ -1,4 +1,7 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+
+from collections import OrderedDict
+
 import requests
 import logging
 
@@ -92,7 +95,7 @@ class CommCareHqClient(object):
         else:
             return response.json()
             
-    def iterate(self, resource, params=None):
+    def iterate(self, resource, paginator, params=None):
         """
         Assumes the endpoint is a list endpoint, and iterates over it
         making a lot of assumptions that it is like a tastypie endpoint.
@@ -100,6 +103,7 @@ class CommCareHqClient(object):
         params = dict(params or {})
         def iterate_resource(resource=resource, params=params):
             more_to_fetch = True
+            last_batch_ids = set()
 
             while more_to_fetch:
                 batch = self.get(resource, params)
@@ -113,10 +117,14 @@ class CommCareHqClient(object):
                     more_to_fetch = False
                 else:
                     for obj in batch['objects']:
-                        yield obj
+                        if obj['id'] not in last_batch_ids:
+                            yield obj
 
                     if batch['meta']['next']:
-                        params = parse_qs(urlparse(batch['meta']['next']).query)
+                        last_batch_ids = {obj['id'] for obj in batch['objects']}
+                        params = paginator.next_page_params_from_batch(batch)
+                        if not params:
+                            more_to_fetch = False
                     else:
                         more_to_fetch = False
                 
@@ -143,15 +151,15 @@ class MockCommCareHqClient(object):
     })
     """    
     def __init__(self, mock_data):
-        self.mock_data = dict([(resource, dict([(urlencode(params), result) for params, result in resource_results]))
+        self.mock_data = dict([(resource, dict([(urlencode(OrderedDict(sorted(params.items()))), result) for params, result in resource_results]))
                               for resource, resource_results in mock_data.items()])
 
     def authenticated(self, *args, **kwargs):
         return self
 
-    def get(self, resource, params=None):
-        return self.mock_data[resource][urlencode(params)]
+    def get(self, resource, paginator, params=None):
+        return self.mock_data[resource][urlencode(OrderedDict(sorted(d.items())))]
     
-    def iterate(self, resource, params=None):
-        return self.mock_data[resource][urlencode(params)]
+    def iterate(self, resource, paginator, params=None):
+        return self.mock_data[resource][urlencode(OrderedDict(sorted(params.items())))]
 
