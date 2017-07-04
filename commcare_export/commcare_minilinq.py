@@ -129,8 +129,11 @@ class DatePaginator(SimplePaginator):
 
         since = last_obj and last_obj.get(self.since_field)
         if since:
-            try:
-                since_date = datetime.strptime(since, '%Y-%m-%dT%H:%M:%SZ')
-            except ValueError:
-                return
-            return self.next_page_params_since(since_date)
+            since_date = None
+            for fmt in ('%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S.%fZ'):
+                try:
+                    since_date = datetime.strptime(since, fmt)
+                except ValueError:
+                    pass
+            if since_date:
+                return self.next_page_params_since(since_date)
