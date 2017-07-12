@@ -329,6 +329,20 @@ def default(val, default_val):
     return val
 
 
+@unwrap('val')
+def attachment_url(val):
+    if not val:
+        return None
+    from commcare_export.minilinq import Apply, Reference, Literal
+    return Apply(
+        Reference('template'),
+        Literal('https://www.commcarehq.org/a/{}/api/form/attachment/{}/{}'),
+        Reference('domain'),
+        Reference('$.id'),
+        Literal(val)
+    )
+
+
 def template(format_template, *args):
     args = [unwrap_val(arg) for arg in args]
     return format_template.format(*args)
@@ -368,6 +382,7 @@ class BuiltInEnv(DictEnv):
             'join': join,
             'default': default,
             'template': template,
+            'attachment_url': attachment_url,
         })
 
     def bind(self, name, value): raise CannotBind()

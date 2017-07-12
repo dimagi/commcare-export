@@ -343,7 +343,10 @@ class Apply(MiniLinq):
         fn_result = self.fn.eval(env)
         args_results = [arg.eval(env) for arg in self.args]
 
-        return fn_result(*args_results)
+        result = fn_result(*args_results)
+        if isinstance(result, MiniLinq):
+            return result.eval(env)
+        return result
 
     def __eq__(self, other):
         return isinstance(other, Apply) and self.fn == other.fn and self.args == other.args
