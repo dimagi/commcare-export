@@ -140,7 +140,7 @@ class DictEnv(Env):
         
     def lookup(self, name):
         try:             return self.d[name]
-        except KeyError: raise NotFound()
+        except KeyError: raise NotFound(unwrap_val(name))
 
     def replace(self, data):
         if isinstance(data, dict): return DictEnv(data)
@@ -181,7 +181,7 @@ class JsonPathEnv(Env):
         elif isinstance(name, jsonpath.JSONPath):
             jsonpath_expr = name
         else:
-            raise NotImplementedError() 
+            raise NotFound(unwrap_val(name))
 
         def iter(jsonpath_expr=jsonpath_expr): # Capture closure
             for datum in jsonpath_expr.find(self.__bindings):
