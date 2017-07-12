@@ -277,7 +277,7 @@ List of builtin functions:
 | selected                     | Returns True if the given word is in the value.                                | selected(fever)                  |
 | count-selected               | Count the number of words                                                      |                                  |
 | template                     | Render a string template (not robust)                                          | template({} on {}, state, date)  |
-| attachment_url               | Convert and attachment name into it's download URL                             |                                  |
+| attachment_url               | Convert an attachment name into it's download URL                             |                                  |
 
 Output Formats
 --------------
