@@ -85,7 +85,7 @@ class TestMiniLinq(unittest.TestCase):
         assert Apply(Reference("count-selected"), Literal(u'a bb 日本')).eval(env) == 3
 
     def test_attachment_url(self):
-        env = BuiltInEnv() | JsonPathEnv({'id': '123', 'domain': 'd1', 'photo': 'a.jpg'})
+        env = BuiltInEnv({'commcarehq_base_url': 'https://www.commcarehq.org'}) | JsonPathEnv({'id': '123', 'domain': 'd1', 'photo': 'a.jpg'})
         expected = 'https://www.commcarehq.org/a/d1/api/form/attachment/123/a.jpg'
         assert Apply(Reference('attachment_url'), Reference('photo')).eval(env) == expected
 

@@ -39,7 +39,7 @@ def main(argv):
     parser.add_argument('--version', default=False, action='store_true', help='Print the current version of the commcare-export tool.')
     parser.add_argument('--query', help='JSON or Excel query file. If omitted, JSON string is read from stdin.')
     parser.add_argument('--dump-query', default=False, action='store_true')
-    parser.add_argument('--commcare-hq', default='prod')
+    parser.add_argument('--commcare-hq', default='prod', help='Base url for the CommCare HQ instance e.g. https://www.commcarehq.org')
     parser.add_argument('--api-version', default=LATEST_KNOWN_VERSION)
     parser.add_argument('--project')
     parser.add_argument('--username')
@@ -126,7 +126,8 @@ def main_with_args(args):
         args.password = getpass.getpass()
 
     # Build an API client using either the URL provided, or the URL for a known alias
-    api_client = CommCareHqClient(url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq), 
+    commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
+    api_client = CommCareHqClient(url =commcarehq_base_url,
                                   project = args.project,
                                   version = args.api_version)
 
@@ -177,7 +178,7 @@ def main_with_args(args):
         logger.debug('Starting from %s', args.since)
     since = dateutil.parser.parse(args.since) if args.since else None
     until = dateutil.parser.parse(args.until) if args.until else None
-    env = BuiltInEnv() | CommCareHqEnv(api_client, since=since, until=until) | JsonPathEnv({})
+    env = BuiltInEnv({'commcarehq_base_url': commcarehq_base_url}) | CommCareHqEnv(api_client, since=since, until=until) | JsonPathEnv({})
     results = query.eval(env)
 
     # Assume that if any tables were emitted, that is the idea, otherwise print the output
