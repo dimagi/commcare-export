@@ -12,7 +12,7 @@ VERSION_PATH='commcare_export/VERSION'
 
 # Build README.txt from README.md if not present, and if we are actually building for distribution to pypi
 if not os.path.exists('README.txt') and 'sdist' in sys.argv:
-    subprocess.call(['pandoc', '--to=rst', '--output=README.txt', 'README.md'])
+    subprocess.call(['pandoc', '--to=rst', '--output=README.txt', 'README.md', '--columns=160'])
 
 # Overwrite VERSION if we are actually building for a distribution to pypi
 # This code path requires dependencies, etc, to be available

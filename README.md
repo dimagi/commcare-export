@@ -247,12 +247,12 @@ to expose the structure of the MiniLinq for possible optimization, and to restri
 
 Here is a description of the astract syntax and semantics
 
-| Python                      | JSON                                                | Which is evaluates to            |
-|-----------------------------|-----------------------------------------------------|----------------------------------|
-| `Literal(v)`                | `{"Lit": v}`                                        | Just `v`                         |
-| `Reference(x)`              | `{"Ref": x}`                                        | Whatever `x` resolves to in the environment |
-| `List([a, b, c, ...])`      | `{"List": [a, b, c, ...}`                           | The list of what `a`, `b`, `c` evaluate to |
-| `Map(source, name, body)`   | `{"Map": {"source": ..., "name": ..., "body": ...}` | Evals `body` for each elem in `source`. If `name` is provided, the elem will be bound to it, otherwise it will replace the whole env. |
+| Python                        | JSON                                                | Which is evaluates to            |
+|-------------------------------|-----------------------------------------------------|----------------------------------|
+| `Literal(v)`                  | `{"Lit": v}`                                        | Just `v`                         |
+| `Reference(x)`                | `{"Ref": x}`                                        | Whatever `x` resolves to in the environment |
+| `List([a, b, c, ...])`        | `{"List": [a, b, c, ...}`                           | The list of what `a`, `b`, `c` evaluate to |
+| `Map(source, name, body)`     | `{"Map": {"source": ..., "name": ..., "body": ...}` | Evals `body` for each elem in `source`. If `name` is provided, the elem will be bound to it, otherwise it will replace the whole env. |
 | `FlatMap(source, name, body)` | `{"FlatMap": {"source" ... etc}}` | Flattens after mapping, like nested list comprehensions |
 | `Filter(source, name, body)`  | etc | |
 | `Bind(value, name, body)`     | etc | Binds the result of `value` to `name` when evaluating `body` |
@@ -264,9 +264,9 @@ referred to be name using `Ref`, and utilized via `Apply`.
 
 List of builtin functions:
 
-| Function                     | Description                                                                    | Example Usage                    |
-|------------------------------|--------------------------------------------------------------------------------|----------------------------------|
-| +, -, *, //, /, >, <, >=, <= | Standard Math                                                                  |                                  |
+| Function                       | Description                                                                    | Example Usage                    |
+|--------------------------------|--------------------------------------------------------------------------------|----------------------------------|
+| `+, -, *, //, /, >, <, >=, <=` | Standard Math                                                                  |                                  |
 | len                          | Length                                                                         |                                  |
 | bool                         | Bool                                                                           |                                  |
 | str2bool                     | Convert string to boolean. True values are 'true', 't', '1' (case insensitive) |                                  |
@@ -277,7 +277,7 @@ List of builtin functions:
 | selected                     | Returns True if the given word is in the value.                                | selected(fever)                  |
 | count-selected               | Count the number of words                                                      |                                  |
 | template                     | Render a string template (not robust)                                          | template({} on {}, state, date)  |
-| attachment_url               | Convert an attachment name into it's download URL                             |                                  |
+| attachment_url               | Convert an attachment name into it's download URL                              |                                  |
 
 Output Formats
 --------------
