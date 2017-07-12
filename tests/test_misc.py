@@ -6,6 +6,8 @@ import tempfile
 import struct
 
 from commcare_export import misc
+from commcare_export.map_format import parse_template
+
 
 class TestDigestFile(unittest.TestCase):
 
