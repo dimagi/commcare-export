@@ -84,6 +84,12 @@ class TestMiniLinq(unittest.TestCase):
         assert Apply(Reference("default"), Literal('b'), Literal('a')).eval(env) == 'b'
         assert Apply(Reference("count-selected"), Literal(u'a bb 日本')).eval(env) == 3
 
+
+    def test_template(self):
+        env = BuiltInEnv() | JsonPathEnv({'a': '1', 'b': '2'})
+        assert Apply(Reference('template'), Literal('{}.{}'), Reference('a'), Reference('b')).eval(env) == '1.2'
+
+
     def test_map(self):
         env = BuiltInEnv() | DictEnv({})
 

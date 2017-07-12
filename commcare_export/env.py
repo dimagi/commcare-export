@@ -329,6 +329,11 @@ def default(val, default_val):
     return val
 
 
+def template(format_template, *args):
+    args = [unwrap_val(arg) for arg in args]
+    return format_template.format(*args)
+
+
 class BuiltInEnv(DictEnv):
     """
     A built-in environment of operators and functions
@@ -362,6 +367,7 @@ class BuiltInEnv(DictEnv):
             'count-selected': count_selected,
             'join': join,
             'default': default,
+            'template': template,
         })
 
     def bind(self, name, value): raise CannotBind()
