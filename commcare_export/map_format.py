@@ -40,9 +40,11 @@ def parse_template(value_expr, format_expr_string):
     if len(args) < 1:
         return Literal('Error: template function requires the format template: {}'.format(format_expr_string))
     template = args.pop(0)
-    if not args:
+    if args:
+        args = [Reference(arg) for arg in args]
+    else:
         args = [value_expr]
-    return Apply(Reference(TEMPLATE), Literal(template), *[Reference(arg) for arg in args])
+    return Apply(Reference(TEMPLATE), Literal(template), *args)
 
 
 MAP_FORMAT_PARSERS = {
