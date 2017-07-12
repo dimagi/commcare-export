@@ -7,6 +7,7 @@ import struct
 
 from commcare_export import misc
 
+
 class TestDigestFile(unittest.TestCase):
 
     def check_digest(self, contents):

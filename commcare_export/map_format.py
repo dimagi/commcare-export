@@ -4,6 +4,7 @@ from commcare_export.minilinq import Literal, Apply, Reference
 
 SELECTED_AT = 'selected-at'
 SELECTED = 'selected'
+TEMPLATE = 'template'
 
 
 class ParsingException(Exception):
@@ -33,9 +34,21 @@ def parse_selected(value_expr, selected_expr_string):
     return Apply(Reference(SELECTED), value_expr, Literal(ref_val))
 
 
+def parse_template(value_expr, format_expr_string):
+    args_string = parse_function_arg(TEMPLATE, format_expr_string)
+    args = [arg.strip() for arg in args_string.split(',') if arg.strip()]
+    if len(args) < 1:
+        return Literal('Error: template function requires the format template: {}'.format(format_expr_string))
+    template = args.pop(0)
+    if not args:
+        args = [value_expr]
+    return Apply(Reference(TEMPLATE), Literal(template), *[Reference(arg) for arg in args])
+
+
 MAP_FORMAT_PARSERS = {
     SELECTED_AT: parse_selected_at,
     SELECTED: parse_selected,
+    TEMPLATE: parse_template,
 }
 
 

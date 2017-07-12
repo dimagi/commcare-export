@@ -329,6 +329,26 @@ def default(val, default_val):
     return val
 
 
+@unwrap('val')
+def attachment_url(val):
+    if not val:
+        return None
+    from commcare_export.minilinq import Apply, Reference, Literal
+    return Apply(
+        Reference('template'),
+        Literal('{}/a/{}/api/form/attachment/{}/{}'),
+        Reference('commcarehq_base_url'),
+        Reference('domain'),
+        Reference('$.id'),
+        Literal(val)
+    )
+
+
+def template(format_template, *args):
+    args = [unwrap_val(arg) for arg in args]
+    return format_template.format(*args)
+
+
 class BuiltInEnv(DictEnv):
     """
     A built-in environment of operators and functions
@@ -339,19 +359,20 @@ class BuiltInEnv(DictEnv):
     the first env involved in almost any situation.
     """
     
-    def __init__(self):
+    def __init__(self, d=None):
         self.__tables = []
-        return super(BuiltInEnv, self).__init__({
-            '+'   : operator.__add__,
-            '-'   : operator.__sub__,
-            '*'   : operator.__mul__,
-            '//'  : operator.__floordiv__,
-            '/'   : operator.__truediv__,
-            '>'   : operator.__gt__,
-            '>='  : operator.__ge__,
-            '<'   : operator.__lt__,
-            '<='  : operator.__le__,
-            'len' : len,
+        d = d or {}
+        d.update({
+            '+': operator.__add__,
+            '-': operator.__sub__,
+            '*': operator.__mul__,
+            '//': operator.__floordiv__,
+            '/': operator.__truediv__,
+            '>': operator.__gt__,
+            '>=': operator.__ge__,
+            '<': operator.__lt__,
+            '<=': operator.__le__,
+            'len': len,
             'bool': bool,
             'str2bool': str2bool,
             'bool2int': bool2int,
@@ -362,7 +383,10 @@ class BuiltInEnv(DictEnv):
             'count-selected': count_selected,
             'join': join,
             'default': default,
+            'template': template,
+            'attachment_url': attachment_url,
         })
+        return super(BuiltInEnv, self).__init__(d)
 
     def bind(self, name, value): raise CannotBind()
     def replace(self, data): raise CannotReplace()
