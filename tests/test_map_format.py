@@ -10,7 +10,7 @@ from commcare_export.minilinq import Apply, Reference, Literal
 class TestMapFormats(unittest.TestCase):
     def test_parse_template_no_args(self):
         expected = Apply(Reference('template'), Literal('my name is {}'), Reference('form.question1'))
-        assert parse_template('form.question1', 'template(my name is {})') == expected
+        assert parse_template(Reference('form.question1'), 'template(my name is {})') == expected
 
     def test_parse_template_args(self):
         expected = Apply(Reference('template'), Literal('my name is {}'), Reference('form.question2'))
