@@ -89,6 +89,22 @@ class TestMiniLinq(unittest.TestCase):
         expected = 'https://www.commcarehq.org/a/d1/api/form/attachment/123/a.jpg'
         assert Apply(Reference('attachment_url'), Reference('photo')).eval(env) == expected
 
+    def test_attachment_url_repeat(self):
+        env = BuiltInEnv({'commcarehq_base_url': 'https://www.commcarehq.org'}) | JsonPathEnv({
+            'id': '123', 'domain': 'd1', 'repeat': [
+                {'photo': 'a.jpg'}, {'photo': 'b.jpg'}
+            ]
+        })
+        expected = [
+            'https://www.commcarehq.org/a/d1/api/form/attachment/123/a.jpg',
+            'https://www.commcarehq.org/a/d1/api/form/attachment/123/b.jpg',
+        ]
+        result = unwrap_val(Map(
+            source=Reference('repeat.[*]'),
+            body=Apply(Reference('attachment_url'), Reference('photo'))
+        ).eval(env))
+        assert result == expected
+
     def test_template(self):
         env = BuiltInEnv() | JsonPathEnv({'a': '1', 'b': '2'})
         assert Apply(Reference('template'), Literal('{}.{}'), Reference('a'), Reference('b')).eval(env) == '1.2'

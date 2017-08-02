@@ -338,7 +338,7 @@ def attachment_url(val):
         Reference('template'),
         Literal('{}/a/{}/api/form/attachment/{}/{}'),
         Reference('commcarehq_base_url'),
-        Reference('domain'),
+        Reference('$.domain'),
         Reference('$.id'),
         Literal(val)
     )
