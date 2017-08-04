@@ -1,11 +1,11 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 
+import logging
 from collections import OrderedDict
+from copy import deepcopy
 
 import requests
-import logging
-
-# This import pattern supports Python 2 and 3
+from datetime import datetime
 from requests.auth import HTTPDigestAuth
 
 AUTH_MODE_SESSION = 'session'
@@ -36,6 +36,8 @@ class CommCareHqClient(object):
         self.project = project
         self.__session = session
         self.__auth = auth
+        self._checkpointer = None
+        self._checkpoint_kwargs = {}
 
     @property
     def session(self):
@@ -106,6 +108,7 @@ class CommCareHqClient(object):
             last_batch_ids = set()
 
             while more_to_fetch:
+                fetch_start = datetime.utcnow()
                 batch = self.get(resource, params)
                 total_count = int(batch['meta']['total_count']) if batch['meta']['total_count'] else 'unknown'
                 logger.debug('Received %s-%s of %s', 
@@ -127,8 +130,22 @@ class CommCareHqClient(object):
                             more_to_fetch = False
                     else:
                         more_to_fetch = False
+
+                self.checkpoint(fetch_start)
                 
         return RepeatableIterator(iterate_resource)
+
+    def set_checkpointer(self, writer, **checkpoint_kwargs):
+        self._checkpointer = writer
+        self._checkpoint_kwargs = checkpoint_kwargs
+
+    def checkpoint(self, checkpoint_time):
+        if self._checkpointer:
+            kwargs = deepcopy(self._checkpoint_kwargs)
+            kwargs.update({
+                'checkpoint_time': checkpoint_time
+            })
+            self._checkpointer.set_checkpoint(**kwargs)
 
 class MockCommCareHqClient(object):
     """
