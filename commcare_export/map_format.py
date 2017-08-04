@@ -8,7 +8,8 @@ TEMPLATE = 'template'
 
 
 class ParsingException(Exception):
-    pass
+    def __init__(self, message):
+        self.message = message
 
 
 def parse_function_arg(slug, expr_string):
