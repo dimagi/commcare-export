@@ -1,5 +1,6 @@
 import re
 import sys
+import uuid
 import zipfile
 import csv
 import json
@@ -51,7 +52,10 @@ class TableWriter(object):
     
     def write_table(self, table):
         "{'name': str, 'headings': [str], 'rows': [[str]]} -> ()"
-        raise NotImplementedError() 
+        raise NotImplementedError()
+
+    def set_checkpoint(self, query, query_md5, checkpoint_time=None, run_complete=False):
+        pass
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
@@ -387,3 +391,14 @@ class SqlTableWriter(TableWriter):
             self.upsert(self.table(table_name), row_dict)
 
         if logger.getEffectiveLevel() == 'DEBUG': sys.stderr.write('\n')
+
+    def set_checkpoint(self, query, query_md5, checkpoint_time=None, run_complete=False):
+        logger.info('Setting checkpoint')
+        checkpoint_time = checkpoint_time or datetime.datetime.utcnow()
+        self.write_table({
+            'name': 'commcare_export_runs',
+            'headings': ['id', 'query_file_name', 'query_file_md5', 'time_of_run', 'final'],
+            'rows': [[uuid.uuid4().hex, query, query_md5, checkpoint_time.isoformat(), run_complete]]
+        })
+        if run_complete:
+            self.connection.execute(self.sqlalchemy.sql.text('DELETE FROM commcare_export_runs WHERE final = :final'), final=False)

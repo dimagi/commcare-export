@@ -184,6 +184,7 @@ def main_with_args(args):
     # Assume that if any tables were emitted, that is the idea, otherwise print the output
     if len(list(env.emitted_tables())) > 0:
         with writer:
+            api_client.set_checkpointer(writer, query=args.query, query_md5=query_file_md5)
             for table in env.emitted_tables():
                 logger.debug('Writing %s', table['name'])
                 if table['name'] != table['name'].lower():
@@ -193,12 +194,8 @@ def main_with_args(args):
                     )
                 writer.write_table(table)
 
-            if args.output_format == 'sql' and os.path.exists(args.query):
-                writer.write_table({
-                    'name': 'commcare_export_runs',
-                    'headings': ['id', 'query_file_name', 'query_file_md5', 'time_of_run'],
-                    'rows': [ [uuid.uuid4().hex, args.query, query_file_md5, run_start.isoformat()] ]
-                })
+            if os.path.exists(args.query):
+                writer.set_checkpoint(args.query, query_file_md5, run_start, True)
 
         if args.output_format == 'json':
             print(json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue))
