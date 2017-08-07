@@ -136,7 +136,7 @@ class DictEnv(Env):
         self.d = d or {}
 
     def bind(self, name, value):
-        return DictEnv(dict(self.d.items() + [(name, value)]))
+        return DictEnv(dict(list(self.d.items()) + [(name, value)]))
         
     def lookup(self, name):
         try:             return self.d[name]

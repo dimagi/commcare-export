@@ -16,7 +16,7 @@ class RepeatableIterator(object):
 
     def __bool__(self):
         try:
-            self.__iter__().next()
+            next(self.__iter__())
             return True
         except StopIteration:
             return False
