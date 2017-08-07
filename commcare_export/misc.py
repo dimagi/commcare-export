@@ -41,7 +41,7 @@ def unwrap_val(val):
         if len(val) == 1:
             val = val[0]
         else:
-            val = list(map(unwrap_val, val))
+            val = [unwrap_val(v) for v in val]
 
     if isinstance(val, jsonpath.DatumInContext):
         val = val.value
