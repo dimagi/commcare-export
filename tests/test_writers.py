@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+
+import inspect
 import unittest
 import tempfile
 import uuid
@@ -8,13 +10,14 @@ import openpyxl
 import sqlalchemy
 import datetime
 
+from commcare_export.checkpoint import CheckpointManager
 from commcare_export.writers import *
 
 MYSQL_TYPE_MAP = {
     bool: lambda x: int(x)
 }
 
-class TestWriters(unittest.TestCase):
+class SqlTestMixin(object):
 
     SUPERUSER_POSTGRES_URL = 'postgresql://postgres@/postgres'
     SUPERUSER_MYSQL_URL = 'mysql+pymysql://travis@/?charset=utf8'
@@ -74,6 +77,8 @@ class TestWriters(unittest.TestCase):
         with cls.mysql_sudo_engine.connect() as conn:
             conn.execute('rollback')
             conn.execute('drop database if exists %s' % cls.TEST_MYSQL_DB)
+
+class TestWriters(SqlTestMixin, unittest.TestCase):
 
     def _type_convert(self, connection, row):
         """
@@ -316,3 +321,92 @@ class TestWriters(unittest.TestCase):
         '''
         with self.mysql_engine.connect() as conn:
             self.SqlWriter_types_test(conn, is_mysql=True)
+
+
+def make_test_cases(cls):
+    """For each '_test_*' method on the class create a test case for each sql engine"""
+    engines = ('mysql_engine', 'postgres_engine')
+    methods = inspect.getmembers(cls, predicate=inspect.ismethod)
+    for name, method in methods:
+        if name.startswith('_test_'):
+            def _make_test_cases(test_method):
+                # closure to make sure test_method is the right method
+                for engine in engines:
+                    def test(self):
+                        with getattr(self, engine).connect() as conn:
+                            manager = self.get_checkpointer(conn, 'mysql' in engine)
+                            test_method(self, manager)
+
+                    test.__name__ = str('{}_{}'.format(name[1:], engine))
+                    assert not hasattr(cls, test.__name__), \
+                        "duplicate test case: {} {}".format(cls, test.__name__)
+
+                    setattr(cls, test.__name__, test)
+            _make_test_cases(method)
+    return cls
+
+
+@make_test_cases
+class TestCheckpointManager(SqlTestMixin, unittest.TestCase):
+
+    def tearDown(self):
+        with self.postgres_engine.connect() as conn:
+            self._tearDown(self.get_checkpointer(conn, False))
+        with self.mysql_engine.connect() as conn:
+            self._tearDown(self.get_checkpointer(conn, True))
+        super(TestCheckpointManager, self).tearDown()
+
+    def _tearDown(self, manager):
+        with manager:
+            if manager.table_name in manager.metadata.tables:
+                manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE commcare_export_runs'))
+
+    def get_checkpointer(self, connection, is_mysql):
+        collation = 'utf8_bin' if is_mysql else None
+        writer = CheckpointManager(connection, collation=collation)
+        return writer
+
+    def _test_create_checkpoint_table(self, manager):
+        with manager:
+            manager.create_checkpoint_table()
+            assert 'commcare_export_runs' in manager.metadata.tables
+
+    def _test_update_checkpoint_table(self, manager):
+        with manager:
+            # create table with some columns missing
+            all_columns = manager._get_checkpoint_table_columns()
+            some_columns = all_columns[:-1]
+            manager._migrate_checkpoint_table(some_columns)
+            assert 'commcare_export_runs' in manager.metadata.tables
+            assert {col.name for col in some_columns} == {c.name for c in manager.table('commcare_export_runs').columns}
+
+            manager.create_checkpoint_table()
+            assert {col.name for col in all_columns} == {c.name for c in manager.table('commcare_export_runs').columns}
+
+    def _test_get_time_of_last_run(self, manager):
+        with manager:
+            manager.create_checkpoint_table()
+            manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=True)
+            second_run = datetime.datetime.utcnow()
+            manager.set_checkpoint('query', '123', second_run, run_complete=True)
+
+            assert manager.get_time_of_last_run('123') == second_run.isoformat()
+
+    def _test_clean_on_final_run(self, manager):
+        with manager:
+            manager.create_checkpoint_table()
+            manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=False)
+            manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=False)
+
+            def _get_non_final_rows_count():
+                cursor = manager.connection.execute(
+                    manager.sqlalchemy.sql.text('select count(*) from {} where final = :final'.format(manager.table_name)),
+                    final=False
+                )
+                for row in cursor:
+                    return row[0]
+
+            assert _get_non_final_rows_count() == 2
+            manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=True)
+            assert _get_non_final_rows_count() == 0
+

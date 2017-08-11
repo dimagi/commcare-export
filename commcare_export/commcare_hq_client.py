@@ -36,7 +36,7 @@ class CommCareHqClient(object):
         self.project = project
         self.__session = session
         self.__auth = auth
-        self._checkpointer = None
+        self._checkpoint_manager = None
         self._checkpoint_kwargs = {}
 
     @property
@@ -135,17 +135,18 @@ class CommCareHqClient(object):
                 
         return RepeatableIterator(iterate_resource)
 
-    def set_checkpointer(self, writer, **checkpoint_kwargs):
-        self._checkpointer = writer
+    def set_checkpoint_manager(self, manager, **checkpoint_kwargs):
+        self._checkpoint_manager = manager
         self._checkpoint_kwargs = checkpoint_kwargs
 
     def checkpoint(self, checkpoint_time):
-        if self._checkpointer:
+        if self._checkpoint_manager:
             kwargs = deepcopy(self._checkpoint_kwargs)
             kwargs.update({
                 'checkpoint_time': checkpoint_time
             })
-            self._checkpointer.set_checkpoint(**kwargs)
+            with self._checkpoint_manager:
+                self._checkpoint_manager.set_checkpoint(**kwargs)
 
 class MockCommCareHqClient(object):
     """
