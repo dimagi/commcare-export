@@ -15,7 +15,7 @@ except ImportError:
 
 
 resource_since_params = {
-    'form': ('received_on_start', 'received_on_end'),
+    'form': ('server_modified_on_start', 'server_modified_on_end'),
     'case': ('server_date_modified_start', 'server_date_modified_end'),
     'device-log': ('date__gte', 'date__lte'),
     'user': None,
