@@ -385,7 +385,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
     def write_table(self, table):
         """
         :param table: dict of {'name': 'name', 'headings', [...], 'rows': [[...], [...]]
-        :param migrate: If True then attempt to migrate the table based on the data
         """
         table_name = table['name']
         headings = table['headings']
