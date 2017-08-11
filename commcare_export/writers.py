@@ -1,16 +1,12 @@
-import re
-import sys
-import uuid
-import zipfile
 import csv
-import json
+import datetime
 import logging
+import sys
+import zipfile
+from itertools import chain
 
 import six
 from six import StringIO, u
-
-from itertools import chain
-import datetime
 
 logger = logging.getLogger(__name__)
 

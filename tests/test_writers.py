@@ -8,7 +8,6 @@ import uuid
 
 import openpyxl
 import sqlalchemy
-import datetime
 
 from commcare_export.checkpoint import CheckpointManager
 from commcare_export.writers import *

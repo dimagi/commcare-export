@@ -1,17 +1,8 @@
-import re
-import sys
-import uuid
-import zipfile
-import csv
-import json
-import logging
-
-import six
-from commcare_export.writers import SqlMixin
-from six import StringIO, u
-
-from itertools import chain
 import datetime
+import logging
+import uuid
+
+from commcare_export.writers import SqlMixin
 
 logger = logging.getLogger(__name__)
 
