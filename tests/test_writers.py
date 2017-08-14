@@ -328,20 +328,21 @@ def make_test_cases(cls):
     methods = inspect.getmembers(cls, predicate=inspect.ismethod)
     for name, method in methods:
         if name.startswith('_test_'):
-            def _make_test_cases(test_method):
+            def _make_test_cases(test_method, sql_engine):
                 # closure to make sure test_method is the right method
-                for engine in engines:
-                    def test(self):
-                        with getattr(self, engine).connect() as conn:
-                            manager = self.get_checkpointer(conn, 'mysql' in engine)
-                            test_method(self, manager)
+                def test(self):
+                    with getattr(self, sql_engine).connect() as conn:
+                        manager = self.get_checkpointer(conn, 'mysql' in sql_engine)
+                        test_method(self, manager)
 
-                    test.__name__ = str('{}_{}'.format(name[1:], engine))
-                    assert not hasattr(cls, test.__name__), \
-                        "duplicate test case: {} {}".format(cls, test.__name__)
+                test.__name__ = str('{}_{}'.format(name[1:], sql_engine))
+                assert not hasattr(cls, test.__name__), \
+                    "duplicate test case: {} {}".format(cls, test.__name__)
 
-                    setattr(cls, test.__name__, test)
-            _make_test_cases(method)
+                setattr(cls, test.__name__, test)
+
+            for engine in engines:
+                _make_test_cases(method, engine)
     return cls
 
 
