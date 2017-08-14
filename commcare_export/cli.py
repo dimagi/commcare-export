@@ -12,6 +12,8 @@ import logging
 import sqlalchemy
 import io
 from datetime import datetime
+
+from commcare_export.checkpoint import CheckpointManager
 from six.moves import input
 
 import dateutil.parser
@@ -132,7 +134,7 @@ def main_with_args(args):
                                   version = args.api_version)
 
     api_client = api_client.authenticated(username=args.username, password=args.password, mode=args.auth_mode)
-
+    checkpoint_manager = None
     if args.output_format == 'xlsx':
         writer = writers.Excel2007TableWriter(args.output)
     elif args.output_format == 'xls':
@@ -155,22 +157,17 @@ def main_with_args(args):
         is_mysql = 'mysql' in args.output
         collation = 'utf8_bin' if is_mysql else None
         writer = writers.SqlTableWriter(engine.connect(), args.strict_types, collation=collation)
+        checkpoint_manager = CheckpointManager(engine.connect(), collation=collation)
+        with checkpoint_manager:
+            checkpoint_manager.create_checkpoint_table()
+        api_client.set_checkpoint_manager(checkpoint_manager, query=args.query, query_md5=query_file_md5)
 
         if not args.since and not args.start_over and os.path.exists(args.query):
-            connection = sqlalchemy.create_engine(args.output)
+            with checkpoint_manager:
+                args.since = checkpoint_manager.get_time_of_last_run(query_file_md5)
 
-            # Grab the current list of tables to see if we have already run & written to it
-            metadata = sqlalchemy.MetaData()
-            metadata.bind = connection
-            metadata.reflect()
-
-            if 'commcare_export_runs' in metadata.tables:
-                cursor = connection.execute(sqlalchemy.sql.text('SELECT time_of_run FROM commcare_export_runs WHERE query_file_md5 = :query_file_md5 ORDER BY time_of_run DESC'), query_file_md5=query_file_md5)
-                for row in cursor:
-                    args.since = row[0]
-                    logger.debug('Last successful run was %s', args.since)
-                    break
-                cursor.close()
+            if args.since:
+                logger.debug('Last successful run was %s', args.since)
             else:
                 logger.warn('No successful runs found, and --since not specified: will import ALL data')
 
@@ -184,7 +181,6 @@ def main_with_args(args):
     # Assume that if any tables were emitted, that is the idea, otherwise print the output
     if len(list(env.emitted_tables())) > 0:
         with writer:
-            api_client.set_checkpointer(writer, query=args.query, query_md5=query_file_md5)
             for table in env.emitted_tables():
                 logger.debug('Writing %s', table['name'])
                 if table['name'] != table['name'].lower():
@@ -194,8 +190,9 @@ def main_with_args(args):
                     )
                 writer.write_table(table)
 
-            if os.path.exists(args.query):
-                writer.set_checkpoint(args.query, query_file_md5, run_start, True)
+        if checkpoint_manager and os.path.exists(args.query):
+            with checkpoint_manager:
+                checkpoint_manager.set_checkpoint(args.query, query_file_md5, run_start, True)
 
         if args.output_format == 'json':
             print(json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue))

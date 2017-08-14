@@ -1,16 +1,12 @@
-import re
-import sys
-import uuid
-import zipfile
 import csv
-import json
+import datetime
 import logging
+import sys
+import zipfile
+from itertools import chain
 
 import six
 from six import StringIO, u
-
-from itertools import chain
-import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +49,6 @@ class TableWriter(object):
     def write_table(self, table):
         "{'name': str, 'headings': [str], 'rows': [[str]]} -> ()"
         raise NotImplementedError()
-
-    def set_checkpoint(self, query, query_md5, checkpoint_time=None, run_complete=False):
-        pass
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
@@ -177,16 +170,17 @@ class StreamingMarkdownTableWriter(TableWriter):
         for row in table['rows']:
             self.output_stream.write('|%s|\n' % '|'.join(ensure_text(val) for val in row))
 
-class SqlTableWriter(TableWriter):
+
+class SqlMixin(object):
     """
     Write tables to a database specified by URL
     (TODO) with "upsert" based on primary key.
     """
 
-    MIN_VARCHAR_LEN=32  # Since SQLite does not actually support ALTER COLUMN type, let's maximize the chance that we do not have to write workarounds by starting medium
-    MAX_VARCHAR_LEN=255 # Arbitrary point at which we switch to TEXT; for postgres VARCHAR == TEXT anyhow and for Sqlite it doesn't matter either
+    MIN_VARCHAR_LEN = 32  # Since SQLite does not actually support ALTER COLUMN type, let's maximize the chance that we do not have to write workarounds by starting medium
+    MAX_VARCHAR_LEN = 255  # Arbitrary point at which we switch to TEXT; for postgres VARCHAR == TEXT anyhow and for Sqlite it doesn't matter either
 
-    def __init__(self, connection, strict_types=False, collation=None):
+    def __init__(self, connection, collation=None):
         try:
             import sqlalchemy
             import alembic
@@ -198,12 +192,11 @@ class SqlTableWriter(TableWriter):
                             "command:  pip install sqlalchemy alembic")
 
         self.base_connection = connection
-        self.strict_types = strict_types
         self.collation = collation
 
     def __enter__(self):
-        self.connection = self.base_connection.connect() # "forks" the SqlAlchemy connection
-        return self # TODO: fork the writer so this can be called many times
+        self.connection = self.base_connection.connect()  # "forks" the SqlAlchemy connection
+        return self  # TODO: fork the writer so this can be called many times
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.connection.close()
@@ -220,12 +213,30 @@ class SqlTableWriter(TableWriter):
             self._metadata.reflect()
         return self._metadata
 
+    def table(self, table_name):
+        return self.sqlalchemy.Table(table_name, self.metadata, autoload=True, autoload_with=self.connection)
+
+    def get_id_column(self):
+        return self.sqlalchemy.Column(
+            'id',
+            self.sqlalchemy.Unicode(self.MAX_VARCHAR_LEN),
+            primary_key=True
+        )
+
+
+class SqlTableWriter(SqlMixin, TableWriter):
+    """
+    Write tables to a database specified by URL
+    (TODO) with "upsert" based on primary key.
+    """
+
+    def __init__(self, connection, strict_types=False, collation=None):
+        super(SqlTableWriter, self).__init__(connection, collation=collation)
+        self.strict_types = strict_types
+
     @property
     def is_sqllite(self):
         return 'sqlite' in self.connection.engine.driver
-
-    def table(self, table_name):
-        return self.sqlalchemy.Table(table_name, self.metadata, autoload=True, autoload_with=self.connection)
 
     def best_type_for(self, val):
         if not self.is_sqllite:
@@ -291,13 +302,6 @@ class SqlTableWriter(TableWriter):
 
         # FIXME: Don't be so silly
         return self.sqlalchemy.UnicodeText(collation=self.collation)
-
-    def get_id_column(self):
-        return self.sqlalchemy.Column(
-            'id',
-            self.sqlalchemy.Unicode(self.MAX_VARCHAR_LEN),
-            primary_key=True
-        )
 
     def make_table_compatible(self, table_name, row_dict):
         ctx = self.alembic.migration.MigrationContext.configure(self.connection)
@@ -379,6 +383,9 @@ class SqlTableWriter(TableWriter):
             self.connection.execute(update)
 
     def write_table(self, table):
+        """
+        :param table: dict of {'name': 'name', 'headings', [...], 'rows': [[...], [...]]
+        """
         table_name = table['name']
         headings = table['headings']
 
@@ -391,14 +398,3 @@ class SqlTableWriter(TableWriter):
             self.upsert(self.table(table_name), row_dict)
 
         if logger.getEffectiveLevel() == 'DEBUG': sys.stderr.write('\n')
-
-    def set_checkpoint(self, query, query_md5, checkpoint_time=None, run_complete=False):
-        logger.info('Setting checkpoint')
-        checkpoint_time = checkpoint_time or datetime.datetime.utcnow()
-        self.write_table({
-            'name': 'commcare_export_runs',
-            'headings': ['id', 'query_file_name', 'query_file_md5', 'time_of_run', 'final'],
-            'rows': [[uuid.uuid4().hex, query, query_md5, checkpoint_time.isoformat(), run_complete]]
-        })
-        if run_complete:
-            self.connection.execute(self.sqlalchemy.sql.text('DELETE FROM commcare_export_runs WHERE final = :final'), final=False)
