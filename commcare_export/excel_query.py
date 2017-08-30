@@ -141,8 +141,11 @@ def compile_source(worksheet):
     Should fetch from api/form?app_id=<app id>&xmlns.exact=<some form xmlns>&cases__full=true
     and then iterate (FlatMap) over all child questions.
     """
-    
-    data_source_str = get_column_by_name(worksheet, 'data source')[0].value
+
+    data_source_column = get_column_by_name(worksheet, 'data source')
+    if not data_source_column:
+        raise Exception('Sheet has no "Data Source" column.')
+    data_source_str = data_source_column[0].value
     filters = compile_filters(worksheet)
     include_referenced_items = [cell.value for cell in (get_column_by_name(worksheet, 'include referenced items') or [])]
 
@@ -219,7 +222,10 @@ def compile_workbook(workbook, missing_value=None):
     emit_sheets = [sheet_name for sheet_name in workbook.get_sheet_names() if sheet_name != 'Mappings']
 
     for sheet in emit_sheets:
-        queries.append(compile_sheet(workbook.get_sheet_by_name(sheet), mappings, missing_value))
+        try:
+            queries.append(compile_sheet(workbook.get_sheet_by_name(sheet), mappings, missing_value))
+        except Exception as e:
+            logger.warning('Ignoring sheet "{}": {}'.format(sheet, str(e)))
 
     return List(queries) # Moderate hack
     
