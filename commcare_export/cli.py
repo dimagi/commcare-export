@@ -56,7 +56,7 @@ def main(argv):
     parser.add_argument('--output-format', default='json', choices=['json', 'csv', 'xls', 'xlsx', 'sql', 'markdown'], help='Output format')
     parser.add_argument('--output', metavar='PATH', default='reports.zip', help='Path to output; defaults to `reports.zip`.')
     parser.add_argument('--strict-types', default=False, action='store_true', help="When saving to a SQL database don't allow changing column types once they are created.")
-    parser.add_argument('--missing-value', default='', help="Value to use when a field is missing from the form / case.")
+    parser.add_argument('--missing-value', default=None, help="Value to use when a field is missing from the form / case.")
 
     args = parser.parse_args(argv)
 
@@ -100,13 +100,17 @@ def main_with_args(args):
     
     # Reads as excel if it is a file name that looks like excel, otherwise reads as JSON, 
     # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
+    missing_value = args.missing_value
+    if args.output_format != 'sql' and missing_value is None:
+        missing_value = ''
+
     if args.query:
         if os.path.exists(args.query):
             query_file_md5 = misc.digest_file(args.query)
             if os.path.splitext(args.query)[1] in ['.xls', '.xlsx']:
                 import openpyxl
                 workbook = openpyxl.load_workbook(args.query)
-                query = excel_query.compile_workbook(workbook, args.missing_value)
+                query = excel_query.compile_workbook(workbook, missing_value)
             else:
                 with io.open(args.query, encoding='utf-8') as fh:
                     query = MiniLinq.from_jvalue(json.loads(fh.read()))
