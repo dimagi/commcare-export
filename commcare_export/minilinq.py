@@ -383,7 +383,7 @@ class Emit(MiniLinq):
         self.table = table
         self.headings = headings
         self.source = source
-        self.missing_value = missing_value or ''
+        self.missing_value = missing_value
 
     @unwrap('cell')
     def coerce_cell_blithely(self, cell):
