@@ -4,6 +4,7 @@ CommCare/Export-specific extensions to MiniLinq.
 To date, this is simply built-ins for querying the
 API directly.
 """
+import json
 
 from commcare_export.env import DictEnv, CannotBind, CannotReplace
 from datetime import datetime
@@ -14,10 +15,66 @@ except ImportError:
     from urlparse import urlparse, parse_qs
 
 
+class SimpleSinceParams(object):
+    def __init__(self, start, end):
+        self.start_param = start
+        self.end_param = end
+
+    def __call__(self, since, until):
+        params = {
+            self.start_param: since.isoformat()
+        }
+        if until:
+            params[self.end_param] = until.isoformat()
+        return params
+
+
+class FormFilterSinceParams(object):
+    def __call__(self, since, until):
+        range_expression = {
+            'gte': since.isoformat()
+        }
+        if until:
+            range_expression['lte'] = until.isoformat()
+
+        server_modified_missing = {"missing": {
+            "field": "server_modified_on", "null_value": True, "existence": True}
+        }
+        query = json.dumps({
+            'filter': {
+                "or": [
+                    {
+                        "and": [
+                            {
+                                "not": server_modified_missing
+                            },
+                            {
+                                "range": {
+                                    "server_modified_on": range_expression
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "and": [
+                            server_modified_missing,
+                            {
+                                "range": {
+                                    "received_on": range_expression
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }})
+
+        return {'_search': query}
+
+
 resource_since_params = {
-    'form': ('received_on_start', 'received_on_end'),
-    'case': ('server_date_modified_start', 'server_date_modified_end'),
-    'device-log': ('date__gte', 'date__lte'),
+    'form': FormFilterSinceParams(),
+    'case': SimpleSinceParams('server_date_modified_start', 'server_date_modified_end'),
+    'device-log': SimpleSinceParams('date__gte', 'date__lte'),
     'user': None,
     'application': None,
     'web-user': None,
@@ -82,12 +139,9 @@ class SimplePaginator(object):
 
         resource_date_params = resource_since_params[self.resource]
         if (since or self.until) and resource_date_params:
-            since_param, until_param = resource_date_params
-            if since:
-                params[since_param] = since.isoformat()
-
-            if self.until:
-                params[until_param] = self.until.isoformat()
+            params.update(
+                resource_date_params(since, self.until)
+            )
 
         if self.include_referenced_items:
             params.update([('%s__full' % referenced_item, 'true') for referenced_item in self.include_referenced_items])
