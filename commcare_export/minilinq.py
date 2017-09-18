@@ -353,7 +353,7 @@ class Apply(MiniLinq):
                 doc_id = 'unknown'
 
             message = (
-                "Error processing document '%s'."
+                "Error processing document '%s'. "
                 "Failure to evaluating expression '%r' with arguments '%s'"
             ) % (doc_id, self, args)
             raise Exception(message, e)
