@@ -118,7 +118,13 @@ def main_with_args(args):
             print('Query file not found: %s' % args.query)
             exit(1)
     else:
-        query = MiniLinq.from_jvalue(json.loads(sys.stdin.read()))
+        try:
+            query = MiniLinq.from_jvalue(json.loads(sys.stdin.read()))
+        except Exception as e:
+            raise Exception(
+                "Failure reading query from console input. "
+                "Try using the '--query' parameter to pass your query as an Excel file", e
+            )
 
     if args.dump_query:
         print(json.dumps(query.to_jvalue(), indent=4))
