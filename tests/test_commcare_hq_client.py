@@ -1,5 +1,6 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 
+import json
 import unittest
 
 import simplejson
@@ -33,10 +34,7 @@ class FakeSession(object):
             }
 
 
-class FakeDateSession(FakeSession):
-    def __init__(self, resource):
-        self.since_query_param = resource_since_params[resource][0]
-
+class FakeDateCaseSession(FakeSession):
     def _get_results(self, params):
         if not params:
             return {
@@ -44,7 +42,26 @@ class FakeDateSession(FakeSession):
                 'objects': [{'id': 1, 'foo': 1, 'since_field': '2017-01-01T15:36:22Z'}]
             }
         else:
-            assert params[self.since_query_param] == '2017-01-01T15:36:22'
+            since_query_param =resource_since_params['case'].start_param
+            assert params[since_query_param] == '2017-01-01T15:36:22'
+            # include ID=1 again to make sure it gets filtered out
+            return {
+                'meta': { 'next': None, 'offset': 1, 'limit': 1, 'total_count': 2 },
+                'objects': [ {'id': 1, 'foo': 1}, {'id': 2, 'foo': 2} ]
+            }
+
+class FakeDateFormSession(FakeSession):
+    def _get_results(self, params):
+        if not params:
+            return {
+                'meta': {'next': '?offset=1', 'offset': 0, 'limit': 1, 'total_count': 2},
+                'objects': [{'id': 1, 'foo': 1, 'since_field': '2017-01-01T15:36:22Z'}]
+            }
+        else:
+            search = json.loads(params['_search'])
+            _or = search['filter']['or']
+            assert _or[0]['and'][1]['range']['server_modified_on']['gte'] == '2017-01-01T15:36:22'
+            assert _or[1]['and'][1]['range']['received_on']['gte'] == '2017-01-01T15:36:22'
             # include ID=1 again to make sure it gets filtered out
             return {
                 'meta': { 'next': None, 'offset': 1, 'limit': 1, 'total_count': 2 },
@@ -68,8 +85,8 @@ class TestCommCareHqClient(unittest.TestCase):
         self._test_iterate(FakeSession(), SimplePaginator('fake'))
 
     def test_iterate_date(self):
-        self._test_iterate(FakeDateSession('form'), DatePaginator('form', 'since_field'))
-        self._test_iterate(FakeDateSession('case'), DatePaginator('case', 'since_field'))
+        self._test_iterate(FakeDateFormSession(), DatePaginator('form', 'since_field'))
+        self._test_iterate(FakeDateCaseSession(), DatePaginator('case', 'since_field'))
 
 
 class TestDatePaginator(unittest.TestCase):
