@@ -4,9 +4,7 @@ import logging
 import six
 from six.moves import map
 
-from jsonpath_rw import jsonpath
-from jsonpath_rw.parser import parse as parse_jsonpath
-from commcare_export.misc import unwrap
+from commcare_export.misc import unwrap, unwrap_val
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
@@ -343,9 +341,22 @@ class Apply(MiniLinq):
         fn_result = self.fn.eval(env)
         args_results = [arg.eval(env) for arg in self.args]
 
-        result = fn_result(*args_results)
-        if isinstance(result, MiniLinq):
-            return result.eval(env)
+        try:
+            result = fn_result(*args_results)
+            if isinstance(result, MiniLinq):
+                return result.eval(env)
+        except Exception as e:
+            args = ', '.join([str(unwrap_val(arg)) for arg in args_results])
+            try:
+                doc_id = unwrap_val(Reference('id').eval(env))
+            except:
+                doc_id = 'unknown'
+
+            message = (
+                "Error processing document '%s'. "
+                "Failure to evaluating expression '%r' with arguments '%s'"
+            ) % (doc_id, self, args)
+            raise Exception(message, e)
         return result
 
     def __eq__(self, other):

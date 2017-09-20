@@ -221,6 +221,10 @@ class JsonPathEnv(Env):
 #
 
 
+def _not_val(val):
+    return val is None or val == []
+
+
 def _to_unicode(val):
     if isinstance(val, bytes):
         return val.decode('utf8')
@@ -232,7 +236,7 @@ def _to_unicode(val):
 
 @unwrap('val')
 def str2bool(val):
-    if val is None:
+    if _not_val(val):
         return False
 
     if isinstance(val, bool):
@@ -244,7 +248,7 @@ def str2bool(val):
 
 @unwrap('val')
 def str2num(val):
-    if val is None:
+    if _not_val(val):
         return None
 
     try:
