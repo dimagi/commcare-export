@@ -23,7 +23,7 @@ if 'sdist' in sys.argv:
 
 # This import requires either commcare_export/VERSION or to be in a git clone (as does the package in general)
 import commcare_export
-version = commcare_export.version()
+version = commcare_export.version.version()
 
 # Crash if the VERSION is not a simple version and it is going to register or upload
 if 'register' in sys.argv or 'upload' in sys.argv:
