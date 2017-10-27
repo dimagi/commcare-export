@@ -58,7 +58,16 @@ def main(argv):
     parser.add_argument('--strict-types', default=False, action='store_true', help="When saving to a SQL database don't allow changing column types once they are created.")
     parser.add_argument('--missing-value', default=None, help="Value to use when a field is missing from the form / case.")
 
-    args = parser.parse_args(argv)
+    try:
+        args = parser.parse_args(argv)
+    except UnicodeDecodeError:
+        for arg in argv:
+            try:
+                arg.encode('utf-8')
+            except UnicodeDecodeError:
+                sys.stderr.write(u"ERROR: Argument '%s' contains unicode characters. "
+                                 u"Only ASCII characters are supported.\n" % unicode(arg, 'utf-8'))
+        sys.exit(1)
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, 
