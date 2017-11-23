@@ -12,7 +12,11 @@ logger = logging.getLogger(__name__)
 
 MAX_COLUMN_SIZE = 2000
 
-def ensure_text(v):
+
+def ensure_text(v, convert_none=False):
+    if v is None:
+        return '' if convert_none else v
+
     if isinstance(v, six.text_type):
         return v
     elif isinstance(v, six.binary_type):
@@ -21,12 +25,13 @@ def ensure_text(v):
         return v.strftime('%Y-%m-%d %H:%M:%S')
     elif isinstance(v, datetime.date):
         return v.isoformat()
-    elif v is None:
-        return ''
     else:
         return u(str(v))
 
 def to_jvalue(v):
+    if v is None:
+        return None
+
     if isinstance(v, (six.text_type,) + six.integer_types):
         return v
     elif isinstance(v, six.binary_type):
@@ -168,7 +173,7 @@ class StreamingMarkdownTableWriter(TableWriter):
         self.output_stream.write('|%s|\n' % '|'.join(table['headings']))
 
         for row in table['rows']:
-            self.output_stream.write('|%s|\n' % '|'.join(ensure_text(val) for val in row))
+            self.output_stream.write('|%s|\n' % '|'.join(ensure_text(val, convert_none=True) for val in row))
 
 
 class SqlMixin(object):

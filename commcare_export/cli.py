@@ -109,17 +109,13 @@ def main_with_args(args):
     
     # Reads as excel if it is a file name that looks like excel, otherwise reads as JSON, 
     # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
-    missing_value = args.missing_value
-    if args.output_format != 'sql' and missing_value is None:
-        missing_value = ''
-
     if args.query:
         if os.path.exists(args.query):
             query_file_md5 = misc.digest_file(args.query)
             if os.path.splitext(args.query)[1] in ['.xls', '.xlsx']:
                 import openpyxl
                 workbook = openpyxl.load_workbook(args.query)
-                query = excel_query.compile_workbook(workbook, missing_value)
+                query = excel_query.compile_workbook(workbook, args.missing_value)
             else:
                 with io.open(args.query, encoding='utf-8') as fh:
                     query = MiniLinq.from_jvalue(json.loads(fh.read()))
