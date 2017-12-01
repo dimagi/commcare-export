@@ -13,11 +13,19 @@ class ParsingException(Exception):
 
 
 def parse_function_arg(slug, expr_string):
-    parts = re.split("[()]", expr_string)
-    if not parts[0] == slug or len(parts) != 3:
+    """
+    expr_string should start with the slug
+    and the expression should be enclosed in () after it like
+    expr_string = selected(Other_(Specify))
+    slug = selected
+    should return Other_(Specify)
+    """
+    regex = r'^{0}\((.+)\)$'.format(slug)
+    matches = re.match(regex, expr_string)
+    if matches:
         raise ParsingException('Error: Unable to parse: {}'.format(expr_string))
 
-    return parts[1]
+    return matches.groups()[0]
 
 
 def parse_selected_at(value_expr, selected_at_expr_string):
