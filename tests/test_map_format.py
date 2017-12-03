@@ -23,6 +23,10 @@ class TestMapFormats(unittest.TestCase):
         expected = Literal('Error: template function requires the format template: template()')
         assert parse_template('form.question1', 'template()') == expected
 
-    def test_parse_function_arg(self):
+    def test_parse_function_arg_with_brackets(self):
         value_returned = parse_function_arg('selected', 'selected(Other_(Specify))')
         assert value_returned == 'Other_(Specify)'
+
+    def test_parse_function_arg_empty_returns(self):
+        value_returned = parse_function_arg('selected', 'selected()')
+        assert value_returned == ''
