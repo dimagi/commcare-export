@@ -20,9 +20,10 @@ def parse_function_arg(slug, expr_string):
     slug = selected
     should return Other_(Specify)
     """
-    regex = r'^{0}\((.+)\)$'.format(slug)
+    regex = r'^{0}\((.*)\)$'.format(slug)
     matches = re.match(regex, expr_string)
-    if matches:
+
+    if not matches:
         raise ParsingException('Error: Unable to parse: {}'.format(expr_string))
 
     return matches.groups()[0]

@@ -3,7 +3,10 @@ from __future__ import unicode_literals, print_function, absolute_import, divisi
 
 import unittest
 
-from commcare_export.map_format import parse_template
+from commcare_export.map_format import (
+    parse_template,
+    parse_function_arg,
+)
 from commcare_export.minilinq import Apply, Reference, Literal
 
 
@@ -19,3 +22,7 @@ class TestMapFormats(unittest.TestCase):
     def test_parse_template_no_template(self):
         expected = Literal('Error: template function requires the format template: template()')
         assert parse_template('form.question1', 'template()') == expected
+
+    def test_parse_function_arg(self):
+        value_returned = parse_function_arg('selected', 'selected(Other_(Specify))')
+        assert value_returned == 'Other_(Specify)'
