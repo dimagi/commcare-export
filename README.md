@@ -363,3 +363,34 @@ $ git push -u origin my-super-duper-feature
 
 7\. Accept our gratitude for contributing: Thanks!
 
+Release process
+---------------
+
+1\. Create a tag for the release
+
+```
+$ git tag -a "X.YY.0" -m "Release X.YY.0"
+$ git push --tags
+```
+
+2\. Create the source distribution
+
+Ensure that the archive has the correct version number (matching the tag name).
+```
+$ python setup.py sdist
+```
+
+3\. Upload to pypi
+
+```
+$ pip install twise
+$ twine upload dist/commcare-export-X.YY.0.tar.gz
+```
+
+4\. Verify upload
+
+https://pypi.python.org/pypi/commcare-export
+
+5\. Create a release on github
+
+https://github.com/dimagi/commcare-export/releases
