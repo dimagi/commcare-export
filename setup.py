@@ -69,7 +69,8 @@ setuptools.setup(
         'simplejson',
         'six',
         'sqlalchemy',
-        'pytz'
+        'pytz',
+        'sqlalchemy-migrate',
     ],
     tests_require = ['pytest', 'psycopg2'],
     cmdclass = {'test': PyTest},
