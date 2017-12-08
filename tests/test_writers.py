@@ -329,7 +329,6 @@ def make_test_cases(cls):
                 # closure to make sure test_method is the right method
                 def test(self):
                     url = getattr(self, url_attr)
-                    print('------------------', url)
                     manager = self.get_checkpointer(url)
                     test_method(self, manager)
 
