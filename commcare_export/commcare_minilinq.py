@@ -176,6 +176,11 @@ class DatePaginator(SimplePaginator):
         return params
 
     def next_page_params_from_batch(self, batch):
+        since_date = self.get_since_date(batch)
+        if since_date:
+            return self.next_page_params_since(since_date)
+
+    def get_since_date(self, batch):
         try:
             last_obj = batch['objects'][-1]
         except IndexError:
@@ -183,11 +188,8 @@ class DatePaginator(SimplePaginator):
 
         since = last_obj and last_obj.get(self.since_field)
         if since:
-            since_date = None
             for fmt in ('%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S.%fZ'):
                 try:
-                    since_date = datetime.strptime(since, fmt)
+                    return datetime.strptime(since, fmt)
                 except ValueError:
                     pass
-            if since_date:
-                return self.next_page_params_since(since_date)
