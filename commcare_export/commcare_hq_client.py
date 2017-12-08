@@ -108,7 +108,6 @@ class CommCareHqClient(object):
             last_batch_ids = set()
 
             while more_to_fetch:
-                fetch_start = datetime.utcnow()
                 batch = self.get(resource, params)
                 total_count = int(batch['meta']['total_count']) if batch['meta']['total_count'] else 'unknown'
                 logger.debug('Received %s-%s of %s', 
@@ -131,7 +130,7 @@ class CommCareHqClient(object):
                     else:
                         more_to_fetch = False
 
-                self.checkpoint(fetch_start)
+                self.checkpoint(paginator, batch)
                 
         return RepeatableIterator(iterate_resource)
 
@@ -139,11 +138,13 @@ class CommCareHqClient(object):
         self._checkpoint_manager = manager
         self._checkpoint_kwargs = checkpoint_kwargs
 
-    def checkpoint(self, checkpoint_time):
-        if self._checkpoint_manager:
+    def checkpoint(self, paginator, batch):
+        from commcare_export.commcare_minilinq import DatePaginator
+        if self._checkpoint_manager and isinstance(paginator, DatePaginator):
+            since_date = paginator.get_since_date(batch)
             kwargs = deepcopy(self._checkpoint_kwargs)
             kwargs.update({
-                'checkpoint_time': checkpoint_time
+                'checkpoint_time': since_date
             })
             with self._checkpoint_manager:
                 self._checkpoint_manager.set_checkpoint(**kwargs)
