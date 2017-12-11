@@ -185,7 +185,7 @@ class SqlMixin(object):
     MIN_VARCHAR_LEN = 32  # Since SQLite does not actually support ALTER COLUMN type, let's maximize the chance that we do not have to write workarounds by starting medium
     MAX_VARCHAR_LEN = 255  # Arbitrary point at which we switch to TEXT; for postgres VARCHAR == TEXT anyhow and for Sqlite it doesn't matter either
 
-    def __init__(self, connection, collation=None):
+    def __init__(self, db_url, poolclass=None):
         try:
             import sqlalchemy
             import alembic
@@ -196,11 +196,12 @@ class SqlMixin(object):
                             "SQL export. To export to SQL you have to run the "
                             "command:  pip install sqlalchemy alembic")
 
-        self.base_connection = connection
-        self.collation = collation
+        self.db_url = db_url
+        self.collation = 'utf8_bin' if 'mysql' in db_url else None
+        self.engine = self.sqlalchemy.create_engine(db_url, poolclass=poolclass)
 
     def __enter__(self):
-        self.connection = self.base_connection.connect()  # "forks" the SqlAlchemy connection
+        self.connection = self.engine.connect()
         return self  # TODO: fork the writer so this can be called many times
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -235,8 +236,8 @@ class SqlTableWriter(SqlMixin, TableWriter):
     (TODO) with "upsert" based on primary key.
     """
 
-    def __init__(self, connection, strict_types=False, collation=None):
-        super(SqlTableWriter, self).__init__(connection, collation=collation)
+    def __init__(self, db_url, strict_types=False, poolclass=None):
+        super(SqlTableWriter, self).__init__(db_url, poolclass=poolclass)
         self.strict_types = strict_types
 
     @property

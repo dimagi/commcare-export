@@ -167,12 +167,8 @@ def main_with_args(args):
     elif args.output_format == 'sql':
         # Output should be a connection URL
         # Writer had bizarre issues so we use a full connection instead of passing in a URL or engine
-        import sqlalchemy
-        engine = sqlalchemy.create_engine(args.output)
-        is_mysql = 'mysql' in args.output
-        collation = 'utf8_bin' if is_mysql else None
-        writer = writers.SqlTableWriter(engine.connect(), args.strict_types, collation=collation)
-        checkpoint_manager = CheckpointManager(engine.connect(), collation=collation)
+        writer = writers.SqlTableWriter(args.output, args.strict_types)
+        checkpoint_manager = CheckpointManager(args.output)
         with checkpoint_manager:
             checkpoint_manager.create_checkpoint_table()
         api_client.set_checkpoint_manager(checkpoint_manager, query=args.query, query_md5=query_file_md5)
