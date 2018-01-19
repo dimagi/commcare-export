@@ -368,6 +368,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 columns = get_cols()
             else:
                 current_ty = columns[column].type
+                new_type = None
                 if self.strict_types:
                     # don't bother checking compatibility since we're not going to change anything
                     new_type = self.strict_types_compatibility_check(ty, current_ty)
