@@ -5,15 +5,16 @@ https://github.com/dimagi/commcare-export
 
 [![Build Status](https://travis-ci.org/dimagi/commcare-export.png)](https://travis-ci.org/dimagi/commcare-export)
 [![Test coverage](https://coveralls.io/repos/dimagi/commcare-export/badge.png?branch=master)](https://coveralls.io/r/dimagi/commcare-export)
-[![PyPi version](https://pypip.in/v/commcare-export/badge.png)](https://pypi.python.org/pypi/commcare-export)
-[![PyPi downloads](https://pypip.in/d/commcare-export/badge.png)](https://pypi.python.org/pypi/commcare-export)
+[![PyPI version](https://badge.fury.io/py/commcare-export.svg)](https://badge.fury.io/py/commcare-export)
 
-A command-line tool (and Python library) to generate customized exports from the CommCareHQ REST API.
+A command-line tool (and Python library) to generate customized exports from the [CommCareHQ](https://www.commcarehq.org) [REST API](https://wiki.commcarehq.org/display/commcarepublic/Data+APIs).
+
+For user documentation see the [CommCare Help Site](https://wiki.commcarehq.org/display/commcarepublic/CommCare+Data+Export+Tool)
 
 Installation & Quick Start
 --------------------------
 
-0a\. Install Python and `pip`. This tool is [tested with Python 2.6, 2.7, and 3.3](https://travis-ci.org/dimagi/commcare-export).
+0a\. Install Python and `pip`. This tool is [tested with Python 2.7, and 3.3](https://travis-ci.org/dimagi/commcare-export).
 
 0b\. Sign up for CommCareHQ at https://www.commcarehq.org/register/user if you have not already.
 
@@ -383,7 +384,7 @@ $ python setup.py sdist
 3\. Upload to pypi
 
 ```
-$ pip install twise
+$ pip install twine
 $ twine upload dist/commcare-export-X.YY.0.tar.gz
 ```
 
