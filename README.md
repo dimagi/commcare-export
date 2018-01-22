@@ -9,7 +9,8 @@ https://github.com/dimagi/commcare-export
 
 A command-line tool (and Python library) to generate customized exports from the [CommCareHQ](https://www.commcarehq.org) [REST API](https://wiki.commcarehq.org/display/commcarepublic/Data+APIs).
 
-For user documentation see the [CommCare Help Site](https://wiki.commcarehq.org/display/commcarepublic/CommCare+Data+Export+Tool)
+* [User documentation](https://wiki.commcarehq.org/display/commcarepublic/CommCare+Data+Export+Tool)
+* [Changelog](https://github.com/dimagi/commcare-export/releases)
 
 Installation & Quick Start
 --------------------------
