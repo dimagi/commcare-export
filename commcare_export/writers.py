@@ -298,6 +298,17 @@ class SqlTableWriter(SqlMixin, TableWriter):
             if isinstance(source_type, _type):
                 return isinstance(dest_type, (_type,) + types)
 
+    def strict_types_compatibility_check(self, source_type, dest_type):
+        if isinstance(source_type, self.sqlalchemy.String):
+            if not isinstance(dest_type, self.sqlalchemy.String):
+                return  # Can't do anything
+            elif dest_type.length is None:
+                # already a TEXT column
+                return
+            elif source_type.length is None:
+                return self.sqlalchemy.UnicodeText(collation=self.collation)
+            elif dest_type.length < source_type.length:
+                return source_type
 
     def least_upper_bound(self, source_type, dest_type):
         """
@@ -356,18 +367,19 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 self.metadata.reflect()
                 columns = get_cols()
             else:
+                current_ty = columns[column].type
+                new_type = None
                 if self.strict_types:
                     # don't bother checking compatibility since we're not going to change anything
-                    continue
-
-                current_ty = columns[column].type
-
-                if not self.compatible(ty, current_ty):
+                    new_type = self.strict_types_compatibility_check(ty, current_ty)
+                elif not self.compatible(ty, current_ty):
                     new_type = self.least_upper_bound(ty, current_ty)
                     if self.is_sqllite:
                         logger.warn('Type mismatch detected for column %s (%s != %s) '
                                     'but sqlite does not support changing column types', columns[column], current_ty, new_type)
                         continue
+
+                if new_type:
                     logger.warn('Altering column %s from %s to %s for value: "%s:%s"', columns[column], current_ty, new_type, type(val), val)
                     op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
