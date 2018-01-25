@@ -2,14 +2,17 @@ import datetime
 import logging
 import uuid
 
+import os
+
 from commcare_export.writers import SqlMixin
 
 logger = logging.getLogger(__name__)
+repo_root = os.path.abspath(os.path.join(__file__, os.pardir, os.pardir))
 
 
 class CheckpointManager(SqlMixin):
     table_name = 'commcare_export_runs'
-    migrations_repository = 'migrations'
+    migrations_repository = os.path.join(repo_root, 'migrations')
 
     def set_checkpoint(self, query, query_md5, checkpoint_time=None, run_complete=False):
         logger.info('Setting checkpoint')

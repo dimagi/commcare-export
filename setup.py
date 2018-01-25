@@ -54,9 +54,11 @@ setuptools.setup(
     author_email = 'information@dimagi.com',
     url = "https://github.com/dimagi/commcare-export",
     entry_points = { 'console_scripts': ['commcare-export = commcare_export.cli:entry_point'] },
-    packages = ['commcare_export'],
-    data_files = [(os.path.join('share', 'commcare-export', 'examples'), glob.glob('examples/*.json') + glob.glob('examples/*.xlsx'))],
-    package_data = {'': ['VERSION']},
+    packages = setuptools.find_packages(exclude=['tests*']),
+    data_files = [
+        (os.path.join('share', 'commcare-export', 'examples'), glob.glob('examples/*.json') + glob.glob('examples/*.xlsx')),
+    ],
+    include_package_data=True,
     license = 'MIT',
     install_requires = [
         'alembic',
