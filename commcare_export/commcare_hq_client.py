@@ -5,11 +5,11 @@ from collections import OrderedDict
 from copy import deepcopy
 
 import requests
-from datetime import datetime
-from requests.auth import HTTPDigestAuth
+from requests.auth import HTTPDigestAuth, HTTPBasicAuth
 
 AUTH_MODE_SESSION = 'session'
 AUTH_MODE_DIGEST = 'digest'
+AUTH_MODE_TWO_FACTOR = 'twofactor'
 
 try:
     from urllib.request import urlopen
@@ -49,7 +49,7 @@ class CommCareHqClient(object):
     def api_url(self):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
 
-    def authenticated(self, username=None, password=None, mode=AUTH_MODE_SESSION):
+    def authenticated(self, username=None, password=None, two_factor_token=None, mode=AUTH_MODE_SESSION):
         """
         Returns a freshly authenticated CommCareHqClient with a new session.
         This is safe to call many times and each of the resulting clients
@@ -66,16 +66,22 @@ class CommCareHqClient(object):
                 raise Exception('Failed to connect to authentication page (%s): %s' % (response.status_code, response.text))
 
             response = session.post(login_url,
-                                    headers = {'Referer': login_url },
-                                    data = {'username': username,
+                                    headers={'Referer': login_url },
+                                    data={'username': username,
                                             'password': password,
                                             'csrfmiddlewaretoken': response.cookies['csrftoken']})
 
             if response.status_code != 200:
                 raise Exception('Authentication failed (%s): %s' % (response.status_code, response.text))
             
-        elif mode == 'digest':
+        elif mode == AUTH_MODE_DIGEST:
             auth = HTTPDigestAuth(username, password)
+        elif mode == AUTH_MODE_TWO_FACTOR:
+            if not two_factor_token:
+                print('commcare-export: error: argument --two-factor-token is required for twofactor auth')
+                exit(1)
+            session.headers["X-CommcareHQ-OTP"] = two_factor_token
+            auth = HTTPBasicAuth(username, password)
         else:
             raise Exception('Unknown auth mode: %s' % mode)
 
