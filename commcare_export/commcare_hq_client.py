@@ -9,6 +9,7 @@ from requests.auth import HTTPDigestAuth, HTTPBasicAuth
 
 AUTH_MODE_SESSION = 'session'
 AUTH_MODE_DIGEST = 'digest'
+AUTH_MODE_BASIC = 'basic'
 
 try:
     from urllib.request import urlopen
@@ -65,17 +66,17 @@ class CommCareHqClient(object):
                 raise Exception('Failed to connect to authentication page (%s): %s' % (response.status_code, response.text))
 
             response = session.post(login_url,
-                                    headers = {'Referer': login_url },
-                                    data = {'username': username,
+                                    headers={'Referer': login_url },
+                                    data={'username': username,
                                             'password': password,
                                             'csrfmiddlewaretoken': response.cookies['csrftoken']})
 
             if response.status_code != 200:
                 raise Exception('Authentication failed (%s): %s' % (response.status_code, response.text))
             
-        elif mode == 'digest':
+        elif mode == AUTH_MODE_DIGEST:
             auth = HTTPDigestAuth(username, password)
-        elif mode == 'basic':
+        elif mode == AUTH_MODE_BASIC:
             auth = HTTPBasicAuth(username, password)
         else:
             raise Exception('Unknown auth mode: %s' % mode)
