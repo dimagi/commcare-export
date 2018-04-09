@@ -46,7 +46,7 @@ def main(argv):
     parser.add_argument('--project')
     parser.add_argument('--username')
     parser.add_argument('--password')
-    parser.add_argument('--auth-mode', default='digest', help='Use "session" based auth or "digest" auth.')
+    parser.add_argument('--auth-mode', default='digest', help='Use "session" based auth, "digest", or "basic" auth.')
     parser.add_argument('--since', help='Export all data after this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS')
     parser.add_argument('--until', help='Export all data up until this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS')
     parser.add_argument('--start-over', default=False, action='store_true',

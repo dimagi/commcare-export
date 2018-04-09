@@ -5,8 +5,7 @@ from collections import OrderedDict
 from copy import deepcopy
 
 import requests
-from datetime import datetime
-from requests.auth import HTTPDigestAuth
+from requests.auth import HTTPDigestAuth, HTTPBasicAuth
 
 AUTH_MODE_SESSION = 'session'
 AUTH_MODE_DIGEST = 'digest'
@@ -76,6 +75,8 @@ class CommCareHqClient(object):
             
         elif mode == 'digest':
             auth = HTTPDigestAuth(username, password)
+        elif mode == 'basic':
+            auth = HTTPBasicAuth(username, password)
         else:
             raise Exception('Unknown auth mode: %s' % mode)
 
