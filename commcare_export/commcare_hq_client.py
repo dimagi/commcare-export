@@ -7,9 +7,11 @@ from copy import deepcopy
 import requests
 from datetime import datetime
 from requests.auth import HTTPDigestAuth
+from requests.auth import AuthBase
 
 AUTH_MODE_SESSION = 'session'
 AUTH_MODE_DIGEST = 'digest'
+AUTH_MODE_APIKEY = 'apikey'
 
 try:
     from urllib.request import urlopen
@@ -49,7 +51,7 @@ class CommCareHqClient(object):
     def api_url(self):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
 
-    def authenticated(self, username=None, password=None, mode=AUTH_MODE_SESSION):
+    def authenticated(self, username=None, password=None, apikey=None, mode=AUTH_MODE_SESSION):
         """
         Returns a freshly authenticated CommCareHqClient with a new session.
         This is safe to call many times and each of the resulting clients
@@ -74,8 +76,10 @@ class CommCareHqClient(object):
             if response.status_code != 200:
                 raise Exception('Authentication failed (%s): %s' % (response.status_code, response.text))
             
-        elif mode == 'digest':
+        elif mode == AUTH_MODE_DIGEST:
             auth = HTTPDigestAuth(username, password)
+        elif mode == AUTH_MODE_APIKEY:
+            auth = ApiKeyAuth(username, apikey)
         else:
             raise Exception('Unknown auth mode: %s' % mode)
 
@@ -181,4 +185,25 @@ class MockCommCareHqClient(object):
     
     def iterate(self, resource, paginator, params=None):
         return self.mock_data[resource][urlencode(OrderedDict(sorted(params.items())))]
+
+class ApiKeyAuth(AuthBase):
+    def __init__(self, username, apikey):
+        self.username = username
+        self.apikey = apikey
+
+    def _key(self):
+        return (self.username, self.apikey)
+
+    def __eq__(self, other):
+        return self._key() == other.key()
+
+    def __hash__(self):
+        return hash(self._key())
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __call__(self, r):
+        r.headers['Authorization'] = 'apikey %s:%s' % (self.username, self.apikey)
+        return r
 

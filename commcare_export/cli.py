@@ -46,7 +46,9 @@ def main(argv):
     parser.add_argument('--project')
     parser.add_argument('--username')
     parser.add_argument('--password')
-    parser.add_argument('--auth-mode', default='digest', help='Use "session" based auth or "digest" auth.')
+    parser.add_argument('--apikey')
+    parser.add_argument('--auth-mode', default='digest', help='Use "session" based auth, "digest" auth, or'
+                                                              ' "apikey" auth (for two factor enabled domains).')
     parser.add_argument('--since', help='Export all data after this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS')
     parser.add_argument('--until', help='Export all data up until this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS')
     parser.add_argument('--start-over', default=False, action='store_true',
@@ -148,7 +150,7 @@ def main_with_args(args):
                                   project = args.project,
                                   version = args.api_version)
 
-    api_client = api_client.authenticated(username=args.username, password=args.password, mode=args.auth_mode)
+    api_client = api_client.authenticated(username=args.username, password=args.password, apikey=args.apikey, mode=args.auth_mode)
     checkpoint_manager = None
     if args.output_format == 'xlsx':
         writer = writers.Excel2007TableWriter(args.output)
