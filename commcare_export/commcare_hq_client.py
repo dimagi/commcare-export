@@ -51,7 +51,7 @@ class CommCareHqClient(object):
     def api_url(self):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
 
-    def authenticated(self, username=None, password=None, apikey=None, mode=AUTH_MODE_SESSION):
+    def authenticated(self, username=None, password=None, mode=AUTH_MODE_SESSION):
         """
         Returns a freshly authenticated CommCareHqClient with a new session.
         This is safe to call many times and each of the resulting clients
@@ -79,7 +79,7 @@ class CommCareHqClient(object):
         elif mode == AUTH_MODE_DIGEST:
             auth = HTTPDigestAuth(username, password)
         elif mode == AUTH_MODE_APIKEY:
-            auth = ApiKeyAuth(username, apikey)
+            auth = ApiKeyAuth(username, password)
         else:
             raise Exception('Unknown auth mode: %s' % mode)
 
