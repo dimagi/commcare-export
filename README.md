@@ -377,10 +377,10 @@ $ git push --tags
 
 2\. Create the source distribution
 
-Ensure that the archive has the correct version number (matching the tag name).
 ```
 $ python setup.py sdist
 ```
+Ensure that the archive (`dist/commcare-export-X.YY.0.tar.gz`) has the correct version number (matching the tag name).
 
 3\. Upload to pypi
 
