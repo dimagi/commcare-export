@@ -1,84 +1,95 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 
-import inspect
-import unittest
-import tempfile
+import datetime
 import uuid
 
-import openpyxl
+import pytest
 import sqlalchemy
 
 from commcare_export.checkpoint import CheckpointManager
-from commcare_export.writers import *
+from commcare_export.writers import SqlTableWriter
+
+TEST_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
+
+@pytest.fixture(scope="class", params=[
+    {
+        'url': "postgresql://commcarehq:commcarehq@localhost/%s",
+        'admin_db': 'postgres'
+    },
+    {
+        'url': 'mysql+pymysql://root:pw@localhost/%s?charset=utf8',
+    },
+    {
+        'url': 'sqlite:///:memory:',
+        'skip_create_teardown': True,
+        # http://docs.sqlalchemy.org/en/latest/dialects/sqlite.html#using-temporary-tables-with-sqlite
+        'poolclass': sqlalchemy.pool.StaticPool
+    }
+], ids=['postgres', 'mysql', 'sqlite'])
+def db_params(request):
+    try:
+        sudo_engine = sqlalchemy.create_engine(request.param['url'] % request.param.get('admin_db', ''), poolclass=sqlalchemy.pool.NullPool)
+    except TypeError:
+        pass
+
+    try:
+        db_connection_url = request.param['url'] % TEST_DB
+    except TypeError:
+        db_connection_url = request.param['url']
+
+    def tear_down():
+        with sudo_engine.connect() as conn:
+            conn.execute('rollback')
+            conn.execute('drop database if exists %s' % TEST_DB)
+
+    try:
+        with sqlalchemy.create_engine(db_connection_url).connect():
+            pass
+    except (sqlalchemy.exc.OperationalError, sqlalchemy.exc.InternalError):
+        with sudo_engine.connect() as conn:
+            conn.execute('rollback')
+            conn.execute('create database %s' % TEST_DB)
+    else:
+        if not request.param.get('skip_create_teardown', False):
+            raise Exception('Database %s already exists; refusing to overwrite' % TEST_DB)
+
+    if not request.param.get('skip_create_teardown', False):
+        request.addfinalizer(tear_down)
+
+    params = request.param.copy()
+    params['url'] = db_connection_url
+    return params
+
+
+
+@pytest.fixture()
+def writer(db_params):
+    poolclass = db_params.get('poolclass', sqlalchemy.pool.NullPool)
+    return SqlTableWriter(db_params['url'], poolclass=poolclass)
+
+
+@pytest.fixture()
+def manager(db_params):
+    if 'sqlite' in db_params['url']:
+        yield
+    else:
+        poolclass = db_params.get('poolclass', sqlalchemy.pool.NullPool)
+        manager = CheckpointManager(db_params['url'], poolclass=poolclass)
+        try:
+            yield manager
+        finally:
+            with manager:
+                manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS commcare_export_runs'))
+                manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS alembic_version'))
+
 
 MYSQL_TYPE_MAP = {
     bool: lambda x: int(x)
 }
 
-class SqlTestMixin(object):
 
-    SUPERUSER_POSTGRES_URL = 'postgresql://postgres@/postgres'
-    SUPERUSER_MYSQL_URL = 'mysql+pymysql://travis@/?charset=utf8'
-
-    @classmethod
-    def setup_class(cls):
-        # Ensure that these URLs are good to go
-        cls.TEST_SQLITE_URL = 'sqlite:///:memory:'
-        cls.TEST_POSTGRES_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
-        cls.TEST_POSTGRES_URL = 'postgresql://postgres@/%s' % cls.TEST_POSTGRES_DB
-        cls.TEST_MYSQL_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
-        cls.TEST_MYSQL_URL = 'mysql+pymysql://travis@/%s?charset=utf8' % cls.TEST_MYSQL_DB
-
-        # "Engines" are not actual connections, but vend connections
-        cls.postgres_sudo_engine = sqlalchemy.create_engine(cls.SUPERUSER_POSTGRES_URL, poolclass=sqlalchemy.pool.NullPool)
-        cls.postgres_engine = sqlalchemy.create_engine(cls.TEST_POSTGRES_URL, poolclass=sqlalchemy.pool.NullPool)
-        cls.mysql_sudo_engine = sqlalchemy.create_engine(cls.SUPERUSER_MYSQL_URL, poolclass=sqlalchemy.pool.NullPool)
-        cls.mysql_engine = sqlalchemy.create_engine(cls.TEST_MYSQL_URL, poolclass=sqlalchemy.pool.NullPool)
-        cls.sqlite_engine = sqlalchemy.create_engine(cls.TEST_SQLITE_URL, poolclass=sqlalchemy.pool.NullPool)
-
-        # For SQLite, this should work or the URL is bogus
-        with cls.sqlite_engine.connect() as conn:
-            pass
-
-        # SQLAlchemy starts connections in a transaction, so we need to rollback immediately
-        # before doing database creation and dropping
-        # via http://stackoverflow.com/questions/6506578/how-to-create-a-new-database-using-sqlalchemy
-
-        # PostgreSQL
-        try:
-            with cls.postgres_engine.connect():
-                pass
-        except sqlalchemy.exc.OperationalError:
-            with cls.postgres_sudo_engine.connect() as conn:
-                conn.execute('rollback')
-                conn.execute('create database %s' % cls.TEST_POSTGRES_DB)
-        else:
-            raise Exception('Database %s already exists; refusing to overwrite' % cls.TEST_POSTGRES_DB)
-
-        # MySQL
-        try:
-            with cls.mysql_engine.connect():
-                pass
-        except (sqlalchemy.exc.OperationalError, sqlalchemy.exc.InternalError) as e:
-            with cls.mysql_sudo_engine.connect() as conn:
-                conn.execute('rollback')
-                conn.execute('create database %s' % cls.TEST_MYSQL_DB)
-        else:
-            raise Exception('Database %s already exists; refusing to overwrite' % cls.TEST_MYSQL_DB)
-
-    @classmethod
-    def teardown_class(cls):
-        with cls.postgres_sudo_engine.connect() as conn:
-            conn.execute('rollback')
-            conn.execute('drop database if exists %s' % cls.TEST_POSTGRES_DB)
-
-        with cls.mysql_sudo_engine.connect() as conn:
-            conn.execute('rollback')
-            conn.execute('drop database if exists %s' % cls.TEST_MYSQL_DB)
-
-class TestWriters(SqlTestMixin, unittest.TestCase):
-
+class TestSQLWriters(object):
     def _type_convert(self, connection, row):
         """
         Different databases store and return values differently so convert the values
@@ -93,49 +104,7 @@ class TestWriters(SqlTestMixin, unittest.TestCase):
 
         return row
 
-    def test_JValueTableWriter(self):
-        writer = JValueTableWriter()
-        writer.write_table({
-            'name': 'foo',
-            'headings': ['a', 'bjørn', 'c', 'd'],
-            'rows': [
-                [1, '2', 3, datetime.date(2015, 1, 1)],
-                [4, '日本', 6, datetime.date(2015, 1, 2)],
-            ]
-        })
-
-        assert writer.tables == [{
-            'name': 'foo',
-            'headings': ['a', 'bjørn', 'c', 'd'],
-            'rows': [
-                [1, '2', 3, '2015-01-01'],
-                [4, '日本', 6, '2015-01-02'],
-            ],
-        }]
-
-    def test_Excel2007TableWriter(self):
-        with tempfile.NamedTemporaryFile() as file:
-            with Excel2007TableWriter(file=file) as writer:
-                writer.write_table({
-                    'name': 'foo',
-                    'headings': ['a', 'bjørn', 'c'],
-                    'rows': [
-                        [1, '2', 3],
-                        [4, '日本', 6],
-                    ]
-                })
-
-            output_wb = openpyxl.load_workbook(file.name)
-
-            assert list(output_wb.get_sheet_names()) == ['foo']
-            foo_sheet = output_wb.get_sheet_by_name('foo')
-            assert [ [cell.value for cell in row] for row in foo_sheet.range('A1:C3')] == [
-                ['a', 'bjørn', 'c'],
-                ['1', '2', '3'], # Note how pyxl does some best-effort parsing to *whatever* type
-                ['4', '日本', '6'],
-            ]
-
-    def SqlWriter_insert_tests(self, writer):
+    def test_insert(self, writer):
         with writer:
             writer.write_table({
                 'name': 'foo_insert',
@@ -154,7 +123,7 @@ class TestWriters(SqlTestMixin, unittest.TestCase):
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 2, 'c': 3}
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': 5, 'c': 6}
 
-    def SqlWriter_upsert_tests(self, writer):
+    def test_upsert(self, writer):
         with writer:
             writer.write_table({
                 'name': 'foo_upsert',
@@ -205,11 +174,19 @@ class TestWriters(SqlTestMixin, unittest.TestCase):
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 7, 'b': '本', 'c': 9}
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': 6}
 
-    def SqlWriter_types_test(self, writer, table_name=None):
-        table_name = table_name or 'foo_fancy_types'
+    def test_types(self, writer):
+        self._test_types(writer, 'foo_fancy_types')
+
+    def _test_types(self, writer, table_name):
         with writer:
+            if writer.is_sqllite:
+                # These tests cannot be accomplished with Sqlite
+                # because it does not support these
+                # core features such as column type changes
+                return
+
             writer.write_table({
-                'name': table_name or 'foo_fancy_types',
+                'name': table_name,
                 'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
                 'rows': [
                     ['bizzle', 1, 'yo', True, datetime.date(2015, 1, 1), datetime.datetime(2014, 4, 2, 18, 56, 12)],
@@ -220,18 +197,29 @@ class TestWriters(SqlTestMixin, unittest.TestCase):
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
         with writer:
             connection = writer.connection
-            result = dict([(row['id'], row) for row in connection.execute('SELECT id, a, b, c, d, e FROM %s' % table_name)])
+            result = dict(
+                [(row['id'], row) for row in connection.execute('SELECT id, a, b, c, d, e FROM %s' % table_name)])
 
             assert len(result) == 2
-            assert dict(result['bizzle']) == self._type_convert(connection, {'id': 'bizzle', 'a': 1, 'b': 'yo', 'c': True,
-                                              'd': datetime.date(2015, 1, 1), 'e': datetime.datetime(2014, 4, 2, 18, 56, 12)})
-            assert dict(result['bazzle']) == self._type_convert(connection, {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': False,
-                                              'd': datetime.date(2015, 1, 2), 'e': datetime.datetime(2014, 5, 1, 11, 16, 45)})
+            assert dict(result['bizzle']) == self._type_convert(connection,
+                                                                {'id': 'bizzle', 'a': 1, 'b': 'yo', 'c': True,
+                                                                 'd': datetime.date(2015, 1, 1),
+                                                                 'e': datetime.datetime(2014, 4, 2, 18, 56, 12)})
+            assert dict(result['bazzle']) == self._type_convert(connection,
+                                                                {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': False,
+                                                                 'd': datetime.date(2015, 1, 2),
+                                                                 'e': datetime.datetime(2014, 5, 1, 11, 16, 45)})
 
-    def SqlWriter_change_type_test(self, writer, expected):
-        self.SqlWriter_types_test(writer, 'foo_fancy_type_changes')
+    def test_change_type(self, writer):
+        self._test_types(writer, 'foo_fancy_type_changes')
 
         with writer:
+            if writer.is_sqllite:
+                # These tests cannot be accomplished with Sqlite
+                # because it does not support these
+                # core features such as column type changes
+                return
+
             writer.write_table({
                 'name': 'foo_fancy_type_changes',
                 'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
@@ -242,134 +230,40 @@ class TestWriters(SqlTestMixin, unittest.TestCase):
 
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
         with writer:
-            result = dict([(row['id'], row) for row in writer.connection.execute('SELECT id, a, b, c, d, e FROM foo_fancy_type_changes')])
+            result = dict([(row['id'], row) for row in
+                           writer.connection.execute('SELECT id, a, b, c, d, e FROM foo_fancy_type_changes')])
 
         assert len(result) == 2
-        for id, row in result.items():
-            assert id in expected
-            assert dict(row) == expected[id]
-
-    def test_postgres_insert(self):
-        writer = SqlTableWriter(self.TEST_POSTGRES_URL, poolclass=sqlalchemy.pool.NullPool)
-        self.SqlWriter_insert_tests(writer)
-
-    def test_mysql_insert(self):
-        writer = SqlTableWriter(self.TEST_MYSQL_URL, poolclass=sqlalchemy.pool.NullPool)
-        self.SqlWriter_insert_tests(writer)
-
-    def test_sqlite_insert(self):
-        # http://docs.sqlalchemy.org/en/latest/dialects/sqlite.html#using-temporary-tables-with-sqlite
-        writer = SqlTableWriter(self.TEST_SQLITE_URL, poolclass=sqlalchemy.pool.StaticPool)
-        self.SqlWriter_insert_tests(writer)
-
-    def test_postgres_upsert(self):
-        writer = SqlTableWriter(self.TEST_POSTGRES_URL, poolclass=sqlalchemy.pool.NullPool)
-        self.SqlWriter_upsert_tests(writer)
-
-    def test_mysql_upsert(self):
-        writer = SqlTableWriter(self.TEST_MYSQL_URL, poolclass=sqlalchemy.pool.NullPool)
-        self.SqlWriter_upsert_tests(writer)
-
-    def test_sqlite_upsert(self):
-        writer = SqlTableWriter(self.TEST_SQLITE_URL, poolclass=sqlalchemy.pool.StaticPool)
-        self.SqlWriter_upsert_tests(writer)
-
-    def test_postgres_type_changes(self):
-        '''
-        These tests cannot be accomplished with Sqlite because it does not support these
-        core features such as column type changes
-        '''
         expected = {
             'bizzle': {'id': 'bizzle', 'a': 'yo dude', 'b': '本', 'c': 'true',
                        'd': datetime.date(2015, 2, 13), 'e': '2014-08-01T11:23:45:00.0000Z'},
             'bazzle': {'id': 'bazzle', 'a': '4', 'b': '日本', 'c': 'false',
                        'd': datetime.date(2015, 1, 2), 'e': '2014-05-01 11:16:45'}
         }
-        writer = SqlTableWriter(self.TEST_POSTGRES_URL, poolclass=sqlalchemy.pool.NullPool)
-        self.SqlWriter_change_type_test(writer, expected)
+        if 'mysql' in writer.connection.engine.driver:
+            # mysql weirdness
+            expected['bazzle']['c'] = '0'
 
-    def test_postgres_types(self):
-        '''
-        These tests cannot be accomplished with Sqlite because it does not support these
-        core features such as column type changes
-        '''
-        writer = SqlTableWriter(self.TEST_POSTGRES_URL, poolclass=sqlalchemy.pool.NullPool)
-        self.SqlWriter_types_test(writer)
-
-    def test_mysql_type_changes(self):
-        '''
-        These tests cannot be accomplished with Sqlite because it does not support these
-        core features such as column type changes
-        '''
-        expected = {
-            'bizzle': {'id': 'bizzle', 'a': 'yo dude', 'b': '本', 'c': 'true',
-                       'd': datetime.date(2015, 2, 13), 'e': '2014-08-01T11:23:45:00.0000Z'},
-            'bazzle': {'id': 'bazzle', 'a': '4', 'b': '日本', 'c': '0',
-                       'd': datetime.date(2015, 1, 2), 'e': '2014-05-01 11:16:45'}
-        }
-        writer = SqlTableWriter(self.TEST_MYSQL_URL, poolclass=sqlalchemy.pool.NullPool)
-        self.SqlWriter_change_type_test(writer, expected)
-
-    def test_mysql_types(self):
-        '''
-        These tests cannot be accomplished with Sqlite because it does not support these
-        core features such as column type changes
-        '''
-        writer = SqlTableWriter(self.TEST_MYSQL_URL, poolclass=sqlalchemy.pool.NullPool)
-        self.SqlWriter_types_test(writer)
+        for id, row in result.items():
+            assert id in expected
+            assert dict(row) == expected[id]
 
 
-def make_test_cases(cls):
-    """For each '_test_*' method on the class create a test case for each sql engine"""
-    url_attrs = ('TEST_MYSQL_URL', 'TEST_POSTGRES_URL')
-    methods = inspect.getmembers(cls, predicate=inspect.ismethod)
-    for name, method in methods:
-        if name.startswith('_test_'):
-            def _make_test_cases(test_method, url_attr):
-                # closure to make sure test_method is the right method
-                def test(self):
-                    url = getattr(self, url_attr)
-                    manager = self.get_checkpointer(url)
-                    test_method(self, manager)
+class TestCheckpointManager(object):
+    def test_create_checkpoint_table(self, manager):
+        if not manager:
+            # skip sqlite
+            return
 
-                test.__name__ = str('{}_{}'.format(name[1:], url_attr.lower()))
-                assert not hasattr(cls, test.__name__), \
-                    "duplicate test case: {} {}".format(cls, test.__name__)
-
-                setattr(cls, test.__name__, test)
-
-            for url_attr in url_attrs:
-                _make_test_cases(method, url_attr)
-    return cls
-
-
-@make_test_cases
-class TestCheckpointManager(SqlTestMixin, unittest.TestCase):
-
-    def setUp(self):
-        super(TestCheckpointManager, self).setUp()
-        self._tearDown(self.get_checkpointer(self.TEST_MYSQL_URL))
-        self._tearDown(self.get_checkpointer(self.TEST_POSTGRES_URL))
-
-    def tearDown(self):
-        self._tearDown(self.get_checkpointer(self.TEST_MYSQL_URL))
-        self._tearDown(self.get_checkpointer(self.TEST_POSTGRES_URL))
-        super(TestCheckpointManager, self).tearDown()
-
-    def _tearDown(self, manager):
-        with manager:
-            manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS commcare_export_runs'))
-            manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS alembic_version'))
-
-    def get_checkpointer(self, db_url):
-        return CheckpointManager(db_url, poolclass=sqlalchemy.pool.NullPool)
-
-    def _test_create_checkpoint_table(self, manager):
         manager.create_checkpoint_table()
         with manager:
             assert 'commcare_export_runs' in manager.metadata.tables
 
-    def _test_get_time_of_last_run(self, manager):
+    def test_get_time_of_last_run(self, manager):
+        if not manager:
+            # skip sqlite
+            return
+
         manager.create_checkpoint_table()
         with manager:
             manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=True)
@@ -378,7 +272,11 @@ class TestCheckpointManager(SqlTestMixin, unittest.TestCase):
 
             assert manager.get_time_of_last_run('123') == second_run.isoformat()
 
-    def _test_clean_on_final_run(self, manager):
+    def test_clean_on_final_run(self, manager):
+        if not manager:
+            # skip sqlite
+            return
+
         manager.create_checkpoint_table()
         with manager:
             manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=False)
@@ -395,4 +293,3 @@ class TestCheckpointManager(SqlTestMixin, unittest.TestCase):
             assert _get_non_final_rows_count() == 2
             manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=True)
             assert _get_non_final_rows_count() == 0
-
