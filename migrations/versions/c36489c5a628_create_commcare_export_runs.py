@@ -16,15 +16,18 @@ depends_on = None
 
 
 def upgrade():
-    url = op.get_bind().engine.url
-    collation = 'utf8_bin' if 'mysql' in url.drivername else None
-    op.create_table(
-        'commcare_export_runs',
-        sa.Column('id', sa.Unicode(64), primary_key=True),
-        sa.Column('query_file_name', sa.Unicode(255, collation=collation)),
-        sa.Column('query_file_md5', sa.Unicode(255, collation=collation)),
-        sa.Column('time_of_run', sa.Unicode(32, collation=collation))
-    )
+    meta = sa.MetaData(bind=op.get_bind())
+    meta.reflect()
+    if 'commcare_export_runs' not in meta.tables:
+        url = op.get_bind().engine.url
+        collation = 'utf8_bin' if 'mysql' in url.drivername else None
+        op.create_table(
+            'commcare_export_runs',
+            sa.Column('id', sa.Unicode(64), primary_key=True),
+            sa.Column('query_file_name', sa.Unicode(255, collation=collation)),
+            sa.Column('query_file_md5', sa.Unicode(255, collation=collation)),
+            sa.Column('time_of_run', sa.Unicode(32, collation=collation))
+        )
 
 
 def downgrade():
