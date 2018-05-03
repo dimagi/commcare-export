@@ -359,7 +359,7 @@ class TestCheckpointManager(SqlTestMixin, unittest.TestCase):
     def _tearDown(self, manager):
         with manager:
             manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS commcare_export_runs'))
-            manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS migrate_version'))
+            manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS alembic_version'))
 
     def get_checkpointer(self, db_url):
         return CheckpointManager(db_url, poolclass=sqlalchemy.pool.NullPool)
