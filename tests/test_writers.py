@@ -2,65 +2,13 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 
 import datetime
-import uuid
+import tempfile
 
+import openpyxl
 import pytest
 import sqlalchemy
 
-from commcare_export.checkpoint import CheckpointManager
-from commcare_export.writers import SqlTableWriter
-
-TEST_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
-
-@pytest.fixture(scope="class", params=[
-    {
-        'url': "postgresql://commcarehq:commcarehq@localhost/%s",
-        'admin_db': 'postgres'
-    },
-    {
-        'url': 'mysql+pymysql://root:pw@localhost/%s?charset=utf8',
-    },
-    {
-        'url': 'sqlite:///:memory:',
-        'skip_create_teardown': True,
-        # http://docs.sqlalchemy.org/en/latest/dialects/sqlite.html#using-temporary-tables-with-sqlite
-        'poolclass': sqlalchemy.pool.StaticPool
-    }
-], ids=['postgres', 'mysql', 'sqlite'])
-def db_params(request):
-    try:
-        sudo_engine = sqlalchemy.create_engine(request.param['url'] % request.param.get('admin_db', ''), poolclass=sqlalchemy.pool.NullPool)
-    except TypeError:
-        pass
-
-    try:
-        db_connection_url = request.param['url'] % TEST_DB
-    except TypeError:
-        db_connection_url = request.param['url']
-
-    def tear_down():
-        with sudo_engine.connect() as conn:
-            conn.execute('rollback')
-            conn.execute('drop database if exists %s' % TEST_DB)
-
-    try:
-        with sqlalchemy.create_engine(db_connection_url).connect():
-            pass
-    except (sqlalchemy.exc.OperationalError, sqlalchemy.exc.InternalError):
-        with sudo_engine.connect() as conn:
-            conn.execute('rollback')
-            conn.execute('create database %s' % TEST_DB)
-    else:
-        if not request.param.get('skip_create_teardown', False):
-            raise Exception('Database %s already exists; refusing to overwrite' % TEST_DB)
-
-    if not request.param.get('skip_create_teardown', False):
-        request.addfinalizer(tear_down)
-
-    params = request.param.copy()
-    params['url'] = db_connection_url
-    return params
-
+from commcare_export.writers import SqlTableWriter, JValueTableWriter, Excel2007TableWriter
 
 
 @pytest.fixture()
@@ -69,24 +17,53 @@ def writer(db_params):
     return SqlTableWriter(db_params['url'], poolclass=poolclass)
 
 
-@pytest.fixture()
-def manager(db_params):
-    if 'sqlite' in db_params['url']:
-        yield
-    else:
-        poolclass = db_params.get('poolclass', sqlalchemy.pool.NullPool)
-        manager = CheckpointManager(db_params['url'], poolclass=poolclass)
-        try:
-            yield manager
-        finally:
-            with manager:
-                manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS commcare_export_runs'))
-                manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS alembic_version'))
-
-
 MYSQL_TYPE_MAP = {
     bool: lambda x: int(x)
 }
+
+
+class TestWriters(object):
+    def test_JValueTableWriter(self):
+        writer = JValueTableWriter()
+        writer.write_table({
+            'name': 'foo',
+            'headings': ['a', 'bjørn', 'c', 'd'],
+            'rows': [
+                [1, '2', 3, datetime.date(2015, 1, 1)],
+                [4, '日本', 6, datetime.date(2015, 1, 2)],
+            ]
+        })
+
+        assert writer.tables == [{
+            'name': 'foo',
+            'headings': ['a', 'bjørn', 'c', 'd'],
+            'rows': [
+                [1, '2', 3, '2015-01-01'],
+                [4, '日本', 6, '2015-01-02'],
+            ],
+        }]
+
+    def test_Excel2007TableWriter(self):
+        with tempfile.NamedTemporaryFile() as file:
+            with Excel2007TableWriter(file=file) as writer:
+                writer.write_table({
+                    'name': 'foo',
+                    'headings': ['a', 'bjørn', 'c'],
+                    'rows': [
+                        [1, '2', 3],
+                        [4, '日本', 6],
+                    ]
+                })
+
+            output_wb = openpyxl.load_workbook(file.name)
+
+            assert list(output_wb.get_sheet_names()) == ['foo']
+            foo_sheet = output_wb.get_sheet_by_name('foo')
+            assert [ [cell.value for cell in row] for row in foo_sheet.range('A1:C3')] == [
+                ['a', 'bjørn', 'c'],
+                ['1', '2', '3'], # Note how pyxl does some best-effort parsing to *whatever* type
+                ['4', '日本', '6'],
+            ]
 
 
 class TestSQLWriters(object):
@@ -247,49 +224,3 @@ class TestSQLWriters(object):
         for id, row in result.items():
             assert id in expected
             assert dict(row) == expected[id]
-
-
-class TestCheckpointManager(object):
-    def test_create_checkpoint_table(self, manager):
-        if not manager:
-            # skip sqlite
-            return
-
-        manager.create_checkpoint_table()
-        with manager:
-            assert 'commcare_export_runs' in manager.metadata.tables
-
-    def test_get_time_of_last_run(self, manager):
-        if not manager:
-            # skip sqlite
-            return
-
-        manager.create_checkpoint_table()
-        with manager:
-            manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=True)
-            second_run = datetime.datetime.utcnow()
-            manager.set_checkpoint('query', '123', second_run, run_complete=True)
-
-            assert manager.get_time_of_last_run('123') == second_run.isoformat()
-
-    def test_clean_on_final_run(self, manager):
-        if not manager:
-            # skip sqlite
-            return
-
-        manager.create_checkpoint_table()
-        with manager:
-            manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=False)
-            manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=False)
-
-            def _get_non_final_rows_count():
-                cursor = manager.connection.execute(
-                    manager.sqlalchemy.sql.text('select count(*) from {} where final = :final'.format(manager.table_name)),
-                    final=False
-                )
-                for row in cursor:
-                    return row[0]
-
-            assert _get_non_final_rows_count() == 2
-            manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=True)
-            assert _get_non_final_rows_count() == 0
