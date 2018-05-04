@@ -9,7 +9,7 @@ env:
 before_install:
  - docker pull microsoft/mssql-server-linux:2017-latest
  - curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
- - echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/16.04/prod xenial main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+ - echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/14.04/prod trusty main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
  - sudo apt-get update -qq
 install:
  - pip install -e .
