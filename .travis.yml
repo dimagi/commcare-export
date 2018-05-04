@@ -21,6 +21,7 @@ before_script:
  - mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'travis'@'%';";
  - docker ps -a
  - odbcinst -q -d
+ - .travis/wait.sh
 script: coverage run setup.py test
 after_success:
  - coveralls
