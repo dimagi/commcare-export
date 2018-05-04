@@ -7,14 +7,15 @@ python:
 env:
   global:
     - MSSQL_SA_PASSWORD=Password@123
-install:
- - pip install -e .
- - pip install pymysql psycopg2
- - pip install coverage coveralls
+before_install:
  - docker pull microsoft/mssql-server-linux:2017-latest
  - curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
  - echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/16.04/prod xenial main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
  - sudo apt-get update -qq
+install:
+ - pip install -e .
+ - pip install pymysql psycopg2
+ - pip install coverage coveralls
  - sudo ACCEPT_EULA=Y apt-get install msodbcsql17
 before_script:
  - docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=$MSSQL_SA_PASSWORD" -p 1433:1433 --name mssql1 -d microsoft/
