@@ -16,13 +16,7 @@ TEST_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
     {
         'url': 'mysql+pymysql://travis@/%s?charset=utf8',
     },
-    {
-        'url': 'sqlite:///:memory:',
-        'skip_create_teardown': True,
-        # http://docs.sqlalchemy.org/en/latest/dialects/sqlite.html#using-temporary-tables-with-sqlite
-        'poolclass': sqlalchemy.pool.StaticPool
-    }
-], ids=['postgres', 'mysql', 'sqlite'])
+], ids=['postgres', 'mysql'])
 def db_params(request):
     try:
         sudo_engine = sqlalchemy.create_engine(request.param['url'] % request.param.get('admin_db', ''), poolclass=sqlalchemy.pool.NullPool)

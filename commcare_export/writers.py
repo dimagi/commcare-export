@@ -182,8 +182,8 @@ class SqlMixin(object):
     (TODO) with "upsert" based on primary key.
     """
 
-    MIN_VARCHAR_LEN = 32  # Since SQLite does not actually support ALTER COLUMN type, let's maximize the chance that we do not have to write workarounds by starting medium
-    MAX_VARCHAR_LEN = 255  # Arbitrary point at which we switch to TEXT; for postgres VARCHAR == TEXT anyhow and for Sqlite it doesn't matter either
+    MIN_VARCHAR_LEN = 32
+    MAX_VARCHAR_LEN = 255  # Arbitrary point at which we switch to TEXT; for postgres VARCHAR == TEXT anyhow
 
     def __init__(self, db_url, poolclass=None):
         try:
@@ -240,18 +240,13 @@ class SqlTableWriter(SqlMixin, TableWriter):
         super(SqlTableWriter, self).__init__(db_url, poolclass=poolclass)
         self.strict_types = strict_types
 
-    @property
-    def is_sqllite(self):
-        return 'sqlite' in self.connection.engine.driver
-
     def best_type_for(self, val):
-        if not self.is_sqllite:
-            if isinstance(val, bool):
-                return self.sqlalchemy.Boolean()
-            elif isinstance(val, datetime.datetime):
-                return self.sqlalchemy.DateTime()
-            elif isinstance(val, datetime.date):
-                return self.sqlalchemy.Date()
+        if isinstance(val, bool):
+            return self.sqlalchemy.Boolean()
+        elif isinstance(val, datetime.datetime):
+            return self.sqlalchemy.DateTime()
+        elif isinstance(val, datetime.date):
+            return self.sqlalchemy.Date()
 
         if isinstance(val, int):
             return self.sqlalchemy.Integer()
@@ -260,8 +255,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
             # 1. PostgreSQL is the best; you can use TEXT everywhere and it works like a charm.
             # 2. MySQL cannot build an index on TEXT due to the lack of a field length, so we
             #    try to use VARCHAR when possible.
-            # 3. But SQLite really barfs on altering columns. Luckily it does actually have real types,
-            #    so we count on other parts of this code to not bother running column alterations
             if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
                 return self.sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
             else:
@@ -374,10 +367,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     new_type = self.strict_types_compatibility_check(ty, current_ty)
                 elif not self.compatible(ty, current_ty):
                     new_type = self.least_upper_bound(ty, current_ty)
-                    if self.is_sqllite:
-                        logger.warn('Type mismatch detected for column %s (%s != %s) '
-                                    'but sqlite does not support changing column types', columns[column], current_ty, new_type)
-                        continue
 
                 if new_type:
                     logger.warn('Altering column %s from %s to %s for value: "%s:%s"', columns[column], current_ty, new_type, type(val), val)

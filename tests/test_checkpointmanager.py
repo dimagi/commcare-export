@@ -11,34 +11,22 @@ from commcare_export.checkpoint import CheckpointManager
 
 @pytest.fixture()
 def manager(db_params):
-    if 'sqlite' in db_params['url']:
-        yield
-    else:
-        poolclass = db_params.get('poolclass', sqlalchemy.pool.NullPool)
-        manager = CheckpointManager(db_params['url'], poolclass=poolclass)
-        try:
-            yield manager
-        finally:
-            with manager:
-                manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS commcare_export_runs'))
-                manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS alembic_version'))
+    manager = CheckpointManager(db_params['url'], poolclass=sqlalchemy.pool.NullPool)
+    try:
+        yield manager
+    finally:
+        with manager:
+            manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS commcare_export_runs'))
+            manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS alembic_version'))
 
 
 class TestCheckpointManager(object):
     def test_create_checkpoint_table(self, manager):
-        if not manager:
-            # skip sqlite
-            return
-
         manager.create_checkpoint_table()
         with manager:
             assert 'commcare_export_runs' in manager.metadata.tables
 
     def test_get_time_of_last_run(self, manager):
-        if not manager:
-            # skip sqlite
-            return
-
         manager.create_checkpoint_table()
         with manager:
             manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=True)
@@ -48,10 +36,6 @@ class TestCheckpointManager(object):
             assert manager.get_time_of_last_run('123') == second_run.isoformat()
 
     def test_clean_on_final_run(self, manager):
-        if not manager:
-            # skip sqlite
-            return
-
         manager.create_checkpoint_table()
         with manager:
             manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=False)

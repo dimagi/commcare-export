@@ -90,9 +90,6 @@ postgresql://scott:tiger@localhost/mydatabase
 
 # MySQL
 mysql://scott:tiger@localhost/foo
-
-# SQLite
-sqlite:///foo.db
 ```
 
 

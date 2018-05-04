@@ -13,8 +13,7 @@ from commcare_export.writers import SqlTableWriter, JValueTableWriter, Excel2007
 
 @pytest.fixture()
 def writer(db_params):
-    poolclass = db_params.get('poolclass', sqlalchemy.pool.NullPool)
-    return SqlTableWriter(db_params['url'], poolclass=poolclass)
+    return SqlTableWriter(db_params['url'], poolclass=sqlalchemy.pool.NullPool)
 
 
 MYSQL_TYPE_MAP = {
@@ -156,12 +155,6 @@ class TestSQLWriters(object):
 
     def _test_types(self, writer, table_name):
         with writer:
-            if writer.is_sqllite:
-                # These tests cannot be accomplished with Sqlite
-                # because it does not support these
-                # core features such as column type changes
-                return
-
             writer.write_table({
                 'name': table_name,
                 'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
@@ -191,12 +184,6 @@ class TestSQLWriters(object):
         self._test_types(writer, 'foo_fancy_type_changes')
 
         with writer:
-            if writer.is_sqllite:
-                # These tests cannot be accomplished with Sqlite
-                # because it does not support these
-                # core features such as column type changes
-                return
-
             writer.write_table({
                 'name': 'foo_fancy_type_changes',
                 'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
