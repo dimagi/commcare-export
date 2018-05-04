@@ -86,10 +86,13 @@ CommCare Export uses SQLAlachemy's [create_engine](http://docs.sqlalchemy.org/en
 
 ```
 # Postgres
-postgresql://scott:tiger@localhost/mydatabase
+postgresql+psycopg2://scott:tiger@localhost/mydatabase
 
 # MySQL
-mysql://scott:tiger@localhost/foo
+mysql+pymysql://scott:tiger@localhost/mydatabase
+
+# MSSQL
+mssql+pyodbc://scott:tiger@localhost/mydatabases?driver=ODBC+Driver+17+for+SQL+Server
 ```
 
 
@@ -313,7 +316,7 @@ $ pip install openpyxl
 $ pip install xlwt
 
 # To sync with a SQL database
-$ pip install SQLAlchemy alembic
+$ pip install SQLAlchemy alembic psycopg2 pymysql pyodbc
 ```
 
 Contributing
