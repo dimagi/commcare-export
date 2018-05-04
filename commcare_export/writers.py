@@ -287,6 +287,13 @@ class SqlTableWriter(SqlMixin, TableWriter):
             self.sqlalchemy.DateTime: (self.sqlalchemy.String, self.sqlalchemy.Text, self.sqlalchemy.Date),
             self.sqlalchemy.Date: (self.sqlalchemy.String, self.sqlalchemy.Text),
         }
+
+        # add dialect specific types
+        try:
+            compatibility[self.sqlalchemy.Boolean] += (self.sqlalchemy.dialects.mssql.base.BIT,)
+        except AttributeError:
+            pass
+
         for _type, types in compatibility.items():
             if isinstance(source_type, _type):
                 return isinstance(dest_type, (_type,) + types)
