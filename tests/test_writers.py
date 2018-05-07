@@ -13,12 +13,13 @@ from commcare_export.writers import SqlTableWriter, JValueTableWriter, Excel2007
 
 @pytest.fixture()
 def writer(db_params):
-    poolclass = db_params.get('poolclass', sqlalchemy.pool.NullPool)
-    return SqlTableWriter(db_params['url'], poolclass=poolclass)
+    return SqlTableWriter(db_params['url'], poolclass=sqlalchemy.pool.NullPool)
 
 
-MYSQL_TYPE_MAP = {
-    bool: lambda x: int(x)
+TYPE_MAP = {
+    'mysql': {
+        bool: lambda x: int(x)
+    },
 }
 
 
@@ -76,8 +77,9 @@ class TestSQLWriters(object):
             func = type_map.get(value.__class__, None)
             return func(value) if func else value
 
-        if 'mysql' in connection.engine.driver:
-            return {k: convert(MYSQL_TYPE_MAP, v) for k, v in row.items()}
+        for driver, type_map in TYPE_MAP.items():
+            if driver in connection.engine.driver:
+                return {k: convert(type_map, v) for k, v in row.items()}
 
         return row
 
@@ -156,12 +158,6 @@ class TestSQLWriters(object):
 
     def _test_types(self, writer, table_name):
         with writer:
-            if writer.is_sqllite:
-                # These tests cannot be accomplished with Sqlite
-                # because it does not support these
-                # core features such as column type changes
-                return
-
             writer.write_table({
                 'name': table_name,
                 'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
@@ -178,25 +174,21 @@ class TestSQLWriters(object):
                 [(row['id'], row) for row in connection.execute('SELECT id, a, b, c, d, e FROM %s' % table_name)])
 
             assert len(result) == 2
-            assert dict(result['bizzle']) == self._type_convert(connection,
-                                                                {'id': 'bizzle', 'a': 1, 'b': 'yo', 'c': True,
-                                                                 'd': datetime.date(2015, 1, 1),
-                                                                 'e': datetime.datetime(2014, 4, 2, 18, 56, 12)})
-            assert dict(result['bazzle']) == self._type_convert(connection,
-                                                                {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': False,
-                                                                 'd': datetime.date(2015, 1, 2),
-                                                                 'e': datetime.datetime(2014, 5, 1, 11, 16, 45)})
+            expected = {
+                'bizzle': {'id': 'bizzle', 'a': 1, 'b': 'yo', 'c': True,
+                           'd': datetime.date(2015, 1, 1), 'e': datetime.datetime(2014, 4, 2, 18, 56, 12)},
+                'bazzle': {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': False,
+                           'd': datetime.date(2015, 1, 2), 'e': datetime.datetime(2014, 5, 1, 11, 16, 45)}
+            }
+
+            for id, row in result.items():
+                assert id in expected
+                assert dict(row) == self._type_convert(connection, expected[id])
 
     def test_change_type(self, writer):
         self._test_types(writer, 'foo_fancy_type_changes')
 
         with writer:
-            if writer.is_sqllite:
-                # These tests cannot be accomplished with Sqlite
-                # because it does not support these
-                # core features such as column type changes
-                return
-
             writer.write_table({
                 'name': 'foo_fancy_type_changes',
                 'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
@@ -217,9 +209,15 @@ class TestSQLWriters(object):
             'bazzle': {'id': 'bazzle', 'a': '4', 'b': '日本', 'c': 'false',
                        'd': datetime.date(2015, 1, 2), 'e': '2014-05-01 11:16:45'}
         }
+
         if 'mysql' in writer.connection.engine.driver:
             # mysql weirdness
             expected['bazzle']['c'] = '0'
+        if 'pyodbc' in writer.connection.engine.driver:
+            expected['bazzle']['c'] = '0'
+            # couldn't figure out how to make SQL Server convert date to ISO8601
+            # see https://docs.microsoft.com/en-us/sql/t-sql/functions/cast-and-convert-transact-sql?view=sql-server-2017#date-and-time-styles
+            expected['bazzle']['e'] = 'May  1 2014 11:16AM'
 
         for id, row in result.items():
             assert id in expected
