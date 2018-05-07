@@ -86,13 +86,13 @@ CommCare Export uses SQLAlachemy's [create_engine](http://docs.sqlalchemy.org/en
 
 ```
 # Postgres
-postgresql://scott:tiger@localhost/mydatabase
+postgresql+psycopg2://scott:tiger@localhost/mydatabase
 
 # MySQL
-mysql://scott:tiger@localhost/foo
+mysql+pymysql://scott:tiger@localhost/mydatabase
 
-# SQLite
-sqlite:///foo.db
+# MSSQL
+mssql+pyodbc://scott:tiger@localhost/mydatabases?driver=ODBC+Driver+17+for+SQL+Server
 ```
 
 
@@ -316,7 +316,7 @@ $ pip install openpyxl
 $ pip install xlwt
 
 # To sync with a SQL database
-$ pip install SQLAlchemy alembic
+$ pip install SQLAlchemy alembic psycopg2 pymysql pyodbc
 ```
 
 Contributing
@@ -396,3 +396,41 @@ https://pypi.python.org/pypi/commcare-export
 5\. Create a release on github
 
 https://github.com/dimagi/commcare-export/releases
+
+Testing databases
+-----------------
+Supported databases are PostgreSQL, MySQL, MSSQL
+
+Postgresql
+==========
+```
+$ docker pull postgres 9.6
+$ docker run --name ccexport-postgres -p 5432:5432 -d postgres:9.6
+```
+
+MySQL
+=====
+```
+$ docker pull mysql
+$ docker run --name ccexport-mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=pw -e MYSQL_USER=travis -e MYSQL_PASSWORD='' -d mysql
+
+# create travis user
+$ docker run -it --link ccexport-mysql:mysql --rm mysql sh -c 'exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD"'
+mysql> CREATE USER 'travis'@'%';
+mysql> GRANT ALL PRIVILEGES ON *.* TO 'travis'@'%';
+```
+
+MSSQL
+=====
+```
+$ docker pull microsoft/mssql-server-linux:2017-latest
+$ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=Password@123" -p 1433:1433 --name mssql1 -d microsoft/mssql-server-linux:2017-latest
+
+# install driver
+$ curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+$ echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/16.04/prod xenial main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+
+$ sudo apt-get update -qq
+$ sudo ACCEPT_EULA=Y apt-get install msodbcsql17
+$ odbcinst -q -d
+```
