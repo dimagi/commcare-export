@@ -1,1 +1,1 @@
-recursive-include migrations *.py *.cfg
+recursive-include migrations *.py *.ini

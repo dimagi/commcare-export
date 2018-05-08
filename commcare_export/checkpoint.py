@@ -29,17 +29,11 @@ class CheckpointManager(SqlMixin):
             self._cleanup(query_md5)
 
     def create_checkpoint_table(self):
-        import migrate.versioning.api
-        import migrate.exceptions
-        try:
-            migrate.versioning.api.version_control(self.db_url, self.migrations_repository)
-        except migrate.exceptions.DatabaseAlreadyControlledError:
-            pass
-        db_version = migrate.versioning.api.db_version(self.db_url, self.migrations_repository)
-        repo_version = migrate.versioning.api.version(self.migrations_repository)
-        if repo_version > db_version:
-            migrate.versioning.api.upgrade(self.db_url, self.migrations_repository)
-
+        from alembic import command, config
+        cfg = config.Config(os.path.join(self.migrations_repository, 'alembic.ini'))
+        with self.engine.begin() as connection:
+            cfg.attributes['connection'] = connection
+            command.upgrade(cfg, "head")
 
     def _insert_checkpoint(self, **row):
         table = self.table(self.table_name)
