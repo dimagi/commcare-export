@@ -26,6 +26,12 @@ class TestCheckpointManager(object):
         with manager:
             assert 'commcare_export_runs' in manager.metadata.tables
 
+    def test_checkpoint_table_exists(self, manager):
+        self.test_create_checkpoint_table(manager)
+        with manager:
+            manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE alembic_version'))
+        manager.create_checkpoint_table()
+
     def test_get_time_of_last_run(self, manager):
         manager.create_checkpoint_table()
         with manager:

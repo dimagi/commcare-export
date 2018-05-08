@@ -13,9 +13,10 @@ TEST_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
 logging.getLogger().setLevel(logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler())
 
+
 @pytest.fixture(scope="class", params=[
     {
-        'url': "postgresql://postgres@/%s",
+        'url': "postgresql://postgres@localhost/%s",
         'admin_db': 'postgres'
     },
     {
