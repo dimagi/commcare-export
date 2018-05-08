@@ -24,6 +24,9 @@ if 'sdist' in sys.argv:
 # This import requires commcare_export/VERSION
 import commcare_export
 version = commcare_export.version.stored_version()
+if not version:
+    print('Missing version, check commcare_export.version.py')
+    sys.exit(1)
 
 # Crash if the VERSION is not a simple version and it is going to register or upload
 if 'register' in sys.argv or 'upload' in sys.argv:
