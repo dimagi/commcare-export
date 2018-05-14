@@ -255,6 +255,8 @@ def str2num(val):
         return int(val)
     except ValueError:
         return float(val)
+    except ValueError:
+        return None
 
 
 @unwrap('val')

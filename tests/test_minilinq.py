@@ -66,6 +66,7 @@ class TestMiniLinq(unittest.TestCase):
         assert Apply(Reference("str2bool"), Literal(u'日本')).eval(env) == False
         assert Apply(Reference("str2num"), Literal('10')).eval(env) == 10
         assert Apply(Reference("str2num"), Literal('10.56')).eval(env) == 10.56
+        assert Apply(Reference("str2num"), Literal('')).eval(env) == None
         assert Apply(Reference("str2date"), Literal('2015-01-01')).eval(env) == datetime(2015, 1, 1)
         assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57')).eval(env) == datetime(2015, 1, 1, 18, 32, 57)
         assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57.001200')).eval(env) == datetime(2015, 1, 1, 18, 32, 57)
