@@ -27,7 +27,8 @@ version = commcare_export.version.version()
 
 # Crash if the VERSION is not a simple version and it is going to register or upload
 if 'register' in sys.argv or 'upload' in sys.argv:
-    if not re.match('\d+\.\d+\.\d+', version):
+    version = commcare_export.version.stored_version()
+    if not version or not re.match('\d+\.\d+\.\d+', version):
         print('Version %s is not an appropriate version for publicizing!' % version)
         sys.exit(1)
 
