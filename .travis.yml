@@ -24,7 +24,9 @@ before_script:
  - docker ps -a
  - odbcinst -q -d
  - .travis/wait.sh
-script: coverage run setup.py test
+script:
+ - python -c "import commcare_export; assert commcare_export.version.stored_version()"
+ - coverage run setup.py test
 after_success:
  - coveralls
 services:
