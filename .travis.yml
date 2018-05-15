@@ -13,6 +13,7 @@ before_install:
  - echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/14.04/prod trusty main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
  - sudo apt-get update -qq
 install:
+ - sudo apt-get install pandoc
  - python setup.py sdist
  - pip install dist/*
  - pip install pymysql psycopg2 pyodbc
