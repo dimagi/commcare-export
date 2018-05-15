@@ -1,2 +1,1 @@
 recursive-include migrations *.py *.ini
-include commcare_export/VERSION
