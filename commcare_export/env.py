@@ -254,9 +254,10 @@ def str2num(val):
     try:
         return int(val)
     except ValueError:
-        return float(val)
-    except ValueError:
-        return None
+        try:
+            return float(val)
+        except ValueError:
+            return None
 
 
 @unwrap('val')
