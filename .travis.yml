@@ -24,7 +24,10 @@ before_script:
  - docker ps -a
  - odbcinst -q -d
  - .travis/wait.sh
-script: coverage run setup.py test
+ - psql -c 'create database ccexport_test;' -U postgres
+script:
+ - coverage run setup.py test
+ - cd .. && python commcare-export/tests/test_package.py
 after_success:
  - coveralls
 services:
