@@ -31,6 +31,7 @@ class CheckpointManager(SqlMixin):
     def create_checkpoint_table(self):
         from alembic import command, config
         cfg = config.Config(os.path.join(self.migrations_repository, 'alembic.ini'))
+        cfg.set_main_option('script_location', self.migrations_repository)
         with self.engine.begin() as connection:
             cfg.attributes['connection'] = connection
             command.upgrade(cfg, "head")
