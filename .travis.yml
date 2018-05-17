@@ -15,9 +15,7 @@ before_install:
 install:
  - sudo apt-get install pandoc
  - python setup.py sdist
- - cd ../
- - pip install commcare-export/dist/*
- - cd commcare-export
+ - pip install dist/*
  - pip install pymysql psycopg2 pyodbc
  - pip install coverage coveralls
  - sudo ACCEPT_EULA=Y apt-get install msodbcsql17
@@ -26,9 +24,10 @@ before_script:
  - docker ps -a
  - odbcinst -q -d
  - .travis/wait.sh
+ - psql -c 'create database ccexport_test;' -U postgres
 script:
- - python -c "import commcare_export; assert commcare_export.version.stored_version()"
  - coverage run setup.py test
+ - cd .. && python commcare-export/.travis/test_package.py
 after_success:
  - coveralls
 services:
