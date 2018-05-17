@@ -14,6 +14,8 @@ before_install:
  - sudo apt-get update -qq
 install:
  - sudo apt-get install pandoc
+ - rm migrations/__init__.py
+ - rm migrations/versions/__init__.py
  - python setup.py sdist
  - pip install dist/*
  - pip install pymysql psycopg2 pyodbc
@@ -24,7 +26,10 @@ before_script:
  - docker ps -a
  - odbcinst -q -d
  - .travis/wait.sh
-script: coverage run setup.py test
+ - psql -c 'create database ccexport_test;' -U postgres
+script:
+ - coverage run setup.py test
+ - cd .. && python commcare-export/.travis/test_package.py
 after_success:
  - coveralls
 services:
