@@ -208,6 +208,19 @@ class SqlMixin(object):
         self.connection.close()
 
     @property
+    def max_column_length(self):
+        if 'postgres' in self.db_url:
+            # https://www.postgresql.org/docs/current/static/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
+            return 63
+        if 'mysql' in self.db_url:
+            # https://dev.mysql.com/doc/refman/8.0/en/identifiers.html
+            return 64
+        if 'mssql' in self.db_url:
+            # https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers?view=sql-server-2017
+            return 128
+        raise Exception("Unknown database dialect: {}".format(self.db_url))
+
+    @property
     def metadata(self):
         if not hasattr(self, '_metadata') or self._metadata.bind.closed or self._metadata.bind.invalidated:
             if self.connection.closed:

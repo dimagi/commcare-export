@@ -169,6 +169,12 @@ def main_with_args(args):
         # Output should be a connection URL
         # Writer had bizarre issues so we use a full connection instead of passing in a URL or engine
         writer = writers.SqlTableWriter(args.output, args.strict_types)
+
+        long_fields = _get_long_fields(query, writer.max_column_length)
+        if long_fields:
+            _print_long_field_warning(long_fields, writer.max_column_length)
+            return 1
+
         checkpoint_manager = CheckpointManager(args.output)
         with checkpoint_manager:
             checkpoint_manager.create_checkpoint_table()
@@ -210,6 +216,32 @@ def main_with_args(args):
             print(json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue))
     else:
         print(json.dumps(list(results), indent=4, default=RepeatableIterator.to_jvalue))
+
+
+def _get_long_fields(query, max_length):
+    long_fields_by_table = {}
+    j_query = query.to_jvalue()
+    for table_query in j_query['List']:
+        long_fields = [
+            heading['Lit'] for heading in table_query['Emit']['headings']
+            if len(heading['Lit']) > max_length
+        ]
+        if long_fields:
+            long_fields_by_table[table_query['Emit']['table']] = long_fields
+    return long_fields_by_table
+
+
+def _print_long_field_warning(long_fields, max_length):
+    for table, headers in long_fields.items():
+        logger.error(
+            'Table "%s" has field names longer than the maximum allowed for this database (%s):',
+            table, max_length
+        )
+        for header in headers:
+            logger.error('    %s', header)
+
+    print('\nPlease adjust field names to be within the maximum length limit of {}'.format(max_length))
+
 
 def entry_point():
     main(sys.argv[1:])
