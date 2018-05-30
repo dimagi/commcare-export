@@ -5,7 +5,6 @@ from logging.config import fileConfig
 from sqlalchemy import create_engine
 
 config = context.config
-fileConfig(config.config_file_name)
 target_metadata = None
 
 
