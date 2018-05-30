@@ -136,20 +136,12 @@ def main_with_args(args):
         print(json.dumps(query.to_jvalue(), indent=4))
         exit(0)
 
-    if not args.username:
-        args.username = input('Please provide a username: ')
-
-    if not args.password:
-        # Windows getpass does not accept unicode
-        args.password = getpass.getpass()
-
     # Build an API client using either the URL provided, or the URL for a known alias
     commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
     api_client = CommCareHqClient(url =commcarehq_base_url,
                                   project = args.project,
                                   version = args.api_version)
 
-    api_client = api_client.authenticated(username=args.username, password=args.password, mode=args.auth_mode)
     checkpoint_manager = None
     if args.output_format == 'xlsx':
         writer = writers.Excel2007TableWriter(args.output)
@@ -188,6 +180,15 @@ def main_with_args(args):
                 logger.debug('Last successful run was %s', args.since)
             else:
                 logger.warn('No successful runs found, and --since not specified: will import ALL data')
+
+    if not args.username:
+        args.username = input('Please provide a username: ')
+
+    if not args.password:
+        # Windows getpass does not accept unicode
+        args.password = getpass.getpass()
+
+    api_client = api_client.authenticated(username=args.username, password=args.password, mode=args.auth_mode)
 
     if args.since:
         logger.debug('Starting from %s', args.since)
