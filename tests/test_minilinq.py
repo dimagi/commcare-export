@@ -219,9 +219,12 @@ class TestMiniLinq(unittest.TestCase):
                     Emit(
                         table="t1",
                         headings=[Literal("id")],
-                        source=List([
-                            Reference("id")
-                        ])
+                        source=Map(
+                            source=Reference("`this`"),
+                            body=List([
+                                Reference("id"),
+                            ]),
+                        )
                     ),
                     Emit(
                         table="t2",
