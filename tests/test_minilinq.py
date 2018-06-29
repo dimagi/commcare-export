@@ -160,6 +160,9 @@ class TestMiniLinq(unittest.TestCase):
         assert list(writer.tables['Foo']['rows']) == [[3, True, '---', None]]
 
     def test_emit_multi_same_query(self):
+        """Test that we can emit multiple tables from the same set of source data.
+        This is useful if you need to generate multiple tables from the same datasource.
+        """
         writer = JValueTableWriter()
         env = BuiltInEnv() | JsonPathEnv() | EmitterEnv(writer)
 
@@ -193,15 +196,22 @@ class TestMiniLinq(unittest.TestCase):
         assert writer.tables['FooBar']['rows'] == [[True], [False]]
 
     def test_emit_mutli_different_query(self):
+        """Test that we can emit multiple tables from the same set of source data even
+        if the emitted table have different 'root doc' expressions.
+
+        Example use case could be emitting cases and case actions, or form data and repeats.
+        """
         writer = JValueTableWriter()
         env = BuiltInEnv() | JsonPathEnv() | EmitterEnv(writer)
-        result = Filter(
+        result = Filter(  # the filter here is to prevent accumulating a `[None]` value for each doc
             name="result",
             predicate=Apply(
                 Reference("filter_empty"),
                 Reference("result")
             ),
             source=Map(
+                # in practice `source` would be and api query such as
+                # Apply(Reference('api_data'), Literal('case'), Literal({'type': 'case_type'}))
                 source=Literal([
                     {'id': 1, 'foo': {'baz': 3, 'bar': True, 'boo': None}, 'actions': [{'a': 3}, {'a': 4}]},
                     {'id': 2, 'foo': {'baz': 4, 'bar': False, 'boo': 1}, 'actions': [{'a': 5}, {'a': 6}]},
@@ -211,7 +221,7 @@ class TestMiniLinq(unittest.TestCase):
                         table="t1",
                         headings=[Literal("id")],
                         source=Map(
-                            source=Reference("$"),
+                            source=Reference("$"),  # reference the root doc in the env
                             body=List([
                                 Reference("id")
                             ])
@@ -220,10 +230,10 @@ class TestMiniLinq(unittest.TestCase):
                     Emit(
                         table="t2",
                         headings=[Literal("id")],
-                        source=FlatMap(
+                        source=FlatMap(  # flatmap to ensure we end up with a flat list
                             source=Reference("$"),
                             body=Map(
-                                source=Reference("actions[*]"),
+                                source=Reference("actions[*]"),  # the root doc expression
                                 body=List([
                                     Reference("$.id"),
                                     Reference("a")
