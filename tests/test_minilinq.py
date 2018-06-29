@@ -219,25 +219,19 @@ class TestMiniLinq(unittest.TestCase):
                     Emit(
                         table="t1",
                         headings=[Literal("id")],
-                        source=Map(
-                            source=Reference("$"),  # reference the root doc in the env
-                            body=List([
-                                Reference("id")
-                            ])
-                        )
+                        source=List([
+                            Reference("id")
+                        ])
                     ),
                     Emit(
                         table="t2",
-                        headings=[Literal("id")],
-                        source=FlatMap(  # flatmap to ensure we end up with a flat list
-                            source=Reference("$"),
-                            body=Map(
-                                source=Reference("actions[*]"),  # the root doc expression
-                                body=List([
-                                    Reference("$.id"),
-                                    Reference("a")
-                                ])
-                            )
+                        headings=[Literal("id"), Literal("a")],
+                        source=Map(
+                            source=Reference("actions[*]"),
+                            body=List([
+                                Reference("$.id"),
+                                Reference("a")
+                            ]),
                         )
                     )
                 ])
