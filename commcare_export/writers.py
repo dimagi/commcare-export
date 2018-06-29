@@ -104,20 +104,29 @@ class Excel2007TableWriter(TableWriter):
 
         self.file = file
         self.book = openpyxl.workbook.Workbook(optimized_write=True)
+        self.sheets = {}
 
     def __enter__(self):
         return self
 
     def write_table(self, table):
-        sheet = self.book.create_sheet()
-        sheet.title = table['name'][:self.max_table_name_size]
-
-        sheet.append([ensure_text(v) for v in table['headings']])
+        sheet = self.get_sheet(table)
         for row in table['rows']:
             sheet.append([ensure_text(v) for v in row])
-        
+
+    def get_sheet(self, table):
+        name = table['name']
+        if name not in self.sheets:
+            sheet = self.book.create_sheet()
+            sheet.title = name[:self.max_table_name_size]
+            sheet.append([ensure_text(v) for v in table['headings']])
+            self.sheets[name] = sheet
+
+        return self.sheets[name]
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.book.save(self.file)
+
 
 class Excel2003TableWriter(TableWriter):
     max_table_name_size = 31
@@ -132,16 +141,32 @@ class Excel2003TableWriter(TableWriter):
 
         self.file = file
         self.book = xlwt.Workbook()
+        self.sheets = {}
 
     def __enter__(self):
         return self
 
     def write_table(self, table):
-        sheet = self.book.add_sheet(table['name'][:self.max_table_name_size])
-
-        for rownum, row in enumerate(chain([table['headings']], table['rows'])):
+        sheet, current_row = self.get_sheet(table)
+        for row in table['rows']:
             for colnum, val in enumerate(row):
-                sheet.write(rownum, colnum, ensure_text(val))
+                sheet.write(current_row, colnum, ensure_text(val))
+            current_row += 1
+
+        self.sheets[table['name']] = (sheet, current_row)
+
+    def get_sheet(self, table):
+        name = table['name']
+        if name not in self.sheets:
+            sheet = self.book.add_sheet(name[:self.max_table_name_size])
+            sheet.title = name[:self.max_table_name_size]
+
+            for colnum, val in enumerate(table['headings']):
+                sheet.write(0, colnum, ensure_text(val))
+
+            self.sheets[name] = (sheet, 1) # start from row 1
+
+        return self.sheets[name]
         
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.book.save(self.file)

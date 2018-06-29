@@ -35,6 +35,14 @@ class TestWriters(object):
             ]
         })
 
+        writer.write_table({
+            'name': 'foo',
+            'headings': ['a', 'bjørn', 'c', 'd'],
+            'rows': [
+                [5, 'bob', 9, datetime.date(2018, 1, 2)],
+            ]
+        })
+
         assert writer.tables == {
             'foo': {
                 'name': 'foo',
@@ -42,6 +50,7 @@ class TestWriters(object):
                 'rows': [
                     [1, '2', 3, '2015-01-01'],
                     [4, '日本', 6, '2015-01-02'],
+                    [5, 'bob', 9, '2018-01-02'],
                 ],
             }
         }
@@ -58,7 +67,30 @@ class TestWriters(object):
                     ]
                 })
 
-            output_wb = openpyxl.load_workbook(file.name)
+            self._check_Excel2007TableWriter_output(file.name)
+
+    def test_Excel2007TableWriter_write_mutli(self):
+        with tempfile.NamedTemporaryFile() as file:
+            with Excel2007TableWriter(file=file) as writer:
+                writer.write_table({
+                    'name': 'foo',
+                    'headings': ['a', 'bjørn', 'c'],
+                    'rows': [
+                        [1, '2', 3],
+                    ]
+                })
+
+                writer.write_table({
+                    'name': 'foo',
+                    'headings': ['a', 'bjørn', 'c'],
+                    'rows': [
+                        [4, '日本', 6],
+                    ]
+                })
+            self._check_Excel2007TableWriter_output(file.name)
+
+    def _check_Excel2007TableWriter_output(self, filename):
+            output_wb = openpyxl.load_workbook(filename)
 
             assert list(output_wb.get_sheet_names()) == ['foo']
             foo_sheet = output_wb.get_sheet_by_name('foo')
