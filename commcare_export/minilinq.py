@@ -255,7 +255,7 @@ class Map(MiniLinq):
                     yield self.body.eval(env.bind(self.name, item))
             else:
                 for item in source_result:
-                    yield self.body.eval(env.replace(item)) 
+                    yield self.body.eval(env.replace(item))
 
         return RepeatableIterator(iterate)
 

@@ -35,14 +35,16 @@ class TestWriters(object):
             ]
         })
 
-        assert writer.tables == [{
-            'name': 'foo',
-            'headings': ['a', 'bjørn', 'c', 'd'],
-            'rows': [
-                [1, '2', 3, '2015-01-01'],
-                [4, '日本', 6, '2015-01-02'],
-            ],
-        }]
+        assert writer.tables == {
+            'foo': {
+                'name': 'foo',
+                'headings': ['a', 'bjørn', 'c', 'd'],
+                'rows': [
+                    [1, '2', 3, '2015-01-01'],
+                    [4, '日本', 6, '2015-01-02'],
+                ],
+            }
+        }
 
     def test_Excel2007TableWriter(self):
         with tempfile.NamedTemporaryFile() as file:

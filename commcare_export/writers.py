@@ -146,19 +146,29 @@ class Excel2003TableWriter(TableWriter):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.book.save(self.file)
 
+
 class JValueTableWriter(TableWriter):
     """
     Write tables to JSON-friendly in-memory values
     """
 
     def __init__(self):
-        self.tables = []
+        self.tables = {}
     
     def write_table(self, table):
-        # Ensures the table is iterable; probably better to create a custom JSON handler that runs in constant space
-        self.tables.append(dict(name=table['name'],
-                                headings=list(table['headings']),
-                                rows=[[to_jvalue(v) for v in row] for row in table['rows']]))
+        if table['name'] not in self.tables:
+            self.tables[table['name']] = {
+                'name': table['name'],
+                'headings': list(table['headings']),
+                'rows': []
+            }
+        else:
+            assert self.tables[table['name']]['headings'] == list(table['headings'])
+
+        self.tables[table['name']]['rows'].extend(
+            [[to_jvalue(v) for v in row] for row in table['rows']]
+        )
+
 
 class StreamingMarkdownTableWriter(TableWriter):
     """
