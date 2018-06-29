@@ -83,16 +83,14 @@ class CommCareHqClient(object):
         else:
             raise Exception('Unknown auth mode: %s' % mode)
 
-        return self._clone_with(session=session, auth=auth)
+        return self._clone_with(session, auth)
 
-    def _clone_with(self, **kwargs):
-        kwargs.setdefault('version', self.version)
-        kwargs.setdefault('session', self.__session)
-        kwargs.setdefault('auth', self.__auth)
+    def _clone_with(self, session, auth):
         cloned = CommCareHqClient(
             self.url,
             self.project,
-            **kwargs
+            session=session,
+            auth=auth
         )
         cloned.set_checkpoint_manager(self._checkpoint_manager, **self._checkpoint_kwargs)
         return cloned
