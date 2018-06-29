@@ -420,7 +420,6 @@ class Emit(MiniLinq):
         env.emit_table({'name': self.table,
                         'headings': [heading.eval(env) for heading in self.headings],
                         'rows': map(self.coerce_row, rows)})
-        return rows
 
     @classmethod
     def from_jvalue(cls, jvalue):
