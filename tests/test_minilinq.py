@@ -204,10 +204,9 @@ class TestMiniLinq(unittest.TestCase):
         writer = JValueTableWriter()
         env = BuiltInEnv() | JsonPathEnv() | EmitterEnv(writer)
         result = Filter(  # the filter here is to prevent accumulating a `[None]` value for each doc
-            name="result",
             predicate=Apply(
                 Reference("filter_empty"),
-                Reference("result")
+                Reference("$")
             ),
             source=Map(
                 # in practice `source` would be and api query such as
