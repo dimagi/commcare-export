@@ -122,7 +122,7 @@ class TestExcelQuery(unittest.TestCase):
         for filename, minilinq in test_cases:
             print('Compiling sheet %s' % filename) # This output will be captured by pytest and printed in case of failure; helpful to isolate which test case
             abs_path = os.path.join(os.path.dirname(__file__), filename)
-            compiled = compile_sheet(openpyxl.load_workbook(abs_path).get_active_sheet()) 
+            compiled = compile_sheet(openpyxl.load_workbook(abs_path).get_active_sheet(), ignore_empty=False)
             # Print will be suppressed by pytest unless it fails
             if not (compiled == minilinq):
                 print('In %s:' % filename)
@@ -135,12 +135,12 @@ class TestExcelQuery(unittest.TestCase):
         field_mappings = {'t1': 'Form 1', 't2': 'Form 2'}
         test_cases = [
             ('004_TwoDataSources.xlsx', 
-             List([ 
+             [
                 Emit(table='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form")), missing_value='---'),
                 Emit(table='Cases', headings=[], source=Apply(Reference("api_data"), Literal("case")), missing_value='---')
-             ])),
+             ]),
             ('007_Mappings.xlsx',
-             List([Emit(table='Forms',
+             [Emit(table='Forms',
                   headings=[
                       Literal('Form Type'),
                   ],
@@ -148,14 +148,14 @@ class TestExcelQuery(unittest.TestCase):
                              body=List([
                                  compile_mapped_field(field_mappings, Reference("type"))
                              ])),
-                  missing_value='---')])),
+                  missing_value='---')]),
 
         ]
 
         for filename, minilinq in test_cases:
             print('Compiling workbook %s' % filename) # This output will be captured by pytest and printed in case of failure; helpful to isolate which test case
             abs_path = os.path.join(os.path.dirname(__file__), filename)
-            compiled = compile_workbook(openpyxl.load_workbook(abs_path), missing_value='---')
+            compiled = compile_workbook(openpyxl.load_workbook(abs_path), missing_value='---', ignore_empty=False)
             # Print will be suppressed by pytest unless it fails
             if not (compiled == minilinq):
                 print('In %s:' % filename)

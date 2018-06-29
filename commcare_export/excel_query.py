@@ -180,16 +180,18 @@ def compile_source(worksheet):
         return FlatMap(source=api_query,
                        body=Reference(str(data_source_jsonpath)))
 
-def compile_sheet(worksheet, mappings=None, missing_value=None):
+def compile_sheet(worksheet, mappings=None, missing_value=None, ignore_empty=True):
     mappings = mappings or {}
     source_expr = compile_source(worksheet)
 
     output_table_name = worksheet.title
-    output_headings = get_column_by_name(worksheet, 'field') # It is unfortunate that this is duplicated here and in `compile_fields`
+    output_headings = get_column_by_name(worksheet, 'field')  # It is unfortunate that this is duplicated here and in `compile_fields`
     output_fields = compile_fields(worksheet, mappings=mappings)
 
     if not output_fields:
-        headings = headings = []
+        if ignore_empty:
+            raise Exception("Sheet has no output fields")
+        headings = []
         source = source_expr
     else:
         headings = [Literal(output_heading.value) for output_heading in output_headings]
@@ -202,7 +204,13 @@ def compile_sheet(worksheet, mappings=None, missing_value=None):
         missing_value=missing_value
     )
 
-def compile_workbook(workbook, missing_value=None):
+
+def combine_queries(queries):
+    # TODO
+    return List(queries)
+
+
+def compile_workbook(workbook, missing_value=None, ignore_empty=True):
     """
     Returns a MiniLinq corresponding to the Excel configuration, which
     consists of the following sheets:
@@ -223,11 +231,17 @@ def compile_workbook(workbook, missing_value=None):
 
     for sheet in emit_sheets:
         try:
-            queries.append(compile_sheet(workbook.get_sheet_by_name(sheet), mappings, missing_value))
+            query = compile_sheet(workbook.get_sheet_by_name(sheet), mappings, missing_value, ignore_empty)
         except Exception as e:
             logger.warning('Ignoring sheet "{}": {}'.format(sheet, str(e)))
+            continue
 
-    return List(queries) # Moderate hack
-    
-    
-    
+        queries.append(query)
+
+    return queries
+
+
+def get_queries_from_excel(workbook, missing_value=None):
+    queries = compile_workbook(workbook, missing_value=missing_value)
+    return combine_queries(queries)
+

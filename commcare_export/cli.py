@@ -116,7 +116,7 @@ def main_with_args(args):
             if os.path.splitext(args.query)[1] in ['.xls', '.xlsx']:
                 import openpyxl
                 workbook = openpyxl.load_workbook(args.query)
-                query = excel_query.compile_workbook(workbook, args.missing_value)
+                query = excel_query.get_queries_from_excel(workbook, args.missing_value)
             else:
                 with io.open(args.query, encoding='utf-8') as fh:
                     query = MiniLinq.from_jvalue(json.loads(fh.read()))
