@@ -8,6 +8,8 @@ from jsonpath_rw import jsonpath
 from commcare_export.minilinq import *
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.env import *
+from commcare_export.writers import JValueTableWriter
+
 
 class LazinessException(Exception): pass
 def die(msg): raise LazinessException(msg) # Hack: since "raise" is a statement not an expression, need a funcall wrapping it
@@ -146,7 +148,8 @@ class TestMiniLinq(unittest.TestCase):
             pass
 
     def test_emit(self):
-        env = BuiltInEnv() | JsonPathEnv({'foo': {'baz': 3, 'bar': True, 'boo': None}})
+        writer = JValueTableWriter()
+        env = BuiltInEnv() | JsonPathEnv({'foo': {'baz': 3, 'bar': True, 'boo': None}}) | EmitterEnv(writer)
         Emit(table='Foo',
              headings=[Literal('foo')],
              source=List([
@@ -154,7 +157,7 @@ class TestMiniLinq(unittest.TestCase):
              ]),
              missing_value='---').eval(env)
 
-        assert list(list(env.emitted_tables())[0]['rows']) == [[3, True, '---', None]]
+        assert list(writer.tables[0]['rows']) == [[3, True, '---', None]]
 
     def test_from_jvalue(self):
         assert MiniLinq.from_jvalue({"Ref": "form.log_subreport"}) == Reference("form.log_subreport")

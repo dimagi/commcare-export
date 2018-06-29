@@ -19,7 +19,7 @@ from six.moves import input
 import dateutil.parser
 
 from commcare_export.repeatable_iterator import RepeatableIterator
-from commcare_export.env import BuiltInEnv, JsonPathEnv
+from commcare_export.env import BuiltInEnv, JsonPathEnv, EmitterEnv
 from commcare_export.minilinq import MiniLinq
 from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION
 from commcare_export.commcare_minilinq import CommCareHqEnv
@@ -194,29 +194,21 @@ def main_with_args(args):
         logger.debug('Starting from %s', args.since)
     since = dateutil.parser.parse(args.since) if args.since else None
     until = dateutil.parser.parse(args.until) if args.until else None
-    env = BuiltInEnv({'commcarehq_base_url': commcarehq_base_url}) | CommCareHqEnv(api_client, since=since, until=until) | JsonPathEnv({})
-    results = query.eval(env)
+    env = BuiltInEnv({'commcarehq_base_url': commcarehq_base_url}) | CommCareHqEnv(api_client, since=since, until=until) | JsonPathEnv({}) | EmitterEnv(writer)
 
-    # Assume that if any tables were emitted, that is the idea, otherwise print the output
-    if len(list(env.emitted_tables())) > 0:
-        with writer:
-            for table in env.emitted_tables():
-                logger.debug('Writing %s', table['name'])
-                if table['name'] != table['name'].lower():
-                    logger.warning(
-                        "Caution: Using upper case letters in a "
-                        "table name is not advised: {}".format(table['name'])
-                    )
-                writer.write_table(table)
+    with env:
+        results = list(query.eval(env))  # evaluate the result
 
+    if args.output_format == 'json':
+        print(json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue))
+
+    if env.has_emitted_tables():
         if checkpoint_manager and os.path.exists(args.query):
             with checkpoint_manager:
                 checkpoint_manager.set_checkpoint(args.query, query_file_md5, run_start, True)
-
-        if args.output_format == 'json':
-            print(json.dumps(writer.tables, indent=4, default=RepeatableIterator.to_jvalue))
     else:
-        print(json.dumps(list(results), indent=4, default=RepeatableIterator.to_jvalue))
+        # If no tables were emitted just print the output
+        print(json.dumps(results, indent=4, default=RepeatableIterator.to_jvalue))
 
 
 def _get_long_fields(query, max_length):

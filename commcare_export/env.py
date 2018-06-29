@@ -74,10 +74,16 @@ class Env(object):
     # whether to store it, write it immediately,
     # or do something clever with iterators, etc.
     def emit_table(self, table_spec):
-        raise NotImplementedError()
+        raise CannotEmit()
 
-    def emitted_tables(self):
-        raise NotImplementedError()
+    def has_emitted_tables(self):
+        return False
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
     
     #
     # Fluent interface to combinators
@@ -120,8 +126,18 @@ class OrElse(Env):
         try:               return self.left.emit_table(table_spec)
         except CannotEmit: return self.right.emit_table(table_spec)
 
-    def emitted_tables(self):
-        return RepeatableIterator(lambda: chain(self.left.emitted_tables(), self.right.emitted_tables()))
+    def has_emitted_tables(self):
+        return any([self.left.has_emitted_tables(), self.right.has_emitted_tables()])
+
+    def __enter__(self):
+        self.left.__enter__()
+        self.right.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            self.left.__exit__(exc_type, exc_val, exc_tb)
+        finally:
+            self.right.__exit__(exc_type, exc_val, exc_tb)
 
 
 #
@@ -146,12 +162,7 @@ class DictEnv(Env):
         if isinstance(data, dict): return DictEnv(data)
         else:                      raise CannotReplace()
 
-    def emit_table(self, table_spec):
-        raise CannotEmit()
 
-    def emitted_tables(self):
-        return []
-    
 class JsonPathEnv(Env):
     """
     An environment like those that map names
@@ -210,11 +221,6 @@ class JsonPathEnv(Env):
     def replace(self, data):
         return self.__class__(data)
 
-    def emit_table(self, table_spec):
-        raise CannotEmit()
-
-    def emitted_tables(self):
-        return []
 
 #
 # Actual concrete environments, basically with built-in functions.
@@ -392,15 +398,32 @@ class BuiltInEnv(DictEnv):
             'default': default,
             'template': template,
             'attachment_url': attachment_url,
+            'filter_empty': _not_val,
         })
         return super(BuiltInEnv, self).__init__(d)
 
     def bind(self, name, value): raise CannotBind()
     def replace(self, data): raise CannotReplace()
 
-    def emit_table(self, table):
-        self.__tables.append(table)
 
-    def emitted_tables(self):
-        return self.__tables
+class EmitterEnv(Env):
+    def __init__(self, writer):
+        self.writer = writer
+        self.emitted = False
 
+    def __enter__(self):
+        self.writer.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.writer.__exit__(exc_type, exc_val, exc_tb)
+
+    def bind(self, name, value): raise CannotBind()
+    def replace(self, data): raise CannotReplace()
+    def lookup(self, key): raise NotFound()
+
+    def emit_table(self, table_spec):
+        self.emitted = True
+        self.writer.write_table(table_spec)
+
+    def has_emitted_tables(self):
+        return self.emitted
