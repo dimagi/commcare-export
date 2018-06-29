@@ -159,6 +159,88 @@ class TestMiniLinq(unittest.TestCase):
 
         assert list(writer.tables['Foo']['rows']) == [[3, True, '---', None]]
 
+    def test_emit_multi_same_query(self):
+        writer = JValueTableWriter()
+        env = BuiltInEnv() | JsonPathEnv() | EmitterEnv(writer)
+
+        result = Map(
+            source=Literal([
+                {'foo': {'baz': 3, 'bar': True, 'boo': None}},
+                {'foo': {'baz': 4, 'bar': False, 'boo': 1}},
+            ]),
+            body=List([
+                Emit(
+                    table='FooBaz',
+                    headings=[Literal('foo')],
+                    source=List([
+                        List([ Reference('foo.baz')])
+                    ]),
+                ),
+                Emit(
+                    table='FooBar',
+                    headings=[Literal('foo')],
+                    source=List([
+                        List([Reference('foo.bar')])
+                    ]),
+                )
+           ]),
+        ).eval(env)
+
+        # evaluate result
+        list(result)
+        assert 2 == len(writer.tables)
+        assert writer.tables['FooBaz']['rows'] == [[3], [4]]
+        assert writer.tables['FooBar']['rows'] == [[True], [False]]
+
+    def test_emit_mutli_different_query(self):
+        writer = JValueTableWriter()
+        env = BuiltInEnv() | JsonPathEnv() | EmitterEnv(writer)
+        result = Filter(
+            name="result",
+            predicate=Apply(
+                Reference("filter_empty"),
+                Reference("result")
+            ),
+            source=Map(
+                source=Literal([
+                    {'id': 1, 'foo': {'baz': 3, 'bar': True, 'boo': None}, 'actions': [{'a': 3}, {'a': 4}]},
+                    {'id': 2, 'foo': {'baz': 4, 'bar': False, 'boo': 1}, 'actions': [{'a': 5}, {'a': 6}]},
+                ]),
+                body=List([
+                    Emit(
+                        table="t1",
+                        headings=[Literal("id")],
+                        source=Map(
+                            source=Reference("$"),
+                            body=List([
+                                Reference("id")
+                            ])
+                        )
+                    ),
+                    Emit(
+                        table="t2",
+                        headings=[Literal("id")],
+                        source=FlatMap(
+                            source=Reference("$"),
+                            body=Map(
+                                source=Reference("actions[*]"),
+                                body=List([
+                                    Reference("$.id"),
+                                    Reference("a")
+                                ])
+                            )
+                        )
+                    )
+                ])
+            )
+        ).eval(env)
+
+        # evaluate result
+        list(result)
+        print(writer.tables)
+        assert writer.tables['t1']['rows'] == [['1'], ['2']]
+        assert writer.tables['t2']['rows'] == [['1', 3], ['1', 4], ['2', 5], ['2', 6]]
+
     def test_from_jvalue(self):
         assert MiniLinq.from_jvalue({"Ref": "form.log_subreport"}) == Reference("form.log_subreport")
         assert (MiniLinq.from_jvalue({"Apply": {"fn":   {"Ref":"len"}, "args": [{"Ref": "form.log_subreport"}]}})
