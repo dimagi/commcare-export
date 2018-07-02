@@ -7,6 +7,7 @@ from six.moves import xrange
 from jsonpath_rw import jsonpath
 from jsonpath_rw.parser import parse as parse_jsonpath
 
+from commcare_export.exceptions import LongFieldsException
 from commcare_export.map_format import compile_map_format_via
 from commcare_export.minilinq import *
 
@@ -335,7 +336,20 @@ def get_single_emit_query(sheet, missing_value):
     )
 
 
-def get_queries_from_excel(workbook, missing_value=None, combine_emits=False):
+def check_field_length(parsed_sheets, max_column_length):
+    long_fields = defaultdict(list)
+    for sheet in parsed_sheets:
+        for header in sheet.headings:
+            if len(header.v) > max_column_length:
+                long_fields[sheet.name].append(header.v)
+
+    if long_fields:
+        raise LongFieldsException(long_fields, max_column_length)
+
+
+def get_queries_from_excel(workbook, missing_value=None, combine_emits=False, max_column_length=None):
     parsed_sheets = parse_workbook(workbook)
+    if max_column_length:
+        check_field_length(parsed_sheets, max_column_length)
     queries = compile_queries(parsed_sheets, missing_value, combine_emits)
     return List(queries) if len(queries) > 1 else queries[0]

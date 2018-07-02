@@ -18,6 +18,7 @@ from six.moves import input
 
 import dateutil.parser
 
+from commcare_export.exceptions import LongFieldsException
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.env import BuiltInEnv, JsonPathEnv, EmitterEnv
 from commcare_export.minilinq import MiniLinq
@@ -94,7 +95,7 @@ def main(argv):
         profile.start()
 
     try:
-        main_with_args(args)
+        exit(main_with_args(args))
     finally:
         if args.profile:
             profile.close()
@@ -104,12 +105,12 @@ def main(argv):
             stats.print_stats(100)
 
 
-def _get_query(query_arg, missing_value, combine_emits):
+def _get_query(query_arg, missing_value, combine_emits, max_column_length):
     if os.path.exists(query_arg):
         if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
             import openpyxl
             workbook = openpyxl.load_workbook(query_arg)
-            return excel_query.get_queries_from_excel(workbook, missing_value, combine_emits)
+            return excel_query.get_queries_from_excel(workbook, missing_value, combine_emits, max_column_length)
         else:
             with io.open(query_arg, encoding='utf-8') as fh:
                 return MiniLinq.from_jvalue(json.loads(fh.read()))
@@ -147,15 +148,20 @@ def main_with_args(args):
     # Reads as excel if it is a file name that looks like excel, otherwise reads as JSON, 
     # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
     if args.query:
-        query = _get_query(
-            args.query,
-            args.missing_value,
-            writer.supports_multi_table_write,
-        )
+        try:
+            query = _get_query(
+                args.query,
+                args.missing_value,
+                writer.supports_multi_table_write,
+                writer.max_column_length,
+            )
+        except LongFieldsException as e:
+            print(e.message)
+            return 1
 
         if not query:
             print('Query file not found: %s' % args.query)
-            exit(1)
+            return 1
     else:
         try:
             query = MiniLinq.from_jvalue(json.loads(sys.stdin.read()))
@@ -167,16 +173,11 @@ def main_with_args(args):
 
     if args.dump_query:
         print(json.dumps(query.to_jvalue(), indent=4))
-        exit(0)
+        return 0
 
     query_file_md5 = misc.digest_file(args.query)
 
     if writer.support_checkpoints:
-        long_fields = _get_long_fields(query, writer.max_column_length)
-        if long_fields:
-            _print_long_field_warning(long_fields, writer.max_column_length)
-            return 1
-
         checkpoint_manager = CheckpointManager(args.output)
         with checkpoint_manager:
             checkpoint_manager.create_checkpoint_table()
@@ -226,32 +227,6 @@ def main_with_args(args):
     else:
         # If no tables were emitted just print the output
         print(json.dumps(results, indent=4, default=RepeatableIterator.to_jvalue))
-
-
-def _get_long_fields(query, max_length):
-    # TODO: move this to when we're compling the query so we don't have to decomplie it
-    long_fields_by_table = {}
-    j_query = query.to_jvalue()
-    for table_query in j_query['List']:
-        long_fields = [
-            heading['Lit'] for heading in table_query['Emit']['headings']
-            if len(heading['Lit']) > max_length
-        ]
-        if long_fields:
-            long_fields_by_table[table_query['Emit']['table']] = long_fields
-    return long_fields_by_table
-
-
-def _print_long_field_warning(long_fields, max_length):
-    for table, headers in long_fields.items():
-        logger.error(
-            'Table "%s" has field names longer than the maximum allowed for this database (%s):',
-            table, max_length
-        )
-        for header in headers:
-            logger.error('    %s', header)
-
-    print('\nPlease adjust field names to be within the maximum length limit of {}'.format(max_length))
 
 
 def entry_point():
