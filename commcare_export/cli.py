@@ -192,6 +192,7 @@ def main_with_args(args):
     api_client = CommCareHqClient(url=commcarehq_base_url,
                                   project=args.project,
                                   version=args.api_version)
+
     if checkpoint_manager:
         api_client.set_checkpoint_manager(checkpoint_manager, query=args.query, query_md5=query_file_md5)
 

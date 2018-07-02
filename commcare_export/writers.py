@@ -49,6 +49,8 @@ class TableWriter(object):
     """
     max_column_length = None
     support_checkpoints = False
+
+    # set to False if writer does not support writing to the same table multiple times
     supports_multi_table_write = True
 
     def __enter__(self):
@@ -60,6 +62,7 @@ class TableWriter(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
+
 
 class CsvTableWriter(TableWriter):
     supports_multi_table_write = False
