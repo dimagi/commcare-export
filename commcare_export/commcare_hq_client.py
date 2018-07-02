@@ -9,7 +9,6 @@ from datetime import datetime
 from requests.auth import HTTPDigestAuth
 from requests.auth import AuthBase
 
-AUTH_MODE_SESSION = 'session'
 AUTH_MODE_DIGEST = 'digest'
 AUTH_MODE_APIKEY = 'apikey'
 
@@ -50,45 +49,26 @@ class CommCareHqClient(object):
     def api_url(self):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
 
-    def authenticated(self, username=None, password=None, mode=AUTH_MODE_SESSION):
+    def authenticated(self, username=None, password=None, mode=AUTH_MODE_DIGEST):
         """
         Returns a freshly authenticated CommCareHqClient with a new session.
         This is safe to call many times and each of the resulting clients
         remain independent, so you can log in with zero, one, or many users.
         """
-        session = requests.Session()
         auth = None
-        if mode == AUTH_MODE_SESSION:
-            login_url = '%s/accounts/login/' % self.url
-
-            # Pick up things like CSRF cookies and form fields by doing a GET first
-            response = session.get(login_url)
-            if response.status_code != 200:
-                raise Exception('Failed to connect to authentication page (%s): %s' % (response.status_code, response.text))
-
-            response = session.post(login_url,
-                                    headers = {'Referer': login_url },
-                                    data = {'username': username,
-                                            'password': password,
-                                            'csrfmiddlewaretoken': response.cookies['csrftoken']})
-
-            if response.status_code != 200:
-                raise Exception('Authentication failed (%s): %s' % (response.status_code, response.text))
-            
-        elif mode == AUTH_MODE_DIGEST:
+        if mode == AUTH_MODE_DIGEST:
             auth = HTTPDigestAuth(username, password)
         elif mode == AUTH_MODE_APIKEY:
             auth = ApiKeyAuth(username, password)
         else:
             raise Exception('Unknown auth mode: %s' % mode)
 
-        return self._clone_with(session, auth)
+        return self._clone_with(auth)
 
-    def _clone_with(self, session, auth):
+    def _clone_with(self, auth):
         return CommCareHqClient(
             self.url,
             self.project,
-            session=session,
             auth=auth,
             checkpoint_manager=self._checkpoint_manager
         )

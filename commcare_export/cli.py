@@ -1,32 +1,27 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+
 import argparse
-import sys
-import uuid
-import json
 import getpass
-import requests
-import hashlib
-import pprint
-import os.path
-import logging
-import sqlalchemy
 import io
+import json
+import logging
+import os.path
+import sys
 from datetime import datetime
 
-from commcare_export.checkpoint import CheckpointManager
+import dateutil.parser
 from six.moves import input
 
-import dateutil.parser
-
-from commcare_export.exceptions import LongFieldsException
-from commcare_export.repeatable_iterator import RepeatableIterator
-from commcare_export.env import BuiltInEnv, JsonPathEnv, EmitterEnv
-from commcare_export.minilinq import MiniLinq
-from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION
-from commcare_export.commcare_minilinq import CommCareHqEnv
-from commcare_export import writers
 from commcare_export import excel_query
 from commcare_export import misc
+from commcare_export import writers
+from commcare_export.checkpoint import CheckpointManager
+from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION
+from commcare_export.commcare_minilinq import CommCareHqEnv
+from commcare_export.env import BuiltInEnv, JsonPathEnv, EmitterEnv
+from commcare_export.exceptions import LongFieldsException
+from commcare_export.minilinq import MiniLinq
+from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.version import __version__
 
 EXIT_STATUS_ERROR = 1
@@ -49,8 +44,8 @@ def main(argv):
     parser.add_argument('--project')
     parser.add_argument('--username')
     parser.add_argument('--password', help='Enter password, or if using apikey auth-mode, enter the api key.')
-    parser.add_argument('--auth-mode', default='digest', help='Use "session" based auth, "digest" auth, or'
-                                                              ' "apikey" auth (for two factor enabled domains).')
+    parser.add_argument('--auth-mode', default='digest', choices=['digest', 'apikey'],
+                        help='Use "digest" auth, or "apikey" auth (for two factor enabled domains).')
     parser.add_argument('--since', help='Export all data after this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS')
     parser.add_argument('--until', help='Export all data up until this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS')
     parser.add_argument('--start-over', default=False, action='store_true',
