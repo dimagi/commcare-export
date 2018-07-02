@@ -191,7 +191,7 @@ def parse_sheet(worksheet, mappings=None):
     source_expr, root_doc_expr = compile_source(worksheet)
 
     output_table_name = worksheet.title
-    output_headings = get_column_by_name(worksheet, 'field')  # It is unfortunate that this is duplicated here and in `compile_fields`
+    output_headings = get_column_by_name(worksheet, 'field')
     output_fields = compile_fields(worksheet, mappings=mappings)
 
     if not output_fields:
