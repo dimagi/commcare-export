@@ -209,9 +209,106 @@ class TestExcelQuery(unittest.TestCase):
                 ]))
         )
 
-        filename = '003_DataSourceAndEmitColumns.xlsx'
+        self._compare_munilinq_to_compiled(minilinq, '003_DataSourceAndEmitColumns.xlsx')
+
+    def test_multi_emit(self):
+        minilinq = List([
+            Filter(
+                predicate=Apply(
+                    Reference("filter_empty"),
+                    Reference("$")
+                ),
+                source=Map(
+                    source=Apply(Reference("api_data"), Literal("form")),
+                    body=List([
+                        Emit(
+                            table="Forms",
+                            headings=[Literal("id"), Literal("name")],
+                            missing_value='---',
+                            source=Map(
+                                source=Reference("`this`"),
+                                body=List([
+                                    Reference("id"),
+                                    Reference("form.name"),
+                                ]),
+                            )
+                        ),
+                        Emit(
+                            table="Cases",
+                            headings=[Literal("case_id")],
+                            missing_value='---',
+                            source=Map(
+                                source=Reference("form..case"),
+                                body=List([
+                                    Reference("@case_id"),
+                                ]),
+                            )
+                        )
+                    ])
+                )
+            ),
+            Emit(
+                table="Other cases",
+                headings=[Literal("id")],
+                missing_value='---',
+                source=Map(
+                    source=Apply(Reference("api_data"), Literal("case")),
+                    body=List([
+                        Reference("id")
+                    ])
+                )
+            )
+        ])
+
+        self._compare_munilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=True)
+
+    def test_multi_emit_no_combine(self):
+        minilinq = List([
+            Emit(
+                table="Forms",
+                headings=[Literal("id"), Literal("name")],
+                missing_value='---',
+                source=Map(
+                    source=Apply(Reference("api_data"), Literal("form")),
+                    body=List([
+                        Reference("id"),
+                        Reference("form.name"),
+                    ]),
+                )
+            ),
+            Emit(
+                table="Cases",
+                headings=[Literal("case_id")],
+                missing_value='---',
+                source=Map(
+                    source=FlatMap(
+                        body=Reference("form..case"),
+                        source=Apply(Reference("api_data"), Literal("form"))
+                    ),
+                    body=List([
+                        Reference("@case_id"),
+                    ]),
+                )
+            ),
+            Emit(
+                table="Other cases",
+                headings=[Literal("id")],
+                missing_value='---',
+                source=Map(
+                    source=Apply(Reference("api_data"), Literal("case")),
+                    body=List([
+                        Reference("id")
+                    ])
+                )
+            )
+        ])
+
+        self._compare_munilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=False)
+
+    def _compare_munilinq_to_compiled(self, minilinq, filename, combine=False):
+        print("Parsing {}".format(filename))
         abs_path = os.path.join(os.path.dirname(__file__), filename)
-        compiled = get_queries_from_excel(openpyxl.load_workbook(abs_path), missing_value='---')
+        compiled = get_queries_from_excel(openpyxl.load_workbook(abs_path), missing_value='---', combine_emits=combine)
         # Print will be suppressed by pytest unless it fails
         if not (compiled == minilinq):
             print('In %s:' % filename)
@@ -219,4 +316,3 @@ class TestExcelQuery(unittest.TestCase):
             print('!=')
             pprint.pprint(minilinq.to_jvalue())
         assert compiled == minilinq
-

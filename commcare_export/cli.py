@@ -212,6 +212,7 @@ def main_with_args(args):
 
 
 def _get_long_fields(query, max_length):
+    # TODO: move this to when we're compling the query so we don't have to decomplie it
     long_fields_by_table = {}
     j_query = query.to_jvalue()
     for table_query in j_query['List']:

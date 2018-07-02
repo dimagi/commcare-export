@@ -248,7 +248,73 @@ def parse_workbook(workbook):
     return parsed_sheets
 
 
-def compile_queries(parsed_sheets, missing_value):
+def compile_queries(parsed_sheets, missing_value, combine_emits):
+    # group sheets by source
+    sheets_by_source = []
+    for sheet in parsed_sheets:
+        # Not easy to implement hashing on MiniLinq objects so can't use a dict
+        for source, sheets in sheets_by_source:
+            if sheet.source == source:
+                sheets.append(sheet)
+                break
+        else:
+            sheets_by_source.append((sheet.source, [sheet]))
+
+    queries = []
+    for source, sheets in sheets_by_source:
+        if len(sheets) > 1:
+            if combine_emits:
+                queries.append(get_multi_emit_query(source, sheets, missing_value))
+            else:
+                queries.extend([
+                    get_single_emit_query(sheet, missing_value)
+                    for sheet in sheets
+                ])
+        else:
+            queries.append(get_single_emit_query(sheets[0], missing_value))
+    return queries
+
+
+def get_multi_emit_query(source, sheets, missing_value):
+    """Multiple `Emit` expressions using the same data source.
+    For this we reverse the `Map` so that we apply each `Emit`
+    repeatedly for each doc produced by the data source.
+    """
+    emits = []
+    multi_query = Filter(  # the filter here is to prevent accumulating a `[None]` value for each doc
+        predicate=Apply(
+            Reference("filter_empty"),
+            Reference("$")
+        ),
+        source=Map(
+            source=source,
+            body=List(emits)
+        )
+    )
+
+    for sheet in sheets:
+        # if there is no root expression then we just reference the whole document with `this`
+        root_expr = sheet.root_expr or Reference("`this`")
+        emits.append(
+            Emit(
+                table=sheet.name,
+                headings=sheet.headings,
+                source=Map(
+                    source=root_expr,
+                    body=sheet.body
+                ),
+                missing_value=missing_value
+            )
+        )
+
+    return multi_query
+
+
+def get_single_emit_query(sheet, missing_value):
+    """Single `Emit` for the data source to we can just
+    apply the `Emit` once with the source expression being
+    the data source.
+    """
     def _get_source(source, root_expr):
         if root_expr:
             return FlatMap(
@@ -258,21 +324,18 @@ def compile_queries(parsed_sheets, missing_value):
         else:
             return source
 
-    return [
-        Emit(
-            table=sheet.name,
-            headings=sheet.headings,
-            source=Map(
-                source=_get_source(sheet.source, sheet.root_expr),
-                body=sheet.body
-            ),
-            missing_value=missing_value
-        )
-        for sheet in parsed_sheets
-    ]
+    return Emit(
+        table=sheet.name,
+        headings=sheet.headings,
+        source=Map(
+            source=_get_source(sheet.source, sheet.root_expr),
+            body=sheet.body
+        ),
+        missing_value=missing_value
+    )
 
 
-def get_queries_from_excel(workbook, missing_value=None):
+def get_queries_from_excel(workbook, missing_value=None, combine_emits=False):
     parsed_sheets = parse_workbook(workbook)
-    queries = compile_queries(parsed_sheets, missing_value)
+    queries = compile_queries(parsed_sheets, missing_value, combine_emits)
     return List(queries) if len(queries) > 1 else queries[0]
