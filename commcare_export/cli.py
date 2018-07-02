@@ -156,7 +156,7 @@ def _get_writer(output_format, output, strict_types):
 
 
 def get_since_until(args, checkpoint_manager):
-    if not args.since and not args.start_over and os.path.exists(args.query) and checkpoint_manager:
+    if not args.since and not args.start_over and checkpoint_manager:
         with checkpoint_manager:
             args.since = checkpoint_manager.get_time_of_last_run()
 
@@ -202,9 +202,12 @@ def main_with_args(args):
 
     checkpoint_manager = None
     if writer.support_checkpoints:
-        checkpoint_manager = CheckpointManager(args.output, args.query, misc.digest_file(args.query))
-        with checkpoint_manager:
-            checkpoint_manager.create_checkpoint_table()
+        if not os.path.exists(args.query):
+            logger.warning("Checkpointing disabled for non file-based query")
+        else:
+            checkpoint_manager = CheckpointManager(args.output, args.query, misc.digest_file(args.query))
+            with checkpoint_manager:
+                checkpoint_manager.create_checkpoint_table()
 
     if not args.username:
         args.username = input('Please provide a username: ')
@@ -233,7 +236,7 @@ def main_with_args(args):
         print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))
 
     if env.has_emitted_tables():
-        if checkpoint_manager and os.path.exists(args.query):
+        if checkpoint_manager:
             with checkpoint_manager:
                 checkpoint_manager.set_checkpoint(run_start, True)
     else:
