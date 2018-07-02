@@ -47,6 +47,8 @@ class TableWriter(object):
     If the implementing class does not actually need any
     set up, no-op defaults have been provided
     """
+    max_column_length = None
+    support_checkpoints = False
 
     def __enter__(self):
         return self
@@ -283,6 +285,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
     Write tables to a database specified by URL
     (TODO) with "upsert" based on primary key.
     """
+    support_checkpoints = True
 
     def __init__(self, db_url, strict_types=False, poolclass=None):
         super(SqlTableWriter, self).__init__(db_url, poolclass=poolclass)

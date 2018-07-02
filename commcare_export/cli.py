@@ -102,7 +102,41 @@ def main(argv):
             stats.strip_dirs()
             stats.sort_stats('cumulative', 'calls')
             stats.print_stats(100)
-            
+
+
+def _get_query(query_arg, missing_value):
+    if os.path.exists(query_arg):
+        if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
+            import openpyxl
+            workbook = openpyxl.load_workbook(query_arg)
+            return excel_query.get_queries_from_excel(workbook, missing_value)
+        else:
+            with io.open(query_arg, encoding='utf-8') as fh:
+                return MiniLinq.from_jvalue(json.loads(fh.read()))
+
+
+def _get_writer(output_format, output, strict_types):
+    if output_format == 'xlsx':
+        return writers.Excel2007TableWriter(output)
+    elif output_format == 'xls':
+        return writers.Excel2003TableWriter(output)
+    elif output_format == 'csv':
+        if not output.endswith(".zip"):
+            print("WARNING: csv output is a zip file, but "
+                  "will be written to %s" % output)
+            print("Consider appending .zip to the file name to avoid confusion.")
+        return writers.CsvTableWriter(output)
+    elif output_format == 'json':
+        return writers.JValueTableWriter()
+    elif output_format == 'markdown':
+        return writers.StreamingMarkdownTableWriter(sys.stdout)
+    elif output_format == 'sql':
+        # Output should be a connection URL
+        # Writer had bizarre issues so we use a full connection instead of passing in a URL or engine
+        return writers.SqlTableWriter(output, strict_types)
+    else:
+        raise Exception("Unknown output format: {}".format(output_format))
+
 
 def main_with_args(args):
     # Grab the timestamp here so that anything that comes in while this runs will be grabbed next time.
@@ -111,16 +145,8 @@ def main_with_args(args):
     # Reads as excel if it is a file name that looks like excel, otherwise reads as JSON, 
     # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
     if args.query:
-        if os.path.exists(args.query):
-            query_file_md5 = misc.digest_file(args.query)
-            if os.path.splitext(args.query)[1] in ['.xls', '.xlsx']:
-                import openpyxl
-                workbook = openpyxl.load_workbook(args.query)
-                query = excel_query.get_queries_from_excel(workbook, args.missing_value)
-            else:
-                with io.open(args.query, encoding='utf-8') as fh:
-                    query = MiniLinq.from_jvalue(json.loads(fh.read()))
-        else:
+        query = _get_query(args.query, args.missing_value)
+        if not query:
             print('Query file not found: %s' % args.query)
             exit(1)
     else:
@@ -136,32 +162,10 @@ def main_with_args(args):
         print(json.dumps(query.to_jvalue(), indent=4))
         exit(0)
 
-    # Build an API client using either the URL provided, or the URL for a known alias
-    commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
-    api_client = CommCareHqClient(url =commcarehq_base_url,
-                                  project = args.project,
-                                  version = args.api_version)
+    query_file_md5 = misc.digest_file(args.query)
+    writer = _get_writer(args.output_format, args.output, args.strict_types)
 
-    checkpoint_manager = None
-    if args.output_format == 'xlsx':
-        writer = writers.Excel2007TableWriter(args.output)
-    elif args.output_format == 'xls':
-        writer = writers.Excel2003TableWriter(args.output)
-    elif args.output_format == 'csv':
-        if not args.output.endswith(".zip"):
-            print("WARNING: csv output is a zip file, but "
-                  "will be written to %s" % args.output)
-            print("Consider appending .zip to the file name to avoid confusion.")
-        writer = writers.CsvTableWriter(args.output)
-    elif args.output_format == 'json':
-        writer = writers.JValueTableWriter()
-    elif args.output_format == 'markdown':
-        writer = writers.StreamingMarkdownTableWriter(sys.stdout) 
-    elif args.output_format == 'sql':
-        # Output should be a connection URL
-        # Writer had bizarre issues so we use a full connection instead of passing in a URL or engine
-        writer = writers.SqlTableWriter(args.output, args.strict_types)
-
+    if writer.support_checkpoints:
         long_fields = _get_long_fields(query, writer.max_column_length)
         if long_fields:
             _print_long_field_warning(long_fields, writer.max_column_length)
@@ -170,16 +174,23 @@ def main_with_args(args):
         checkpoint_manager = CheckpointManager(args.output)
         with checkpoint_manager:
             checkpoint_manager.create_checkpoint_table()
-        api_client.set_checkpoint_manager(checkpoint_manager, query=args.query, query_md5=query_file_md5)
 
         if not args.since and not args.start_over and os.path.exists(args.query):
             with checkpoint_manager:
                 args.since = checkpoint_manager.get_time_of_last_run(query_file_md5)
 
-            if args.since:
-                logger.debug('Last successful run was %s', args.since)
-            else:
-                logger.warn('No successful runs found, and --since not specified: will import ALL data')
+    # Build an API client using either the URL provided, or the URL for a known alias
+    commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
+    api_client = CommCareHqClient(url=commcarehq_base_url,
+                                  project=args.project,
+                                  version=args.api_version)
+    if checkpoint_manager:
+        api_client.set_checkpoint_manager(checkpoint_manager, query=args.query, query_md5=query_file_md5)
+
+    if args.since:
+        logger.debug('Last successful run was %s', args.since)
+    else:
+        logger.warn('No successful runs found, and --since not specified: will import ALL data')
 
     if not args.username:
         args.username = input('Please provide a username: ')
