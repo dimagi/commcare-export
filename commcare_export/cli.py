@@ -102,7 +102,26 @@ def main(argv):
             stats.print_stats(100)
 
 
-def _get_query(query_arg, missing_value, combine_emits, max_column_length):
+def _get_query(args, writer):
+    # Reads as excel if it is a file name that looks like excel, otherwise reads as JSON,
+    # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
+    if args.query:
+        return _get_excel_query(
+            args.query,
+            args.missing_value,
+            writer.supports_multi_table_write,
+            writer.max_column_length,
+        )
+    else:
+        try:
+            return MiniLinq.from_jvalue(json.loads(sys.stdin.read()))
+        except Exception as e:
+            raise Exception(
+                "Failure reading query from console input. "
+                "Try using the '--query' parameter to pass your query as an Excel file", e
+            )
+
+def _get_excel_query(query_arg, missing_value, combine_emits, max_column_length):
     if os.path.exists(query_arg):
         if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
             import openpyxl
@@ -141,32 +160,16 @@ def main_with_args(args):
     run_start = datetime.utcnow()
 
     writer = _get_writer(args.output_format, args.output, args.strict_types)
-    
-    # Reads as excel if it is a file name that looks like excel, otherwise reads as JSON, 
-    # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
-    if args.query:
-        try:
-            query = _get_query(
-                args.query,
-                args.missing_value,
-                writer.supports_multi_table_write,
-                writer.max_column_length,
-            )
-        except LongFieldsException as e:
-            print(e.message)
-            return EXIT_STATUS_ERROR
 
-        if not query:
-            print('Query file not found: %s' % args.query)
-            return EXIT_STATUS_ERROR
-    else:
-        try:
-            query = MiniLinq.from_jvalue(json.loads(sys.stdin.read()))
-        except Exception as e:
-            raise Exception(
-                "Failure reading query from console input. "
-                "Try using the '--query' parameter to pass your query as an Excel file", e
-            )
+    try:
+        query = _get_query(args, writer)
+    except LongFieldsException as e:
+        print(e.message)
+        return EXIT_STATUS_ERROR
+
+    if not query:
+        print('Query file not found: %s' % args.query)
+        return EXIT_STATUS_ERROR
 
     if args.dump_query:
         print(json.dumps(query.to_jvalue(), indent=4))
