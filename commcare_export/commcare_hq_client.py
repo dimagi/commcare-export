@@ -32,13 +32,13 @@ class CommCareHqClient(object):
     A connection to CommCareHQ for a particular version, project, and user.
     """
 
-    def __init__(self, url, project, version=LATEST_KNOWN_VERSION, session=None, auth=None):
+    def __init__(self, url, project, version=LATEST_KNOWN_VERSION, session=None, auth=None, checkpoint_manager=None):
         self.version = version
         self.url = url
         self.project = project
         self.__session = session
         self.__auth = auth
-        self._checkpoint_manager = None
+        self._checkpoint_manager = checkpoint_manager
 
     @property
     def session(self):
@@ -85,14 +85,13 @@ class CommCareHqClient(object):
         return self._clone_with(session, auth)
 
     def _clone_with(self, session, auth):
-        cloned = CommCareHqClient(
+        return CommCareHqClient(
             self.url,
             self.project,
             session=session,
-            auth=auth
+            auth=auth,
+            checkpoint_manager=self._checkpoint_manager
         )
-        cloned.set_checkpoint_manager(self._checkpoint_manager, **self._checkpoint_kwargs)
-        return cloned
 
     def get(self, resource, params=None):
         """
@@ -146,9 +145,6 @@ class CommCareHqClient(object):
                 self.checkpoint(paginator, batch)
                 
         return RepeatableIterator(iterate_resource)
-
-    def set_checkpoint_manager(self, manager):
-        self._checkpoint_manager = manager
 
     def checkpoint(self, paginator, batch):
         from commcare_export.commcare_minilinq import DatePaginator

@@ -191,12 +191,12 @@ def main_with_args(args):
 
     # Build an API client using either the URL provided, or the URL for a known alias
     commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
-    api_client = CommCareHqClient(url=commcarehq_base_url,
-                                  project=args.project,
-                                  version=args.api_version)
-
-    if checkpoint_manager:
-        api_client.set_checkpoint_manager(checkpoint_manager)
+    api_client = CommCareHqClient(
+        url=commcarehq_base_url,
+        project=args.project,
+        version=args.api_version,
+        checkpoint_manager=checkpoint_manager
+    )
 
     if args.since:
         logger.debug('Last successful run was %s', args.since)
