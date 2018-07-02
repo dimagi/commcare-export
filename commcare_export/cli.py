@@ -184,10 +184,10 @@ def main_with_args(args):
             with checkpoint_manager:
                 args.since = checkpoint_manager.get_time_of_last_run()
 
-    if args.since:
-        logger.debug('Last successful run was %s', args.since)
-    else:
-        logger.warn('No successful runs found, and --since not specified: will import ALL data')
+            if args.since:
+                logger.debug('Last successful run was %s', args.since)
+            else:
+                logger.warn('No successful runs found, and --since not specified: will import ALL data')
 
     if not args.username:
         args.username = input('Please provide a username: ')
