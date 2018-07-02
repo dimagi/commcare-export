@@ -186,6 +186,9 @@ class Filter(MiniLinq):
 
         return RepeatableIterator(iterate)
 
+    def __eq__(self, other):
+        return isinstance(other, Filter) and self.source == other.source and self.name == other.name and self.predicate == other.predicate
+
     @classmethod
     def from_jvalue(cls, jvalue):
         fields = jvalue['Filter']

@@ -1,6 +1,6 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 import re
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 from six.moves import xrange
 
@@ -125,6 +125,7 @@ def split_leftmost(jsonpath_expr):
     else:
         return (jsonpath_expr, jsonpath.This())
 
+
 def compile_source(worksheet):
     """
     Compiles just the part of the Excel Spreadsheet that
@@ -140,6 +141,10 @@ def compile_source(worksheet):
 
     Should fetch from api/form?app_id=<app id>&xmlns.exact=<some form xmlns>&cases__full=true
     and then iterate (FlatMap) over all child questions.
+
+    :return: tuple of the 'data source' expression and the 'root doc expression'.
+        'data source': The MiniLinq that calls 'api_data' function to get data from CommCare
+        'root doc expression': The MiniLinq that is applied to each doc, can be None.
     """
 
     data_source_column = get_column_by_name(worksheet, 'data source')
@@ -175,42 +180,43 @@ def compile_source(worksheet):
     api_query = Apply(*api_query_args)
 
     if data_source_jsonpath is None or isinstance(data_source_jsonpath, jsonpath.This) or isinstance(data_source_jsonpath, jsonpath.Root):
-        return api_query
+        return api_query, None
     else:
-        return FlatMap(source=api_query,
-                       body=Reference(str(data_source_jsonpath)))
+        return api_query, Reference(str(data_source_jsonpath))
 
-def compile_sheet(worksheet, mappings=None, missing_value=None, ignore_empty=True):
+
+def parse_sheet(worksheet, mappings=None):
     mappings = mappings or {}
-    source_expr = compile_source(worksheet)
+    source_expr, root_doc_expr = compile_source(worksheet)
 
     output_table_name = worksheet.title
     output_headings = get_column_by_name(worksheet, 'field')  # It is unfortunate that this is duplicated here and in `compile_fields`
     output_fields = compile_fields(worksheet, mappings=mappings)
 
     if not output_fields:
-        if ignore_empty:
-            raise Exception("Sheet has no output fields")
         headings = []
         source = source_expr
+        body = None
     else:
         headings = [Literal(output_heading.value) for output_heading in output_headings]
-        source = Map(source=source_expr, body=List(output_fields))
+        source = source_expr
+        body = List(output_fields)
 
-    return Emit(
-        table=output_table_name,
-        headings=headings,
-        source=source,
-        missing_value=missing_value
+    return SheetParts(
+        output_table_name,
+        headings,
+        source,
+        body,
+        root_doc_expr,
     )
 
 
-def combine_queries(queries):
-    # TODO
-    return List(queries)
+class SheetParts(namedtuple('SheetParts', 'name headings source body root_expr')):
+    def __new__(cls, name, headings, source, body, root_expr=None):
+        return super(SheetParts, cls).__new__(cls, name, headings, source, body, root_expr)
 
 
-def compile_workbook(workbook, missing_value=None, ignore_empty=True):
+def parse_workbook(workbook):
     """
     Returns a MiniLinq corresponding to the Excel configuration, which
     consists of the following sheets:
@@ -229,19 +235,44 @@ def compile_workbook(workbook, missing_value=None, ignore_empty=True):
     
     emit_sheets = [sheet_name for sheet_name in workbook.get_sheet_names() if sheet_name != 'Mappings']
 
+    parsed_sheets = []
     for sheet in emit_sheets:
         try:
-            query = compile_sheet(workbook.get_sheet_by_name(sheet), mappings, missing_value, ignore_empty)
+            sheet_parts = parse_sheet(workbook.get_sheet_by_name(sheet), mappings)
         except Exception as e:
             logger.warning('Ignoring sheet "{}": {}'.format(sheet, str(e)))
             continue
 
-        queries.append(query)
+        parsed_sheets.append(sheet_parts)
 
-    return queries
+    return parsed_sheets
+
+
+def compile_queries(parsed_sheets, missing_value):
+    def _get_source(source, root_expr):
+        if root_expr:
+            return FlatMap(
+                source=source,
+                body=root_expr
+            )
+        else:
+            return source
+
+    return [
+        Emit(
+            table=sheet.name,
+            headings=sheet.headings,
+            source=Map(
+                source=_get_source(sheet.source, sheet.root_expr),
+                body=sheet.body
+            ),
+            missing_value=missing_value
+        )
+        for sheet in parsed_sheets
+    ]
 
 
 def get_queries_from_excel(workbook, missing_value=None):
-    queries = compile_workbook(workbook, missing_value=missing_value)
-    return combine_queries(queries)
-
+    parsed_sheets = parse_workbook(workbook)
+    queries = compile_queries(parsed_sheets, missing_value)
+    return List(queries) if len(queries) > 1 else queries[0]
