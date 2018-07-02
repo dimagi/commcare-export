@@ -155,6 +155,21 @@ def _get_writer(output_format, output, strict_types):
         raise Exception("Unknown output format: {}".format(output_format))
 
 
+def get_since_until(args, checkpoint_manager):
+    if not args.since and not args.start_over and os.path.exists(args.query) and checkpoint_manager:
+        with checkpoint_manager:
+            args.since = checkpoint_manager.get_time_of_last_run()
+
+        if args.since:
+            logger.debug('Last successful run was %s', args.since)
+        else:
+            logger.warn('No successful runs found, and --since not specified: will import ALL data')
+
+    since = dateutil.parser.parse(args.since) if args.since else None
+    until = dateutil.parser.parse(args.until) if args.until else None
+    return since, until
+
+
 def main_with_args(args):
     # Grab the timestamp here so that anything that comes in while this runs will be grabbed next time.
     run_start = datetime.utcnow()
@@ -183,15 +198,6 @@ def main_with_args(args):
         with checkpoint_manager:
             checkpoint_manager.create_checkpoint_table()
 
-        if not args.since and not args.start_over and os.path.exists(args.query):
-            with checkpoint_manager:
-                args.since = checkpoint_manager.get_time_of_last_run()
-
-            if args.since:
-                logger.debug('Last successful run was %s', args.since)
-            else:
-                logger.warn('No successful runs found, and --since not specified: will import ALL data')
-
     if not args.username:
         args.username = input('Please provide a username: ')
 
@@ -210,10 +216,9 @@ def main_with_args(args):
 
     api_client = api_client.authenticated(username=args.username, password=args.password, mode=args.auth_mode)
 
-    if args.since:
+    since, until = get_since_until(args, checkpoint_manager)
+    if since:
         logger.debug('Starting from %s', args.since)
-    since = dateutil.parser.parse(args.since) if args.since else None
-    until = dateutil.parser.parse(args.until) if args.until else None
     env = BuiltInEnv({'commcarehq_base_url': commcarehq_base_url}) | CommCareHqEnv(api_client, since=since, until=until) | JsonPathEnv({}) | EmitterEnv(writer)
 
     with env:
