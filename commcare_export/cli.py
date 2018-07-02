@@ -222,7 +222,7 @@ def main_with_args(args):
     if env.has_emitted_tables():
         if checkpoint_manager and os.path.exists(args.query):
             with checkpoint_manager:
-                checkpoint_manager.set_checkpoint(args.query, query_file_md5, run_start, True)
+                checkpoint_manager.set_checkpoint(run_start, True)
     else:
         # If no tables were emitted just print the output
         print(json.dumps(results, indent=4, default=RepeatableIterator.to_jvalue))
