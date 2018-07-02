@@ -219,7 +219,12 @@ def main_with_args(args):
     since, until = get_since_until(args, checkpoint_manager)
     if since:
         logger.debug('Starting from %s', args.since)
-    env = BuiltInEnv({'commcarehq_base_url': commcarehq_base_url}) | CommCareHqEnv(api_client, since=since, until=until) | JsonPathEnv({}) | EmitterEnv(writer)
+    env = (
+            BuiltInEnv({'commcarehq_base_url': commcarehq_base_url})
+            | CommCareHqEnv(api_client, since=since, until=until)
+            | JsonPathEnv({})
+            | EmitterEnv(writer)
+    )
 
     with env:
         results = list(query.eval(env))  # evaluate the result
