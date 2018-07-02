@@ -170,6 +170,16 @@ def get_since_until(args, checkpoint_manager):
     return since, until
 
 
+def _get_api_client(args, checkpoint_manager, commcarehq_base_url):
+    client = CommCareHqClient(
+        url=commcarehq_base_url,
+        project=args.project,
+        version=args.api_version,
+        checkpoint_manager=checkpoint_manager
+    )
+    return client.authenticated(args.username, args.password, args.auth_mode)
+
+
 def main_with_args(args):
     # Grab the timestamp here so that anything that comes in while this runs will be grabbed next time.
     run_start = datetime.utcnow()
@@ -190,11 +200,9 @@ def main_with_args(args):
         print(json.dumps(query.to_jvalue(), indent=4))
         return
 
-    query_file_md5 = misc.digest_file(args.query)
-
     checkpoint_manager = None
     if writer.support_checkpoints:
-        checkpoint_manager = CheckpointManager(args.output, args.query, query_file_md5)
+        checkpoint_manager = CheckpointManager(args.output, args.query, misc.digest_file(args.query))
         with checkpoint_manager:
             checkpoint_manager.create_checkpoint_table()
 
@@ -205,16 +213,8 @@ def main_with_args(args):
         # Windows getpass does not accept unicode
         args.password = getpass.getpass()
 
-    # Build an API client using either the URL provided, or the URL for a known alias
     commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
-    api_client = CommCareHqClient(
-        url=commcarehq_base_url,
-        project=args.project,
-        version=args.api_version,
-        checkpoint_manager=checkpoint_manager
-    )
-
-    api_client = api_client.authenticated(username=args.username, password=args.password, mode=args.auth_mode)
+    api_client = _get_api_client(args, checkpoint_manager, commcarehq_base_url)
 
     since, until = get_since_until(args, checkpoint_manager)
     if since:
