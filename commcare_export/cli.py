@@ -106,7 +106,7 @@ def _get_query(args, writer):
     # Reads as excel if it is a file name that looks like excel, otherwise reads as JSON,
     # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
     if args.query:
-        return _get_excel_query(
+        return _get_query_from_file(
             args.query,
             args.missing_value,
             writer.supports_multi_table_write,
@@ -121,7 +121,7 @@ def _get_query(args, writer):
                 "Try using the '--query' parameter to pass your query as an Excel file", e
             )
 
-def _get_excel_query(query_arg, missing_value, combine_emits, max_column_length):
+def _get_query_from_file(query_arg, missing_value, combine_emits, max_column_length):
     if os.path.exists(query_arg):
         if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
             import openpyxl
