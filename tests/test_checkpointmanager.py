@@ -39,7 +39,7 @@ class TestCheckpointManager(object):
             second_run = datetime.datetime.utcnow()
             manager.set_checkpoint(second_run, run_complete=True)
 
-            assert manager.get_time_of_last_run('123') == second_run.isoformat()
+            assert manager.get_time_of_last_run() == second_run.isoformat()
 
     def test_clean_on_final_run(self, manager):
         manager.create_checkpoint_table()
