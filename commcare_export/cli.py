@@ -104,12 +104,12 @@ def main(argv):
             stats.print_stats(100)
 
 
-def _get_query(query_arg, missing_value):
+def _get_query(query_arg, missing_value, combine_emits):
     if os.path.exists(query_arg):
         if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
             import openpyxl
             workbook = openpyxl.load_workbook(query_arg)
-            return excel_query.get_queries_from_excel(workbook, missing_value)
+            return excel_query.get_queries_from_excel(workbook, missing_value, combine_emits)
         else:
             with io.open(query_arg, encoding='utf-8') as fh:
                 return MiniLinq.from_jvalue(json.loads(fh.read()))
@@ -141,11 +141,18 @@ def _get_writer(output_format, output, strict_types):
 def main_with_args(args):
     # Grab the timestamp here so that anything that comes in while this runs will be grabbed next time.
     run_start = datetime.utcnow()
+
+    writer = _get_writer(args.output_format, args.output, args.strict_types)
     
     # Reads as excel if it is a file name that looks like excel, otherwise reads as JSON, 
     # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
     if args.query:
-        query = _get_query(args.query, args.missing_value)
+        query = _get_query(
+            args.query,
+            args.missing_value,
+            writer.supports_multi_table_write,
+        )
+
         if not query:
             print('Query file not found: %s' % args.query)
             exit(1)
@@ -163,7 +170,6 @@ def main_with_args(args):
         exit(0)
 
     query_file_md5 = misc.digest_file(args.query)
-    writer = _get_writer(args.output_format, args.output, args.strict_types)
 
     if writer.support_checkpoints:
         long_fields = _get_long_fields(query, writer.max_column_length)

@@ -49,6 +49,7 @@ class TableWriter(object):
     """
     max_column_length = None
     support_checkpoints = False
+    supports_multi_table_write = True
 
     def __enter__(self):
         return self
@@ -61,6 +62,8 @@ class TableWriter(object):
         pass
 
 class CsvTableWriter(TableWriter):
+    supports_multi_table_write = False
+
     def __init__(self, file, max_column_size=MAX_COLUMN_SIZE):
         self.file = file
         self.tables = []
@@ -201,6 +204,7 @@ class StreamingMarkdownTableWriter(TableWriter):
     """
     Writes markdown to an output stream, where each table just comes one after the other
     """
+    supports_multi_table_write = False
 
     def __init__(self, output_stream):
         self.output_stream = output_stream
