@@ -189,15 +189,6 @@ def main_with_args(args):
             with checkpoint_manager:
                 args.since = checkpoint_manager.get_time_of_last_run()
 
-    # Build an API client using either the URL provided, or the URL for a known alias
-    commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
-    api_client = CommCareHqClient(
-        url=commcarehq_base_url,
-        project=args.project,
-        version=args.api_version,
-        checkpoint_manager=checkpoint_manager
-    )
-
     if args.since:
         logger.debug('Last successful run was %s', args.since)
     else:
@@ -209,6 +200,15 @@ def main_with_args(args):
     if not args.password:
         # Windows getpass does not accept unicode
         args.password = getpass.getpass()
+
+    # Build an API client using either the URL provided, or the URL for a known alias
+    commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
+    api_client = CommCareHqClient(
+        url=commcarehq_base_url,
+        project=args.project,
+        version=args.api_version,
+        checkpoint_manager=checkpoint_manager
+    )
 
     api_client = api_client.authenticated(username=args.username, password=args.password, mode=args.auth_mode)
 
