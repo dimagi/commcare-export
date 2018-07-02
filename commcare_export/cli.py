@@ -181,13 +181,13 @@ def main_with_args(args):
 
     checkpoint_manager = None
     if writer.support_checkpoints:
-        checkpoint_manager = CheckpointManager(args.output)
+        checkpoint_manager = CheckpointManager(args.output, args.query, query_file_md5)
         with checkpoint_manager:
             checkpoint_manager.create_checkpoint_table()
 
         if not args.since and not args.start_over and os.path.exists(args.query):
             with checkpoint_manager:
-                args.since = checkpoint_manager.get_time_of_last_run(query_file_md5)
+                args.since = checkpoint_manager.get_time_of_last_run()
 
     # Build an API client using either the URL provided, or the URL for a known alias
     commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
@@ -196,7 +196,7 @@ def main_with_args(args):
                                   version=args.api_version)
 
     if checkpoint_manager:
-        api_client.set_checkpoint_manager(checkpoint_manager, query=args.query, query_md5=query_file_md5)
+        api_client.set_checkpoint_manager(checkpoint_manager)
 
     if args.since:
         logger.debug('Last successful run was %s', args.since)

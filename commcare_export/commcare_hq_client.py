@@ -39,7 +39,6 @@ class CommCareHqClient(object):
         self.__session = session
         self.__auth = auth
         self._checkpoint_manager = None
-        self._checkpoint_kwargs = {}
 
     @property
     def session(self):
@@ -148,20 +147,16 @@ class CommCareHqClient(object):
                 
         return RepeatableIterator(iterate_resource)
 
-    def set_checkpoint_manager(self, manager, **checkpoint_kwargs):
+    def set_checkpoint_manager(self, manager):
         self._checkpoint_manager = manager
-        self._checkpoint_kwargs = checkpoint_kwargs
 
     def checkpoint(self, paginator, batch):
         from commcare_export.commcare_minilinq import DatePaginator
         if self._checkpoint_manager and isinstance(paginator, DatePaginator):
             since_date = paginator.get_since_date(batch)
-            kwargs = deepcopy(self._checkpoint_kwargs)
-            kwargs.update({
-                'checkpoint_time': since_date
-            })
             with self._checkpoint_manager:
-                self._checkpoint_manager.set_checkpoint(**kwargs)
+                self._checkpoint_manager.set_checkpoint(checkpoint_time=since_date)
+
 
 class MockCommCareHqClient(object):
     """
@@ -195,6 +190,7 @@ class MockCommCareHqClient(object):
     
     def iterate(self, resource, paginator, params=None):
         return self.mock_data[resource][urlencode(OrderedDict(sorted(params.items())))]
+
 
 class ApiKeyAuth(AuthBase):
     def __init__(self, username, apikey):
