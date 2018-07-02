@@ -177,6 +177,7 @@ def main_with_args(args):
 
     query_file_md5 = misc.digest_file(args.query)
 
+    checkpoint_manager = None
     if writer.support_checkpoints:
         checkpoint_manager = CheckpointManager(args.output)
         with checkpoint_manager:
