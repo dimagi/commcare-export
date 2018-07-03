@@ -29,6 +29,8 @@ from commcare_export import excel_query
 from commcare_export import misc
 from commcare_export.version import __version__
 
+EXIT_STATUS_ERROR = 1
+
 logger = logging.getLogger(__name__)
 
 commcare_hq_aliases = {
@@ -157,11 +159,11 @@ def main_with_args(args):
             )
         except LongFieldsException as e:
             print(e.message)
-            return 1
+            return EXIT_STATUS_ERROR
 
         if not query:
             print('Query file not found: %s' % args.query)
-            return 1
+            return EXIT_STATUS_ERROR
     else:
         try:
             query = MiniLinq.from_jvalue(json.loads(sys.stdin.read()))
@@ -173,7 +175,7 @@ def main_with_args(args):
 
     if args.dump_query:
         print(json.dumps(query.to_jvalue(), indent=4))
-        return 0
+        return
 
     query_file_md5 = misc.digest_file(args.query)
 
