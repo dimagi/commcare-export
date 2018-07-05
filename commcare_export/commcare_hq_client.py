@@ -9,7 +9,6 @@ from datetime import datetime
 from requests.auth import HTTPDigestAuth
 from requests.auth import AuthBase
 
-AUTH_MODE_SESSION = 'session'
 AUTH_MODE_DIGEST = 'digest'
 AUTH_MODE_APIKEY = 'apikey'
 
@@ -27,19 +26,28 @@ logger = logging.getLogger(__file__)
 
 LATEST_KNOWN_VERSION='0.5'
 
+
 class CommCareHqClient(object):
     """
     A connection to CommCareHQ for a particular version, project, and user.
     """
 
-    def __init__(self, url, project, version=LATEST_KNOWN_VERSION, session=None, auth=None):
+    def __init__(self, url, project, username, password,
+                 auth_mode=AUTH_MODE_DIGEST, version=LATEST_KNOWN_VERSION, checkpoint_manager=None):
         self.version = version
         self.url = url
         self.project = project
-        self.__session = session
-        self.__auth = auth
-        self._checkpoint_manager = None
-        self._checkpoint_kwargs = {}
+        self._checkpoint_manager = checkpoint_manager
+        self.__auth = self._get_auth(username, password, auth_mode)
+        self.__session = None
+
+    def _get_auth(self, username, password, mode):
+        if mode == AUTH_MODE_DIGEST:
+            return HTTPDigestAuth(username, password)
+        elif mode == AUTH_MODE_APIKEY:
+            return ApiKeyAuth(username, password)
+        else:
+            raise Exception('Unknown auth mode: %s' % mode)
 
     @property
     def session(self):
@@ -47,53 +55,14 @@ class CommCareHqClient(object):
             self.__session = requests.Session(headers={'User-Agent': 'commcare-export/%s' % commcare_export.__version__})
         return self.__session
 
+    @session.setter
+    def session(self, session):
+        """Used for overriding the session in unit tests"""
+        self.__session = session
+
     @property
     def api_url(self):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
-
-    def authenticated(self, username=None, password=None, mode=AUTH_MODE_SESSION):
-        """
-        Returns a freshly authenticated CommCareHqClient with a new session.
-        This is safe to call many times and each of the resulting clients
-        remain independent, so you can log in with zero, one, or many users.
-        """
-        session = requests.Session()
-        auth = None
-        if mode == AUTH_MODE_SESSION:
-            login_url = '%s/accounts/login/' % self.url
-
-            # Pick up things like CSRF cookies and form fields by doing a GET first
-            response = session.get(login_url)
-            if response.status_code != 200:
-                raise Exception('Failed to connect to authentication page (%s): %s' % (response.status_code, response.text))
-
-            response = session.post(login_url,
-                                    headers = {'Referer': login_url },
-                                    data = {'username': username,
-                                            'password': password,
-                                            'csrfmiddlewaretoken': response.cookies['csrftoken']})
-
-            if response.status_code != 200:
-                raise Exception('Authentication failed (%s): %s' % (response.status_code, response.text))
-            
-        elif mode == AUTH_MODE_DIGEST:
-            auth = HTTPDigestAuth(username, password)
-        elif mode == AUTH_MODE_APIKEY:
-            auth = ApiKeyAuth(username, password)
-        else:
-            raise Exception('Unknown auth mode: %s' % mode)
-
-        return self._clone_with(session, auth)
-
-    def _clone_with(self, session, auth):
-        cloned = CommCareHqClient(
-            self.url,
-            self.project,
-            session=session,
-            auth=auth
-        )
-        cloned.set_checkpoint_manager(self._checkpoint_manager, **self._checkpoint_kwargs)
-        return cloned
 
     def get(self, resource, params=None):
         """
@@ -148,20 +117,13 @@ class CommCareHqClient(object):
                 
         return RepeatableIterator(iterate_resource)
 
-    def set_checkpoint_manager(self, manager, **checkpoint_kwargs):
-        self._checkpoint_manager = manager
-        self._checkpoint_kwargs = checkpoint_kwargs
-
     def checkpoint(self, paginator, batch):
         from commcare_export.commcare_minilinq import DatePaginator
         if self._checkpoint_manager and isinstance(paginator, DatePaginator):
             since_date = paginator.get_since_date(batch)
-            kwargs = deepcopy(self._checkpoint_kwargs)
-            kwargs.update({
-                'checkpoint_time': since_date
-            })
             with self._checkpoint_manager:
-                self._checkpoint_manager.set_checkpoint(**kwargs)
+                self._checkpoint_manager.set_checkpoint(checkpoint_time=since_date)
+
 
 class MockCommCareHqClient(object):
     """
@@ -187,14 +149,12 @@ class MockCommCareHqClient(object):
         self.mock_data = dict([(resource, dict([(urlencode(OrderedDict(sorted(params.items()))), result) for params, result in resource_results]))
                               for resource, resource_results in mock_data.items()])
 
-    def authenticated(self, *args, **kwargs):
-        return self
-
     def get(self, resource, paginator, params=None):
         return self.mock_data[resource][urlencode(OrderedDict(sorted(d.items())))]
     
     def iterate(self, resource, paginator, params=None):
         return self.mock_data[resource][urlencode(OrderedDict(sorted(params.items())))]
+
 
 class ApiKeyAuth(AuthBase):
     def __init__(self, username, apikey):

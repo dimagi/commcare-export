@@ -11,7 +11,7 @@ from commcare_export.checkpoint import CheckpointManager
 
 @pytest.fixture()
 def manager(db_params):
-    manager = CheckpointManager(db_params['url'], poolclass=sqlalchemy.pool.NullPool)
+    manager = CheckpointManager(db_params['url'], 'query', '123', poolclass=sqlalchemy.pool.NullPool)
     try:
         yield manager
     finally:
@@ -35,17 +35,17 @@ class TestCheckpointManager(object):
     def test_get_time_of_last_run(self, manager):
         manager.create_checkpoint_table()
         with manager:
-            manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=True)
+            manager.set_checkpoint(datetime.datetime.utcnow(), run_complete=True)
             second_run = datetime.datetime.utcnow()
-            manager.set_checkpoint('query', '123', second_run, run_complete=True)
+            manager.set_checkpoint(second_run, run_complete=True)
 
-            assert manager.get_time_of_last_run('123') == second_run.isoformat()
+            assert manager.get_time_of_last_run() == second_run.isoformat()
 
     def test_clean_on_final_run(self, manager):
         manager.create_checkpoint_table()
         with manager:
-            manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=False)
-            manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=False)
+            manager.set_checkpoint(datetime.datetime.utcnow(), run_complete=False)
+            manager.set_checkpoint(datetime.datetime.utcnow(), run_complete=False)
 
             def _get_non_final_rows_count():
                 cursor = manager.connection.execute(
@@ -56,5 +56,5 @@ class TestCheckpointManager(object):
                     return row[0]
 
             assert _get_non_final_rows_count() == 2
-            manager.set_checkpoint('query', '123', datetime.datetime.utcnow(), run_complete=True)
+            manager.set_checkpoint(datetime.datetime.utcnow(), run_complete=True)
             assert _get_non_final_rows_count() == 0
