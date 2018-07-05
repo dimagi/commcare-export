@@ -33,29 +33,53 @@ commcare_hq_aliases = {
     'prod': 'https://www.commcarehq.org'
 }
 
+
+class Argument(object):
+    def __init__(self, name, *args, **kwargs):
+        self.name = name.replace('-', '_')
+        self._args = ['--{}'.format(name)] + list(args)
+        self._kwargs = kwargs
+
+    @property
+    def default(self):
+        return self._kwargs.get('default')
+
+    def add_to_parser(self, parser):
+        parser.add_argument(*self._args, **self._kwargs)
+
+
+CLI_ARGS = [
+        Argument('version', default=False, action='store_true',
+                 help='Print the current version of the commcare-export tool.'),
+        Argument('query', help='JSON or Excel query file. If omitted, JSON string is read from stdin.'),
+        Argument('dump-query', default=False, action='store_true'),
+        Argument('commcare-hq', default='prod',
+                 help='Base url for the CommCare HQ instance e.g. https://www.commcarehq.org'),
+        Argument('api-version', default=LATEST_KNOWN_VERSION),
+        Argument('project'),
+        Argument('username'),
+        Argument('password', help='Enter password, or if using apikey auth-mode, enter the api key.'),
+        Argument('auth-mode', default='digest', choices=['digest', 'apikey'],
+                 help='Use "digest" auth, or "apikey" auth (for two factor enabled domains).'),
+        Argument('since', help='Export all data after this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS'),
+        Argument('until', help='Export all data up until this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS'),
+        Argument('start-over', default=False, action='store_true',
+                 help='When saving to a SQL database; the default is to pick up since the last success. This disables that.'),
+        Argument('profile'),
+        Argument('verbose', default=False, action='store_true'),
+        Argument('output-format', default='json', choices=['json', 'csv', 'xls', 'xlsx', 'sql', 'markdown'],
+                 help='Output format'),
+        Argument('output', metavar='PATH', default='reports.zip', help='Path to output; defaults to `reports.zip`.'),
+        Argument('strict-types', default=False, action='store_true',
+                 help="When saving to a SQL database don't allow changing column types once they are created."),
+        Argument('missing-value', default=None, help="Value to use when a field is missing from the form / case."),
+    ]
+
+
 def main(argv):
     parser = argparse.ArgumentParser('commcare-export', 'Output a customized export of CommCareHQ data.')
-
-    parser.add_argument('--version', default=False, action='store_true', help='Print the current version of the commcare-export tool.')
-    parser.add_argument('--query', help='JSON or Excel query file. If omitted, JSON string is read from stdin.')
-    parser.add_argument('--dump-query', default=False, action='store_true')
-    parser.add_argument('--commcare-hq', default='prod', help='Base url for the CommCare HQ instance e.g. https://www.commcarehq.org')
-    parser.add_argument('--api-version', default=LATEST_KNOWN_VERSION)
-    parser.add_argument('--project')
-    parser.add_argument('--username')
-    parser.add_argument('--password', help='Enter password, or if using apikey auth-mode, enter the api key.')
-    parser.add_argument('--auth-mode', default='digest', choices=['digest', 'apikey'],
-                        help='Use "digest" auth, or "apikey" auth (for two factor enabled domains).')
-    parser.add_argument('--since', help='Export all data after this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS')
-    parser.add_argument('--until', help='Export all data up until this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS')
-    parser.add_argument('--start-over', default=False, action='store_true',
-                        help='When saving to a SQL database; the default is to pick up since the last success. This disables that.')
-    parser.add_argument('--profile')
-    parser.add_argument('--verbose', default=False, action='store_true')
-    parser.add_argument('--output-format', default='json', choices=['json', 'csv', 'xls', 'xlsx', 'sql', 'markdown'], help='Output format')
-    parser.add_argument('--output', metavar='PATH', default='reports.zip', help='Path to output; defaults to `reports.zip`.')
-    parser.add_argument('--strict-types', default=False, action='store_true', help="When saving to a SQL database don't allow changing column types once they are created.")
-    parser.add_argument('--missing-value', default=None, help="Value to use when a field is missing from the form / case.")
+    for arg in CLI_ARGS:
+        arg.add_to_parser(parser)
 
     try:
         args = parser.parse_args(argv)
@@ -82,7 +106,6 @@ def main(argv):
     if not args.project:
         print('commcare-export: error: argument --project is required')
         exit(1)
-
 
     if args.profile:
         # hotshot is gone in Python 3
