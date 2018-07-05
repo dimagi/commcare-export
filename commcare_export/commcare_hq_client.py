@@ -26,18 +26,28 @@ logger = logging.getLogger(__file__)
 
 LATEST_KNOWN_VERSION='0.5'
 
+
 class CommCareHqClient(object):
     """
     A connection to CommCareHQ for a particular version, project, and user.
     """
 
-    def __init__(self, url, project, version=LATEST_KNOWN_VERSION, session=None, auth=None, checkpoint_manager=None):
+    def __init__(self, url, project, username, password,
+                 auth_mode=AUTH_MODE_DIGEST, version=LATEST_KNOWN_VERSION, checkpoint_manager=None):
         self.version = version
         self.url = url
         self.project = project
-        self.__session = session
-        self.__auth = auth
         self._checkpoint_manager = checkpoint_manager
+        self.__auth = self._get_auth(username, password, auth_mode)
+        self.__session = None
+
+    def _get_auth(self, username, password, mode):
+        if mode == AUTH_MODE_DIGEST:
+            return HTTPDigestAuth(username, password)
+        elif mode == AUTH_MODE_APIKEY:
+            return ApiKeyAuth(username, password)
+        else:
+            raise Exception('Unknown auth mode: %s' % mode)
 
     @property
     def session(self):
@@ -45,33 +55,14 @@ class CommCareHqClient(object):
             self.__session = requests.Session(headers={'User-Agent': 'commcare-export/%s' % commcare_export.__version__})
         return self.__session
 
+    @session.setter
+    def session(self, session):
+        """Used for overriding the session in unit tests"""
+        self.__session = session
+
     @property
     def api_url(self):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
-
-    def authenticated(self, username=None, password=None, mode=AUTH_MODE_DIGEST):
-        """
-        Returns a freshly authenticated CommCareHqClient with a new session.
-        This is safe to call many times and each of the resulting clients
-        remain independent, so you can log in with zero, one, or many users.
-        """
-        auth = None
-        if mode == AUTH_MODE_DIGEST:
-            auth = HTTPDigestAuth(username, password)
-        elif mode == AUTH_MODE_APIKEY:
-            auth = ApiKeyAuth(username, password)
-        else:
-            raise Exception('Unknown auth mode: %s' % mode)
-
-        return self._clone_with(auth)
-
-    def _clone_with(self, auth):
-        return CommCareHqClient(
-            self.url,
-            self.project,
-            auth=auth,
-            checkpoint_manager=self._checkpoint_manager
-        )
 
     def get(self, resource, params=None):
         """
@@ -157,9 +148,6 @@ class MockCommCareHqClient(object):
     def __init__(self, mock_data):
         self.mock_data = dict([(resource, dict([(urlencode(OrderedDict(sorted(params.items()))), result) for params, result in resource_results]))
                               for resource, resource_results in mock_data.items()])
-
-    def authenticated(self, *args, **kwargs):
-        return self
 
     def get(self, resource, paginator, params=None):
         return self.mock_data[resource][urlencode(OrderedDict(sorted(d.items())))]

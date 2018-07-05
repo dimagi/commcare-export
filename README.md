@@ -131,7 +131,7 @@ To directly access the CommCareHq REST API:
 ```python
 >>> import getpass
 >>> from commcare_export.commcare_hq_client import CommCareHqClient
->>> api_client = CommCareHqClient('http://commcarehq.org', project='your_project').authenticated('your_username', getpass.getpass())
+>>> api_client = CommCareHqClient('http://commcarehq.org', 'your_project', 'your_username', getpass.getpass())
 >>> forms = api_client.iterate('form', {'app_id': "whatever"})
 >>> [ (form['received_on'], form['form.gender']) for form in forms ]
 ```
@@ -149,10 +149,10 @@ from commcare_export.env import BuiltInEnv
 api_client = CommCareHqClient(
     url="http://www.commcarehq.org",
     project='your_project',
+    username='your_username',
+    password='password',
     version='0.5'
 )
- 
-api_client = api_client.authenticated(username='username', password='password', mode='digest')
 
 source = Map(
    source=Apply(

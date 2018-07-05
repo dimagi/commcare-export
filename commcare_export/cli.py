@@ -171,13 +171,15 @@ def get_since_until(args, checkpoint_manager):
 
 
 def _get_api_client(args, checkpoint_manager, commcarehq_base_url):
-    client = CommCareHqClient(
+    return CommCareHqClient(
         url=commcarehq_base_url,
         project=args.project,
+        username=args.username,
+        password=args.password,
+        auth_mode=args.auth_mode,
         version=args.api_version,
         checkpoint_manager=checkpoint_manager
     )
-    return client.authenticated(args.username, args.password, args.auth_mode)
 
 
 def main_with_args(args):
