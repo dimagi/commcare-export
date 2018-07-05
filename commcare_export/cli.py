@@ -155,7 +155,7 @@ def _get_writer(output_format, output, strict_types):
         raise Exception("Unknown output format: {}".format(output_format))
 
 
-def get_since_until(args, checkpoint_manager):
+def get_date_params(args, checkpoint_manager):
     if not args.since and not args.start_over and checkpoint_manager:
         with checkpoint_manager:
             args.since = checkpoint_manager.get_time_of_last_run()
@@ -221,7 +221,7 @@ def main_with_args(args):
     commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
     api_client = _get_api_client(args, checkpoint_manager, commcarehq_base_url)
 
-    since, until = get_since_until(args, checkpoint_manager)
+    since, until = get_date_params(args, checkpoint_manager)
     if since:
         logger.debug('Starting from %s', args.since)
     env = (
