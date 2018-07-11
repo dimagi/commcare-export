@@ -153,6 +153,7 @@ class MockCommCareHqClient(object):
         return self.mock_data[resource][urlencode(OrderedDict(sorted(d.items())))]
     
     def iterate(self, resource, paginator, params=None):
+        logger.debug('Mock client call to resource "%s" with params "%s"', resource, params)
         return self.mock_data[resource][urlencode(OrderedDict(sorted(params.items())))]
 
 
