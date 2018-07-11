@@ -82,7 +82,7 @@ resource_since_params = {
 
 def get_paginator(resource):
     return {
-        'form': DatePaginator('form', 'received_on'),
+        'form': DatePaginator('form', ['server_modified_on', 'received_on']),
         'case': DatePaginator('case', 'server_date_modified'),
         'device-log': SimplePaginator('device-log'),
         'user': SimplePaginator('user'),
