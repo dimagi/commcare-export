@@ -149,9 +149,6 @@ class MockCommCareHqClient(object):
         self.mock_data = dict([(resource, dict([(urlencode(OrderedDict(sorted(params.items()))), result) for params, result in resource_results]))
                               for resource, resource_results in mock_data.items()])
 
-    def get(self, resource, paginator, params=None):
-        return self.mock_data[resource][urlencode(OrderedDict(sorted(d.items())))]
-    
     def iterate(self, resource, paginator, params=None):
         return self.mock_data[resource][urlencode(OrderedDict(sorted(params.items())))]
 
