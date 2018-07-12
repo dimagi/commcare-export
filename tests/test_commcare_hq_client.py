@@ -2,13 +2,14 @@ from __future__ import unicode_literals, print_function, absolute_import, divisi
 
 import json
 import unittest
+from datetime import datetime
 
 import simplejson
 
 import requests
 
 from commcare_export.commcare_hq_client import CommCareHqClient
-from commcare_export.commcare_minilinq import SimplePaginator, DatePaginator, resource_since_params
+from commcare_export.commcare_minilinq import SimplePaginator, DatePaginator, resource_since_params, get_paginator
 
 
 class FakeSession(object):
@@ -39,7 +40,7 @@ class FakeDateCaseSession(FakeSession):
         if not params:
             return {
                 'meta': {'next': '?offset=1', 'offset': 0, 'limit': 1, 'total_count': 2},
-                'objects': [{'id': 1, 'foo': 1, 'since_field': '2017-01-01T15:36:22Z'}]
+                'objects': [{'id': 1, 'foo': 1, 'server_date_modified': '2017-01-01T15:36:22Z'}]
             }
         else:
             since_query_param =resource_since_params['case'].start_param
@@ -52,42 +53,51 @@ class FakeDateCaseSession(FakeSession):
 
 class FakeDateFormSession(FakeSession):
     def _get_results(self, params):
+        since1 = '2017-01-01T15:36:22'
+        since2 = '2017-01-01T16:00:00'
         if not params:
             return {
-                'meta': {'next': '?offset=1', 'offset': 0, 'limit': 1, 'total_count': 2},
-                'objects': [{'id': 1, 'foo': 1, 'since_field': '2017-01-01T15:36:22Z'}]
+                'meta': {'next': '?offset=1', 'offset': 0, 'limit': 1, 'total_count': 3},
+                'objects': [{'id': 1, 'foo': 1, 'received_on': '{}Z'.format(since1)}]
             }
         else:
             search = json.loads(params['_search'])
             _or = search['filter']['or']
-            assert _or[0]['and'][1]['range']['server_modified_on']['gte'] == '2017-01-01T15:36:22'
-            assert _or[1]['and'][1]['range']['received_on']['gte'] == '2017-01-01T15:36:22'
-            # include ID=1 again to make sure it gets filtered out
-            return {
-                'meta': { 'next': None, 'offset': 1, 'limit': 1, 'total_count': 2 },
-                'objects': [ {'id': 1, 'foo': 1}, {'id': 2, 'foo': 2} ]
-            }
+            received_on = _or[1]['and'][1]['range']['received_on']['gte']
+            modified_on = _or[0]['and'][1]['range']['server_modified_on']['gte']
+            if received_on == modified_on == since1:
+                # include ID=1 again to make sure it gets filtered out
+                return {
+                    'meta': { 'next': '?offset=2', 'offset': 0, 'limit': 1, 'total_count': 3 },
+                    'objects': [{'id': 1, 'foo': 1}, {'id': 2, 'foo': 2, 'server_modified_on': '{}Z'.format(since2)}]
+                }
+            elif received_on == modified_on == since2:
+                return {
+                    'meta': { 'next': None, 'offset': 0, 'limit': 1, 'total_count': 3 },
+                    'objects': [{'id': 3, 'foo': 3}]
+                }
+            else:
+                raise Exception(modified_on)
 
 
 class TestCommCareHqClient(unittest.TestCase):
 
-    def _test_iterate(self, session, paginator):
+    def _test_iterate(self, session, paginator, expected_count, expected_vals):
         client = CommCareHqClient('/fake/commcare-hq/url', 'fake-project', None, None)
         client.session = session
 
         # Iteration should do two "gets" because the first will have something in the "next" metadata field
         paginator.init()
         results = list(client.iterate('/fake/uri', paginator))
-        self.assertEqual(len(results), 2)
-        self.assertEqual(results[0]['foo'], 1)
-        self.assertEqual(results[1]['foo'], 2)
+        self.assertEqual(len(results), expected_count)
+        self.assertEqual([result['foo'] for result in results], expected_vals)
 
     def test_iterate_simple(self):
-        self._test_iterate(FakeSession(), SimplePaginator('fake'))
+        self._test_iterate(FakeSession(), SimplePaginator('fake'), 2, [1, 2])
 
     def test_iterate_date(self):
-        self._test_iterate(FakeDateFormSession(), DatePaginator('form', 'since_field'))
-        self._test_iterate(FakeDateCaseSession(), DatePaginator('case', 'since_field'))
+        self._test_iterate(FakeDateFormSession(), get_paginator('form'), 3, [1, 2, 3])
+        self._test_iterate(FakeDateCaseSession(), get_paginator('case'), 2, [1, 2])
 
 
 class TestDatePaginator(unittest.TestCase):
@@ -103,4 +113,21 @@ class TestDatePaginator(unittest.TestCase):
         self.assertIsNone(DatePaginator('fake', 'since').next_page_params_from_batch({'objects': [{
             'since': 'not a date'
         }]}))
+
+    def test_multi_field_sort(self):
+        d1 = '2017-01-01T15:36:22Z'
+        d2 = '2017-01-01T18:36:22Z'
+        self.assertEqual(DatePaginator('fake', ['s1', 's2']).get_since_date({'objects': [{
+            's1': d1,
+            's2': d2
+        }]}), datetime.strptime(d1, '%Y-%m-%dT%H:%M:%SZ'))
+
+        self.assertEqual(DatePaginator('fake', ['s1', 's2']).get_since_date({'objects': [{
+            's2': d2
+        }]}), datetime.strptime(d2, '%Y-%m-%dT%H:%M:%SZ'))
+
+        self.assertEqual(DatePaginator('fake', ['s1', 's2']).get_since_date({'objects': [{
+            's1': None,
+            's2': d2
+        }]}), datetime.strptime(d2, '%Y-%m-%dT%H:%M:%SZ'))
 
