@@ -85,7 +85,7 @@ class TestCommCareHqClient(unittest.TestCase):
         self._test_iterate(FakeSession(), SimplePaginator('fake'))
 
     def test_iterate_date(self):
-        self._test_iterate(FakeDateFormSession(), DatePaginator('form', 'since_field'))
+        self._test_iterate(FakeDateFormSession(), DatePaginator('form', ['since_field', 'field2']))
         self._test_iterate(FakeDateCaseSession(), DatePaginator('case', 'since_field'))
 
 
