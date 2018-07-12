@@ -255,7 +255,10 @@ def main_with_args(args):
     )
 
     with env:
-        results = list(query.eval(env))  # evaluate the result
+        results = [
+            list(r) if r else r
+            for r in query.eval(env)
+        ]  # evaluate lazy results
 
     if args.output_format == 'json':
         print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))

@@ -75,7 +75,7 @@ setuptools.setup(
         'pytz',
         'sqlalchemy-migrate',
     ],
-    tests_require = ['pytest', 'psycopg2'],
+    tests_require = ['pytest', 'psycopg2', 'mock'],
     cmdclass = {'test': PyTest},
     classifiers = [
         'Development Status :: 4 - Beta',
