@@ -14,19 +14,24 @@ class CheckpointManager(SqlMixin):
     table_name = 'commcare_export_runs'
     migrations_repository = os.path.join(repo_root, 'migrations')
 
-    def set_checkpoint(self, query, query_md5, checkpoint_time=None, run_complete=False):
+    def __init__(self, db_url, query, query_md5, poolclass=None):
+        super(CheckpointManager, self).__init__(db_url, poolclass=poolclass)
+        self.query = query
+        self.query_md5 = query_md5
+
+    def set_checkpoint(self, checkpoint_time=None, run_complete=False):
         logger.info('Setting checkpoint')
         checkpoint_time = checkpoint_time or datetime.datetime.utcnow()
         self._insert_checkpoint(
             id=uuid.uuid4().hex,
-            query_file_name=query,
-            query_file_md5=query_md5,
+            query_file_name=self.query,
+            query_file_md5=self.query_md5,
             since_param=checkpoint_time.isoformat(),
             time_of_run=datetime.datetime.utcnow().isoformat(),
             final=run_complete
         )
         if run_complete:
-            self._cleanup(query_md5)
+            self._cleanup(self.query_md5)
 
     def create_checkpoint_table(self):
         from alembic import command, config
@@ -53,7 +58,7 @@ class CheckpointManager(SqlMixin):
             md5=query_md5,
         )
 
-    def get_time_of_last_run(self, query_file_md5):
+    def get_time_of_last_run(self):
         if 'commcare_export_runs' in self.metadata.tables:
             sql = """
                 SELECT since_param FROM commcare_export_runs
@@ -61,7 +66,7 @@ class CheckpointManager(SqlMixin):
             """
             cursor = self.connection.execute(
                 self.sqlalchemy.sql.text(sql),
-                query_file_md5=query_file_md5
+                query_file_md5=self.query_md5
             )
             for row in cursor:
                 return row[0]

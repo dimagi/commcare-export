@@ -186,6 +186,9 @@ class Filter(MiniLinq):
 
         return RepeatableIterator(iterate)
 
+    def __eq__(self, other):
+        return isinstance(other, Filter) and self.source == other.source and self.name == other.name and self.predicate == other.predicate
+
     @classmethod
     def from_jvalue(cls, jvalue):
         fields = jvalue['Filter']
@@ -255,7 +258,7 @@ class Map(MiniLinq):
                     yield self.body.eval(env.bind(self.name, item))
             else:
                 for item in source_result:
-                    yield self.body.eval(env.replace(item)) 
+                    yield self.body.eval(env.replace(item))
 
         return RepeatableIterator(iterate)
 
@@ -420,7 +423,6 @@ class Emit(MiniLinq):
         env.emit_table({'name': self.table,
                         'headings': [heading.eval(env) for heading in self.headings],
                         'rows': map(self.coerce_row, rows)})
-        return rows
 
     @classmethod
     def from_jvalue(cls, jvalue):

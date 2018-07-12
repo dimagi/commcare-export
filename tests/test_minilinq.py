@@ -8,6 +8,8 @@ from jsonpath_rw import jsonpath
 from commcare_export.minilinq import *
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.env import *
+from commcare_export.writers import JValueTableWriter
+
 
 class LazinessException(Exception): pass
 def die(msg): raise LazinessException(msg) # Hack: since "raise" is a statement not an expression, need a funcall wrapping it
@@ -146,7 +148,8 @@ class TestMiniLinq(unittest.TestCase):
             pass
 
     def test_emit(self):
-        env = BuiltInEnv() | JsonPathEnv({'foo': {'baz': 3, 'bar': True, 'boo': None}})
+        writer = JValueTableWriter()
+        env = BuiltInEnv() | JsonPathEnv({'foo': {'baz': 3, 'bar': True, 'boo': None}}) | EmitterEnv(writer)
         Emit(table='Foo',
              headings=[Literal('foo')],
              source=List([
@@ -154,7 +157,95 @@ class TestMiniLinq(unittest.TestCase):
              ]),
              missing_value='---').eval(env)
 
-        assert list(list(env.emitted_tables())[0]['rows']) == [[3, True, '---', None]]
+        assert list(writer.tables['Foo']['rows']) == [[3, True, '---', None]]
+
+    def test_emit_multi_same_query(self):
+        """Test that we can emit multiple tables from the same set of source data.
+        This is useful if you need to generate multiple tables from the same datasource.
+        """
+        writer = JValueTableWriter()
+        env = BuiltInEnv() | JsonPathEnv() | EmitterEnv(writer)
+
+        result = Map(
+            source=Literal([
+                {'foo': {'baz': 3, 'bar': True, 'boo': None}},
+                {'foo': {'baz': 4, 'bar': False, 'boo': 1}},
+            ]),
+            body=List([
+                Emit(
+                    table='FooBaz',
+                    headings=[Literal('foo')],
+                    source=List([
+                        List([ Reference('foo.baz')])
+                    ]),
+                ),
+                Emit(
+                    table='FooBar',
+                    headings=[Literal('foo')],
+                    source=List([
+                        List([Reference('foo.bar')])
+                    ]),
+                )
+           ]),
+        ).eval(env)
+
+        # evaluate result
+        list(result)
+        assert 2 == len(writer.tables)
+        assert writer.tables['FooBaz']['rows'] == [[3], [4]]
+        assert writer.tables['FooBar']['rows'] == [[True], [False]]
+
+    def test_emit_mutli_different_query(self):
+        """Test that we can emit multiple tables from the same set of source data even
+        if the emitted table have different 'root doc' expressions.
+
+        Example use case could be emitting cases and case actions, or form data and repeats.
+        """
+        writer = JValueTableWriter()
+        env = BuiltInEnv() | JsonPathEnv() | EmitterEnv(writer)
+        result = Filter(  # the filter here is to prevent accumulating a `[None]` value for each doc
+            predicate=Apply(
+                Reference("filter_empty"),
+                Reference("$")
+            ),
+            source=Map(
+                # in practice `source` would be and api query such as
+                # Apply(Reference('api_data'), Literal('case'), Literal({'type': 'case_type'}))
+                source=Literal([
+                    {'id': 1, 'foo': {'baz': 3, 'bar': True, 'boo': None}, 'actions': [{'a': 3}, {'a': 4}]},
+                    {'id': 2, 'foo': {'baz': 4, 'bar': False, 'boo': 1}, 'actions': [{'a': 5}, {'a': 6}]},
+                ]),
+                body=List([
+                    Emit(
+                        table="t1",
+                        headings=[Literal("id")],
+                        source=Map(
+                            source=Reference("`this`"),
+                            body=List([
+                                Reference("id"),
+                            ]),
+                        )
+                    ),
+                    Emit(
+                        table="t2",
+                        headings=[Literal("id"), Literal("a")],
+                        source=Map(
+                            source=Reference("actions[*]"),
+                            body=List([
+                                Reference("$.id"),
+                                Reference("a")
+                            ]),
+                        )
+                    )
+                ])
+            )
+        ).eval(env)
+
+        # evaluate result
+        list(result)
+        print(writer.tables)
+        assert writer.tables['t1']['rows'] == [['1'], ['2']]
+        assert writer.tables['t2']['rows'] == [['1', 3], ['1', 4], ['2', 5], ['2', 6]]
 
     def test_from_jvalue(self):
         assert MiniLinq.from_jvalue({"Ref": "form.log_subreport"}) == Reference("form.log_subreport")

@@ -83,7 +83,8 @@ class FakeDateFormSession(FakeSession):
 class TestCommCareHqClient(unittest.TestCase):
 
     def _test_iterate(self, session, paginator, expected_count, expected_vals):
-        client = CommCareHqClient('/fake/commcare-hq/url', project='fake-project', session=session)
+        client = CommCareHqClient('/fake/commcare-hq/url', 'fake-project', None, None)
+        client.session = session
 
         # Iteration should do two "gets" because the first will have something in the "next" metadata field
         paginator.init()

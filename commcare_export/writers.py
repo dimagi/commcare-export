@@ -47,6 +47,11 @@ class TableWriter(object):
     If the implementing class does not actually need any
     set up, no-op defaults have been provided
     """
+    max_column_length = None
+    support_checkpoints = False
+
+    # set to False if writer does not support writing to the same table multiple times
+    supports_multi_table_write = True
 
     def __enter__(self):
         return self
@@ -58,7 +63,10 @@ class TableWriter(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
+
 class CsvTableWriter(TableWriter):
+    supports_multi_table_write = False
+
     def __init__(self, file, max_column_size=MAX_COLUMN_SIZE):
         self.file = file
         self.tables = []
@@ -104,20 +112,29 @@ class Excel2007TableWriter(TableWriter):
 
         self.file = file
         self.book = openpyxl.workbook.Workbook(optimized_write=True)
+        self.sheets = {}
 
     def __enter__(self):
         return self
 
     def write_table(self, table):
-        sheet = self.book.create_sheet()
-        sheet.title = table['name'][:self.max_table_name_size]
-
-        sheet.append([ensure_text(v) for v in table['headings']])
+        sheet = self.get_sheet(table)
         for row in table['rows']:
             sheet.append([ensure_text(v) for v in row])
-        
+
+    def get_sheet(self, table):
+        name = table['name']
+        if name not in self.sheets:
+            sheet = self.book.create_sheet()
+            sheet.title = name[:self.max_table_name_size]
+            sheet.append([ensure_text(v) for v in table['headings']])
+            self.sheets[name] = sheet
+
+        return self.sheets[name]
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.book.save(self.file)
+
 
 class Excel2003TableWriter(TableWriter):
     max_table_name_size = 31
@@ -132,19 +149,36 @@ class Excel2003TableWriter(TableWriter):
 
         self.file = file
         self.book = xlwt.Workbook()
+        self.sheets = {}
 
     def __enter__(self):
         return self
 
     def write_table(self, table):
-        sheet = self.book.add_sheet(table['name'][:self.max_table_name_size])
-
-        for rownum, row in enumerate(chain([table['headings']], table['rows'])):
+        sheet, current_row = self.get_sheet(table)
+        for row in table['rows']:
             for colnum, val in enumerate(row):
-                sheet.write(rownum, colnum, ensure_text(val))
+                sheet.write(current_row, colnum, ensure_text(val))
+            current_row += 1
+
+        self.sheets[table['name']] = (sheet, current_row)
+
+    def get_sheet(self, table):
+        name = table['name']
+        if name not in self.sheets:
+            sheet = self.book.add_sheet(name[:self.max_table_name_size])
+            sheet.title = name[:self.max_table_name_size]
+
+            for colnum, val in enumerate(table['headings']):
+                sheet.write(0, colnum, ensure_text(val))
+
+            self.sheets[name] = (sheet, 1) # start from row 1
+
+        return self.sheets[name]
         
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.book.save(self.file)
+
 
 class JValueTableWriter(TableWriter):
     """
@@ -152,18 +186,28 @@ class JValueTableWriter(TableWriter):
     """
 
     def __init__(self):
-        self.tables = []
+        self.tables = {}
     
     def write_table(self, table):
-        # Ensures the table is iterable; probably better to create a custom JSON handler that runs in constant space
-        self.tables.append(dict(name=table['name'],
-                                headings=list(table['headings']),
-                                rows=[[to_jvalue(v) for v in row] for row in table['rows']]))
+        if table['name'] not in self.tables:
+            self.tables[table['name']] = {
+                'name': table['name'],
+                'headings': list(table['headings']),
+                'rows': []
+            }
+        else:
+            assert self.tables[table['name']]['headings'] == list(table['headings'])
+
+        self.tables[table['name']]['rows'].extend(
+            [[to_jvalue(v) for v in row] for row in table['rows']]
+        )
+
 
 class StreamingMarkdownTableWriter(TableWriter):
     """
     Writes markdown to an output stream, where each table just comes one after the other
     """
+    supports_multi_table_write = False
 
     def __init__(self, output_stream):
         self.output_stream = output_stream
@@ -248,6 +292,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
     Write tables to a database specified by URL
     (TODO) with "upsert" based on primary key.
     """
+    support_checkpoints = True
 
     def __init__(self, db_url, strict_types=False, poolclass=None):
         super(SqlTableWriter, self).__init__(db_url, poolclass=poolclass)
