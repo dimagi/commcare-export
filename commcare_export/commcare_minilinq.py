@@ -186,10 +186,18 @@ class DatePaginator(SimplePaginator):
         except IndexError:
             return
 
-        since = last_obj and last_obj.get(self.since_field)
-        if since:
-            for fmt in ('%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S.%fZ'):
-                try:
-                    return datetime.strptime(since, fmt)
-                except ValueError:
-                    pass
+        if last_obj:
+            if isinstance(self.since_field, list):
+                for field in self.since_field:
+                    since = last_obj.get(field)
+                    if since:
+                        break
+            else:
+                since = last_obj.get(self.since_field)
+
+            if since:
+                for fmt in ('%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S.%fZ'):
+                    try:
+                        return datetime.strptime(since, fmt)
+                    except ValueError:
+                        pass
