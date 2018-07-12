@@ -97,7 +97,6 @@ class TestCommCareHqClient(unittest.TestCase):
 
     def test_iterate_date(self):
         self._test_iterate(FakeDateFormSession(), get_paginator('form'), 3, [1, 2, 3])
-        # self._test_iterate(FakeDateFormSession(), DatePaginator('form', ['since_field', 'field2']), 3, [1, 2, 3])
         self._test_iterate(FakeDateCaseSession(), get_paginator('case'), 2, [1, 2])
 
 
