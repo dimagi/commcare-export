@@ -38,6 +38,7 @@ def make_args(project='test', username='test', password='test', **kwargs):
 
     return namespace
 
+
 client = MockCommCareHqClient({
     'form': [
         (
