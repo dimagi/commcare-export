@@ -149,9 +149,6 @@ class MockCommCareHqClient(object):
         self.mock_data = dict([(resource, dict([(urlencode(OrderedDict(sorted(params.items()))), result) for params, result in resource_results]))
                               for resource, resource_results in mock_data.items()])
 
-    def get(self, resource, paginator, params=None):
-        return self.mock_data[resource][urlencode(OrderedDict(sorted(d.items())))]
-    
     def iterate(self, resource, paginator, params=None):
         logger.debug('Mock client call to resource "%s" with params "%s"', resource, params)
         return self.mock_data[resource][urlencode(OrderedDict(sorted(params.items())))]
@@ -162,14 +159,14 @@ class ApiKeyAuth(AuthBase):
         self.username = username
         self.apikey = apikey
 
-    def _key(self):
-        return (self.username, self.apikey)
-
     def __eq__(self, other):
-        return self._key() == other.key()
+        return all([
+            self.username == getattr(other, 'username', None),
+            self.apikey == getattr(other, 'apikey', None)
+        ])
 
     def __hash__(self):
-        return hash(self._key())
+        return hash((self.username, self.apikey))
 
     def __ne__(self, other):
         return not self == other
