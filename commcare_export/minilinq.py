@@ -355,11 +355,13 @@ class Apply(MiniLinq):
             except:
                 doc_id = 'unknown'
 
-            message = (
-                "Error processing document '%s'. "
+            message = e.args[0] + (
+                ": Error processing document '%s'. "
                 "Failure to evaluating expression '%r' with arguments '%s'"
             ) % (doc_id, self, args)
-            raise Exception(message, e)
+
+            e.args = (message,) + e.args[1:]
+            raise
         return result
 
     def __eq__(self, other):
