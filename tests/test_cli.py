@@ -141,8 +141,14 @@ class TestCLIIntegrationTests(object):
 
         _pull_data('2012-01-01', '2012-08-01')
 
-        expected_first_pull = expected_form_data[:16]
-        self._check_data(writer, expected_first_pull)
+        self._check_data(writer, expected_form_data[:16])
+
+        _pull_data(None, '2012-09-01')
+
+        self._check_data(writer, expected_form_data[:27])
+
+        runs = list(writer.engine.execute('SELECT * from commcare_export_runs'))
+        assert len(runs) == 2
 
     def _check_data(self, writer, expected):
         actual = [
@@ -158,3 +164,4 @@ class TestCLIIntegrationTests(object):
             for i, rows in enumerate(izip_longest(actual, expected)):
                 if rows[0] != rows[1]:
                     print('{}: {} != {}'.format(i, rows[0], rows[1]))
+            assert actual == expected
