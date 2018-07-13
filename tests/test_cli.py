@@ -114,7 +114,7 @@ def checkpoint_manager(pg_db_params):
 
 
 class TestCLIIntegrationTests(object):
-    def test_write_to_sql_with_checkpoints(self, writer, checkpoint_manager):
+    def test_write_to_sql_with_checkpoints(self, writer, checkpoint_manager, caplog):
         def _pull_data(since, until):
             args = make_args(
                 query='tests/009_integration.xlsx',
@@ -140,12 +140,12 @@ class TestCLIIntegrationTests(object):
             expected_form_data = list(reader)[1:]
 
         _pull_data('2012-01-01', '2012-08-01')
-
+        self._check_checkpoints(caplog, ['batch', 'batch', 'final'])
         self._check_data(writer, expected_form_data[:16])
 
         _pull_data(None, '2012-09-01')
-
         self._check_data(writer, expected_form_data[:27])
+        self._check_checkpoints(caplog, ['batch', 'final'])
 
         runs = list(writer.engine.execute('SELECT * from commcare_export_runs'))
         assert len(runs) == 2
@@ -165,3 +165,16 @@ class TestCLIIntegrationTests(object):
                 if rows[0] != rows[1]:
                     print('{}: {} != {}'.format(i, rows[0], rows[1]))
             assert actual == expected
+
+    def _check_checkpoints(self, caplog, expected):
+        # Depends on the logging in the CheckpointManager._set_checkpoint method
+        log_messages = [
+            record[2] for record in caplog.record_tuples
+            if record[0] == 'commcare_export.checkpoint'
+        ]
+        fail = False
+        for i, items in enumerate(izip_longest(expected, log_messages)):
+            if items[0] not in items[1]:
+                print('{}: {} not in {}'.format(i, items[0], items[1]))
+                fail = True
+        assert not fail
