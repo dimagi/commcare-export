@@ -73,6 +73,7 @@ CLI_ARGS = [
         Argument('strict-types', default=False, action='store_true',
                  help="When saving to a SQL database don't allow changing column types once they are created."),
         Argument('missing-value', default=None, help="Value to use when a field is missing from the form / case."),
+        Argument('batch-size', default=1000, help="Number of records to process per batch."),
     ]
 
 
@@ -249,7 +250,7 @@ def main_with_args(args):
         logger.debug('Starting from %s', args.since)
     env = (
             BuiltInEnv({'commcarehq_base_url': commcarehq_base_url})
-            | CommCareHqEnv(api_client, since=since, until=until)
+            | CommCareHqEnv(api_client, since=since, until=until, page_size=args.batch_size)
             | JsonPathEnv({})
             | EmitterEnv(writer)
     )
