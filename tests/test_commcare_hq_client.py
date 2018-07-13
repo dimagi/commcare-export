@@ -51,6 +51,7 @@ class FakeDateCaseSession(FakeSession):
                 'objects': [ {'id': 1, 'foo': 1}, {'id': 2, 'foo': 2} ]
             }
 
+
 class FakeDateFormSession(FakeSession):
     def _get_results(self, params):
         since1 = '2017-01-01T15:36:22'

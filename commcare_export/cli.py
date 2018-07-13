@@ -206,6 +206,10 @@ def _get_api_client(args, checkpoint_manager, commcarehq_base_url):
     )
 
 
+def _get_checkpoint_manager(args):
+    return CheckpointManager(args.output, args.query, misc.digest_file(args.query))
+
+
 def main_with_args(args):
     # Grab the timestamp here so that anything that comes in while this runs will be grabbed next time.
     run_start = datetime.utcnow()
@@ -231,7 +235,7 @@ def main_with_args(args):
         if not os.path.exists(args.query):
             logger.warning("Checkpointing disabled for non file-based query")
         else:
-            checkpoint_manager = CheckpointManager(args.output, args.query, misc.digest_file(args.query))
+            checkpoint_manager = _get_checkpoint_manager(args)
             with checkpoint_manager:
                 checkpoint_manager.create_checkpoint_table()
 

@@ -434,3 +434,19 @@ $ sudo apt-get update -qq
 $ sudo ACCEPT_EULA=Y apt-get install msodbcsql17
 $ odbcinst -q -d
 ```
+
+Integration Tests
+-----------------
+Running the integration tests requires API credentials from CommCare HQ
+that have access to the `corpora` domain. This user should only have
+access to the corpora domain.
+
+These need to be set as environment variables as follows:
+
+```
+export HQ_USERNAME=<username>
+export HQ_API_KEY=<apikey>
+```
+
+For Travis builds these are included as encrypted vars in the travis
+config.

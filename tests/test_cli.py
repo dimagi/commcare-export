@@ -1,13 +1,19 @@
 # -*- coding: utf-8 -*-
+import csv
+import os
 import unittest
 from collections import namedtuple
 from copy import copy
+from itertools import izip_longest
 
+import pytest
+import sqlalchemy
 from mock import mock
 
+from commcare_export.checkpoint import CheckpointManager
 from commcare_export.cli import CLI_ARGS, main_with_args
 from commcare_export.commcare_hq_client import MockCommCareHqClient
-from commcare_export.writers import JValueTableWriter
+from commcare_export.writers import JValueTableWriter, SqlTableWriter
 
 CLI_ARGS_BY_NAME = {
     arg.name: arg
@@ -97,3 +103,60 @@ class TestCli(unittest.TestCase):
         ]
 
         assert writer.tables.values() == expected
+
+
+@pytest.fixture(scope='class')
+def writer(pg_db_params):
+    return SqlTableWriter(pg_db_params['url'], poolclass=sqlalchemy.pool.NullPool)
+
+
+@pytest.fixture(scope='class')
+def checkpoint_manager(pg_db_params):
+    return CheckpointManager(pg_db_params['url'], 'query', '123', poolclass=sqlalchemy.pool.NullPool)
+
+
+class TestCLIIntegrationTests(object):
+    def test_write_to_sql_with_checkpoints(self, writer, checkpoint_manager):
+        def _pull_data(since, until):
+            args = make_args(
+                query='tests/009_integration.xlsx',
+                output_format='sql',
+                output='',
+                username=os.environ['HQ_USERNAME'],
+                password=os.environ['HQ_API_KEY'],
+                auth_mode='apikey',
+                project='corpora',
+                batch_size=10,
+                since=since,
+                until=until
+            )
+
+            # have to mock these to override the pool class otherwise they hold the db connection open
+            writer_patch = mock.patch('commcare_export.cli._get_writer', return_value=writer)
+            checkpoint_patch = mock.patch('commcare_export.cli._get_checkpoint_manager', return_value=checkpoint_manager)
+            with writer_patch, checkpoint_patch:
+                main_with_args(args)
+
+        with open('tests/009_expected_form_data.csv', 'r') as f:
+            reader = csv.reader(f)
+            expected_form_data = list(reader)[1:]
+
+        _pull_data('2012-01-01', '2012-08-01')
+
+        expected_first_pull = expected_form_data[:16]
+        self._check_data(writer, expected_first_pull)
+
+    def _check_data(self, writer, expected):
+        actual = [
+            list(row) for row in
+            writer.engine.execute("SELECT id, name, received_on, server_modified_on FROM forms")
+        ]
+
+        if actual != expected:
+            print('Data not equal to expected:')
+            if len(actual) != len(expected):
+                print('    {} rows compared to {} expected'.format(len(actual), len(expected)))
+            print('Diff:')
+            for i, rows in enumerate(izip_longest(actual, expected)):
+                if rows[0] != rows[1]:
+                    print('{}: {} != {}'.format(i, rows[0], rows[1]))
