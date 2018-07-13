@@ -156,15 +156,16 @@ class TestCLIIntegrationTests(object):
             writer.engine.execute("SELECT id, name, received_on, server_modified_on FROM forms")
         ]
 
+        message = ''
         if actual != expected:
-            print('Data not equal to expected:')
+            message += 'Data not equal to expected:\n'
             if len(actual) != len(expected):
-                print('    {} rows compared to {} expected'.format(len(actual), len(expected)))
-            print('Diff:')
+                message += '    {} rows compared to {} expected\n'.format(len(actual), len(expected))
+            message += 'Diff:\n'
             for i, rows in enumerate(izip_longest(actual, expected)):
                 if rows[0] != rows[1]:
-                    print('{}: {} != {}'.format(i, rows[0], rows[1]))
-            assert actual == expected
+                    message += '{}: {} != {}\n'.format(i, rows[0], rows[1])
+            assert actual == expected, message
 
     def _check_checkpoints(self, caplog, expected):
         # Depends on the logging in the CheckpointManager._set_checkpoint method
@@ -173,8 +174,11 @@ class TestCLIIntegrationTests(object):
             if record[0] == 'commcare_export.checkpoint'
         ]
         fail = False
+        message = ''
         for i, items in enumerate(izip_longest(expected, log_messages)):
-            if items[0] not in items[1]:
-                print('{}: {} not in {}'.format(i, items[0], items[1]))
+            if not items[0] or not items[1] or items[0] not in items[1]:
+                message += 'X {}: {} not in {}\n'.format(i, items[0], items[1])
                 fail = True
-        assert not fail
+            else:
+                message += '✓ {}: {} in {}\n'.format(i, items[0], items[1])
+        assert not fail, 'Checkpoint comparison failed:\n' + message
