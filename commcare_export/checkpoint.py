@@ -19,7 +19,7 @@ class CheckpointManager(SqlMixin):
         self.query = query
         self.query_md5 = query_md5
 
-    def set_checkpoint(self, checkpoint_time=None, run_complete=False):
+    def set_batch_checkpoint(self, checkpoint_time=None, run_complete=False):
         logger.info('Setting checkpoint')
         checkpoint_time = checkpoint_time or datetime.datetime.utcnow()
         self._insert_checkpoint(

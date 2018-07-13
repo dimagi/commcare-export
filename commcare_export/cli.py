@@ -272,10 +272,9 @@ def main_with_args(args):
     if args.output_format == 'json':
         print(json.dumps(writer.tables.values(), indent=4, default=RepeatableIterator.to_jvalue))
 
-    if env.has_emitted_tables():
-        if checkpoint_manager:
-            with checkpoint_manager:
-                checkpoint_manager.set_checkpoint(run_start, True)
+    if checkpoint_manager:
+        with checkpoint_manager:
+            checkpoint_manager.set_batch_checkpoint(run_start, True)
     else:
         # If no tables were emitted just print the output
         print(json.dumps(results, indent=4, default=RepeatableIterator.to_jvalue))
