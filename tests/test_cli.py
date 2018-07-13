@@ -115,7 +115,7 @@ def checkpoint_manager(pg_db_params):
 
 class TestCLIIntegrationTests(object):
     def test_write_to_sql_with_checkpoints(self, writer, checkpoint_manager, caplog):
-        def _pull_data(since, until):
+        def _pull_data(since, until, batch_size=10):
             args = make_args(
                 query='tests/009_integration.xlsx',
                 output_format='sql',
@@ -124,7 +124,7 @@ class TestCLIIntegrationTests(object):
                 password=os.environ['HQ_API_KEY'],
                 auth_mode='apikey',
                 project='corpora',
-                batch_size=10,
+                batch_size=batch_size,
                 since=since,
                 until=until
             )
@@ -143,7 +143,8 @@ class TestCLIIntegrationTests(object):
         self._check_checkpoints(caplog, ['batch', 'batch', 'final'])
         self._check_data(writer, expected_form_data[:16])
 
-        _pull_data(None, '2012-09-01')
+        caplog.clear()
+        _pull_data(None, '2012-09-01', batch_size=20)
         self._check_data(writer, expected_form_data[:27])
         self._check_checkpoints(caplog, ['batch', 'final'])
 
