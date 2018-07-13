@@ -145,7 +145,7 @@ class TestCLIIntegrationTests(object):
 
         caplog.clear()
         _pull_data(None, '2012-09-01', batch_size=20)
-        self._check_data(writer, expected_form_data[:27])
+        self._check_data(writer, expected_form_data)
         self._check_checkpoints(caplog, ['batch', 'final'])
 
         runs = list(writer.engine.execute('SELECT * from commcare_export_runs'))
