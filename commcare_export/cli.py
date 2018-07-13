@@ -7,7 +7,6 @@ import json
 import logging
 import os.path
 import sys
-from datetime import datetime
 
 import dateutil.parser
 from six.moves import input
@@ -211,9 +210,6 @@ def _get_checkpoint_manager(args):
 
 
 def main_with_args(args):
-    # Grab the timestamp here so that anything that comes in while this runs will be grabbed next time.
-    run_start = datetime.utcnow()
-
     writer = _get_writer(args.output_format, args.output, args.strict_types)
 
     try:
@@ -274,7 +270,7 @@ def main_with_args(args):
 
     if checkpoint_manager:
         with checkpoint_manager:
-            checkpoint_manager.set_batch_checkpoint(run_start, True)
+            checkpoint_manager.set_final_checkpoint()
     else:
         # If no tables were emitted just print the output
         print(json.dumps(results, indent=4, default=RepeatableIterator.to_jvalue))

@@ -4,6 +4,8 @@ import uuid
 
 import os
 
+import dateutil.parser
+
 from commcare_export.writers import SqlMixin
 
 logger = logging.getLogger(__name__)
@@ -19,8 +21,17 @@ class CheckpointManager(SqlMixin):
         self.query = query
         self.query_md5 = query_md5
 
-    def set_batch_checkpoint(self, checkpoint_time=None, run_complete=False):
-        logger.info('Setting checkpoint')
+    def set_batch_checkpoint(self, checkpoint_time):
+        self._set_checkpoint(checkpoint_time, False)
+
+    def set_final_checkpoint(self):
+        last_run = self.get_time_of_last_run()
+        if last_run:
+            self._set_checkpoint(dateutil.parser.parse(last_run), True)
+            self._cleanup()
+
+    def _set_checkpoint(self, checkpoint_time, final):
+        logger.info('Setting %s checkpoint: %s', 'final' if final else 'batch', checkpoint_time)
         checkpoint_time = checkpoint_time or datetime.datetime.utcnow()
         self._insert_checkpoint(
             id=uuid.uuid4().hex,
@@ -28,10 +39,8 @@ class CheckpointManager(SqlMixin):
             query_file_md5=self.query_md5,
             since_param=checkpoint_time.isoformat(),
             time_of_run=datetime.datetime.utcnow().isoformat(),
-            final=run_complete
+            final=final
         )
-        if run_complete:
-            self._cleanup(self.query_md5)
 
     def create_checkpoint_table(self):
         from alembic import command, config
@@ -46,16 +55,16 @@ class CheckpointManager(SqlMixin):
         insert = table.insert().values(**row)
         self.connection.execute(insert)
 
-    def _cleanup(self, query_md5):
+    def _cleanup(self):
         sql = """
            DELETE FROM {}
            WHERE final = :final
            AND query_file_md5 = :md5
-       """.format(self.table_name)
+        """.format(self.table_name)
         self.connection.execute(
             self.sqlalchemy.sql.text(sql),
             final=False,
-            md5=query_md5,
+            md5=self.query_md5,
         )
 
     def get_time_of_last_run(self):
