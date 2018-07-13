@@ -52,7 +52,10 @@ class CommCareHqClient(object):
     @property
     def session(self):
         if self.__session == None:
-            self.__session = requests.Session(headers={'User-Agent': 'commcare-export/%s' % commcare_export.__version__})
+            self.__session = requests.Session()
+            self.__session.headers.update({
+                'User-Agent': 'commcare-export/%s' % commcare_export.__version__
+            })
         return self.__session
 
     @session.setter
