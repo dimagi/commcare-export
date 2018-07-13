@@ -270,7 +270,7 @@ def main_with_args(args):
             results = {}
 
     if args.output_format == 'json':
-        print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))
+        print(json.dumps(writer.tables.values(), indent=4, default=RepeatableIterator.to_jvalue))
 
     if env.has_emitted_tables():
         if checkpoint_manager:
