@@ -2,6 +2,7 @@
 import csv
 import os
 import unittest
+from argparse import Namespace
 from collections import namedtuple
 from copy import copy
 from itertools import izip_longest
@@ -27,19 +28,15 @@ def make_args(project='test', username='test', password='test', **kwargs):
     kwargs['password'] = password
 
     args_by_name = copy(CLI_ARGS_BY_NAME)
-    names = []
-    vals = []
+    namespace = Namespace()
     for name, val in kwargs.items():
         args_by_name.pop(name)
-        names.append(name)
-        vals.append(val)
+        setattr(namespace, name, val)
 
     for name, arg in args_by_name.items():
-        names.append(name)
-        vals.append(arg.default)
+        setattr(namespace, name, arg.default)
 
-    return namedtuple('args', names)(*vals)
-
+    return namespace
 
 client = MockCommCareHqClient({
     'form': [
