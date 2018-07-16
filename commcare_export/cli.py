@@ -7,7 +7,6 @@ import json
 import logging
 import os.path
 import sys
-from datetime import datetime
 
 import dateutil.parser
 from six.moves import input
@@ -33,29 +32,54 @@ commcare_hq_aliases = {
     'prod': 'https://www.commcarehq.org'
 }
 
+
+class Argument(object):
+    def __init__(self, name, *args, **kwargs):
+        self.name = name.replace('-', '_')
+        self._args = ['--{}'.format(name)] + list(args)
+        self._kwargs = kwargs
+
+    @property
+    def default(self):
+        return self._kwargs.get('default')
+
+    def add_to_parser(self, parser):
+        parser.add_argument(*self._args, **self._kwargs)
+
+
+CLI_ARGS = [
+        Argument('version', default=False, action='store_true',
+                 help='Print the current version of the commcare-export tool.'),
+        Argument('query', help='JSON or Excel query file. If omitted, JSON string is read from stdin.'),
+        Argument('dump-query', default=False, action='store_true'),
+        Argument('commcare-hq', default='prod',
+                 help='Base url for the CommCare HQ instance e.g. https://www.commcarehq.org'),
+        Argument('api-version', default=LATEST_KNOWN_VERSION),
+        Argument('project'),
+        Argument('username'),
+        Argument('password', help='Enter password, or if using apikey auth-mode, enter the api key.'),
+        Argument('auth-mode', default='digest', choices=['digest', 'apikey'],
+                 help='Use "digest" auth, or "apikey" auth (for two factor enabled domains).'),
+        Argument('since', help='Export all data after this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS'),
+        Argument('until', help='Export all data up until this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS'),
+        Argument('start-over', default=False, action='store_true',
+                 help='When saving to a SQL database; the default is to pick up since the last success. This disables that.'),
+        Argument('profile'),
+        Argument('verbose', default=False, action='store_true'),
+        Argument('output-format', default='json', choices=['json', 'csv', 'xls', 'xlsx', 'sql', 'markdown'],
+                 help='Output format'),
+        Argument('output', metavar='PATH', default='reports.zip', help='Path to output; defaults to `reports.zip`.'),
+        Argument('strict-types', default=False, action='store_true',
+                 help="When saving to a SQL database don't allow changing column types once they are created."),
+        Argument('missing-value', default=None, help="Value to use when a field is missing from the form / case."),
+        Argument('batch-size', default=1000, help="Number of records to process per batch."),
+    ]
+
+
 def main(argv):
     parser = argparse.ArgumentParser('commcare-export', 'Output a customized export of CommCareHQ data.')
-
-    parser.add_argument('--version', default=False, action='store_true', help='Print the current version of the commcare-export tool.')
-    parser.add_argument('--query', help='JSON or Excel query file. If omitted, JSON string is read from stdin.')
-    parser.add_argument('--dump-query', default=False, action='store_true')
-    parser.add_argument('--commcare-hq', default='prod', help='Base url for the CommCare HQ instance e.g. https://www.commcarehq.org')
-    parser.add_argument('--api-version', default=LATEST_KNOWN_VERSION)
-    parser.add_argument('--project')
-    parser.add_argument('--username')
-    parser.add_argument('--password', help='Enter password, or if using apikey auth-mode, enter the api key.')
-    parser.add_argument('--auth-mode', default='digest', choices=['digest', 'apikey'],
-                        help='Use "digest" auth, or "apikey" auth (for two factor enabled domains).')
-    parser.add_argument('--since', help='Export all data after this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS')
-    parser.add_argument('--until', help='Export all data up until this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS')
-    parser.add_argument('--start-over', default=False, action='store_true',
-                        help='When saving to a SQL database; the default is to pick up since the last success. This disables that.')
-    parser.add_argument('--profile')
-    parser.add_argument('--verbose', default=False, action='store_true')
-    parser.add_argument('--output-format', default='json', choices=['json', 'csv', 'xls', 'xlsx', 'sql', 'markdown'], help='Output format')
-    parser.add_argument('--output', metavar='PATH', default='reports.zip', help='Path to output; defaults to `reports.zip`.')
-    parser.add_argument('--strict-types', default=False, action='store_true', help="When saving to a SQL database don't allow changing column types once they are created.")
-    parser.add_argument('--missing-value', default=None, help="Value to use when a field is missing from the form / case.")
+    for arg in CLI_ARGS:
+        arg.add_to_parser(parser)
 
     try:
         args = parser.parse_args(argv)
@@ -82,7 +106,6 @@ def main(argv):
     if not args.project:
         print('commcare-export: error: argument --project is required')
         exit(1)
-
 
     if args.profile:
         # hotshot is gone in Python 3
@@ -182,10 +205,11 @@ def _get_api_client(args, checkpoint_manager, commcarehq_base_url):
     )
 
 
-def main_with_args(args):
-    # Grab the timestamp here so that anything that comes in while this runs will be grabbed next time.
-    run_start = datetime.utcnow()
+def _get_checkpoint_manager(args):
+    return CheckpointManager(args.output, args.query, misc.digest_file(args.query))
 
+
+def main_with_args(args):
     writer = _get_writer(args.output_format, args.output, args.strict_types)
 
     try:
@@ -207,7 +231,7 @@ def main_with_args(args):
         if not os.path.exists(args.query):
             logger.warning("Checkpointing disabled for non file-based query")
         else:
-            checkpoint_manager = CheckpointManager(args.output, args.query, misc.digest_file(args.query))
+            checkpoint_manager = _get_checkpoint_manager(args)
             with checkpoint_manager:
                 checkpoint_manager.create_checkpoint_table()
 
@@ -226,24 +250,24 @@ def main_with_args(args):
         logger.debug('Starting from %s', args.since)
     env = (
             BuiltInEnv({'commcarehq_base_url': commcarehq_base_url})
-            | CommCareHqEnv(api_client, since=since, until=until)
+            | CommCareHqEnv(api_client, since=since, until=until, page_size=args.batch_size)
             | JsonPathEnv({})
             | EmitterEnv(writer)
     )
 
     with env:
-        results = list(query.eval(env))  # evaluate the result
+        lazy_result = query.eval(env)
+        if lazy_result is not None:
+            # evaluate lazy results
+            for r in lazy_result:
+                list(r) if r else r
+
+    if checkpoint_manager:
+        with checkpoint_manager:
+            checkpoint_manager.set_final_checkpoint()
 
     if args.output_format == 'json':
         print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))
-
-    if env.has_emitted_tables():
-        if checkpoint_manager:
-            with checkpoint_manager:
-                checkpoint_manager.set_checkpoint(run_start, True)
-    else:
-        # If no tables were emitted just print the output
-        print(json.dumps(results, indent=4, default=RepeatableIterator.to_jvalue))
 
 
 def entry_point():

@@ -14,6 +14,37 @@ logging.getLogger().setLevel(logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler())
 
 
+def _db_params(request, db_name):
+    db_url = request.param['url']
+    sudo_engine = sqlalchemy.create_engine(db_url % request.param.get('admin_db', ''), poolclass=sqlalchemy.pool.NullPool)
+    db_connection_url = db_url % db_name
+
+    def tear_down():
+        with sudo_engine.connect() as conn:
+            conn.execute('rollback')
+            if 'mssql' in db_url:
+                conn.connection.connection.autocommit = True
+            conn.execute('drop database if exists %s' % db_name)
+
+    try:
+        with sqlalchemy.create_engine(db_connection_url).connect():
+            pass
+    except (sqlalchemy.exc.OperationalError, sqlalchemy.exc.InternalError, DBAPIError):
+        with sudo_engine.connect() as conn:
+            conn.execute('rollback')
+            if 'mssql' in db_url:
+                conn.connection.connection.autocommit = True
+            conn.execute('create database %s' % db_name)
+    else:
+        raise Exception('Database %s already exists; refusing to overwrite' % db_name)
+
+    request.addfinalizer(tear_down)
+
+    params = request.param.copy()
+    params['url'] = db_connection_url
+    return params
+
+
 @pytest.fixture(scope="class", params=[
     {
         'url': "postgresql://postgres@localhost/%s",
@@ -28,31 +59,15 @@ logging.getLogger().addHandler(logging.StreamHandler())
     }
 ], ids=['postgres', 'mysql', 'mssql'])
 def db_params(request):
-    db_url = request.param['url']
-    sudo_engine = sqlalchemy.create_engine(db_url % request.param.get('admin_db', ''), poolclass=sqlalchemy.pool.NullPool)
-    db_connection_url = db_url % TEST_DB
+    return _db_params(request, TEST_DB)
 
-    def tear_down():
-        with sudo_engine.connect() as conn:
-            conn.execute('rollback')
-            if 'mssql' in db_url:
-                conn.connection.connection.autocommit = True
-            conn.execute('drop database if exists %s' % TEST_DB)
 
-    try:
-        with sqlalchemy.create_engine(db_connection_url).connect():
-            pass
-    except (sqlalchemy.exc.OperationalError, sqlalchemy.exc.InternalError, DBAPIError):
-        with sudo_engine.connect() as conn:
-            conn.execute('rollback')
-            if 'mssql' in db_url:
-                conn.connection.connection.autocommit = True
-            conn.execute('create database %s' % TEST_DB)
-    else:
-        raise Exception('Database %s already exists; refusing to overwrite' % TEST_DB)
+@pytest.fixture(scope="class", params=[
+    {
+        'url': "postgresql://postgres@localhost/%s",
+        'admin_db': 'postgres'
+    },
+], ids=['postgres'])
+def pg_db_params(request):
+    return _db_params(request, 'test_commcare_export_%s' % uuid.uuid4().hex)
 
-    request.addfinalizer(tear_down)
-
-    params = request.param.copy()
-    params['url'] = db_connection_url
-    return params

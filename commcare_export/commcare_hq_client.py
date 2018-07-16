@@ -52,7 +52,10 @@ class CommCareHqClient(object):
     @property
     def session(self):
         if self.__session == None:
-            self.__session = requests.Session(headers={'User-Agent': 'commcare-export/%s' % commcare_export.__version__})
+            self.__session = requests.Session()
+            self.__session.headers.update({
+                'User-Agent': 'commcare-export/%s' % commcare_export.__version__
+            })
         return self.__session
 
     @session.setter
@@ -72,6 +75,7 @@ class CommCareHqClient(object):
         for this particular use case in the hands of a trusted user; would likely
         want this to work like (or via) slumber.
         """
+        logger.debug("Fetching batch: %s", params)
         resource_url = '%s/%s/' % (self.api_url, resource)
         response = self.session.get(resource_url, params=params, auth=self.__auth)
 
@@ -122,7 +126,7 @@ class CommCareHqClient(object):
         if self._checkpoint_manager and isinstance(paginator, DatePaginator):
             since_date = paginator.get_since_date(batch)
             with self._checkpoint_manager:
-                self._checkpoint_manager.set_checkpoint(checkpoint_time=since_date)
+                self._checkpoint_manager.set_batch_checkpoint(checkpoint_time=since_date)
 
 
 class MockCommCareHqClient(object):
