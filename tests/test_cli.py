@@ -3,9 +3,7 @@ import csv
 import os
 import unittest
 from argparse import Namespace
-from collections import namedtuple
 from copy import copy
-from itertools import izip_longest
 
 import pytest
 import sqlalchemy
@@ -20,6 +18,13 @@ CLI_ARGS_BY_NAME = {
     arg.name: arg
     for arg in CLI_ARGS
 }
+
+try:
+    from itertools import izip_longest as zip_longest
+except ImportError:
+    # PY 3
+    from itertools import zip_longest
+
 
 
 def make_args(project='test', username='test', password='test', **kwargs):
@@ -163,7 +168,7 @@ class TestCLIIntegrationTests(object):
             if len(actual) != len(expected):
                 message += '    {} rows compared to {} expected\n'.format(len(actual), len(expected))
             message += 'Diff:\n'
-            for i, rows in enumerate(izip_longest(actual, expected)):
+            for i, rows in enumerate(zip_longest(actual, expected)):
                 if rows[0] != rows[1]:
                     message += '{}: {} != {}\n'.format(i, rows[0], rows[1])
             assert actual == expected, message
@@ -176,7 +181,7 @@ class TestCLIIntegrationTests(object):
         ]
         fail = False
         message = ''
-        for i, items in enumerate(izip_longest(expected, log_messages)):
+        for i, items in enumerate(zip_longest(expected, log_messages)):
             if not items[0] or not items[1] or items[0] not in items[1]:
                 message += 'X {}: {} not in {}\n'.format(i, items[0], items[1])
                 fail = True
