@@ -105,7 +105,8 @@ class TestCli(unittest.TestCase):
             }
         ]
 
-        assert writer.tables.values() == expected
+        for table in expected:
+            assert writer.tables[table['name']] == table
 
 
 @pytest.fixture(scope='class')
