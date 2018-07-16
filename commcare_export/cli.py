@@ -267,7 +267,7 @@ def main_with_args(args):
             checkpoint_manager.set_final_checkpoint()
 
     if args.output_format == 'json':
-        print(json.dumps(writer.tables.values(), indent=4, default=RepeatableIterator.to_jvalue))
+        print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))
 
 
 def entry_point():
