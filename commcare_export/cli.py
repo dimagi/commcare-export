@@ -258,22 +258,16 @@ def main_with_args(args):
     with env:
         lazy_result = query.eval(env)
         if lazy_result is not None:
-            results = [
+            # evaluate lazy results
+            for r in lazy_result:
                 list(r) if r else r
-                for r in lazy_result
-            ]  # evaluate lazy results
-        else:
-            results = {}
-
-    if args.output_format == 'json':
-        print(json.dumps(writer.tables.values(), indent=4, default=RepeatableIterator.to_jvalue))
 
     if checkpoint_manager:
         with checkpoint_manager:
             checkpoint_manager.set_final_checkpoint()
-    else:
-        # If no tables were emitted just print the output
-        print(json.dumps(results, indent=4, default=RepeatableIterator.to_jvalue))
+
+    if args.output_format == 'json':
+        print(json.dumps(writer.tables.values(), indent=4, default=RepeatableIterator.to_jvalue))
 
 
 def entry_point():
