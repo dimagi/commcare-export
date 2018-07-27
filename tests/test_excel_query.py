@@ -132,6 +132,10 @@ class TestExcelQuery(unittest.TestCase):
                  ),
                  body=None
              )),
+
+            ('010_JustDataSourceTableName.xlsx', SheetParts(
+                name='my_table', headings=[], source=Apply(Reference("api_data"), Literal("form")), body=None),
+            ),
         ]
 
         for filename, minilinq in test_cases:

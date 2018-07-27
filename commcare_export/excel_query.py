@@ -190,7 +190,11 @@ def parse_sheet(worksheet, mappings=None):
     mappings = mappings or {}
     source_expr, root_doc_expr = compile_source(worksheet)
 
-    output_table_name = worksheet.title
+    table_name_column = get_column_by_name(worksheet, 'table name')
+    if table_name_column:
+        output_table_name = table_name_column[0].value
+    else:
+        output_table_name = worksheet.title
     output_headings = get_column_by_name(worksheet, 'field')
     output_fields = compile_fields(worksheet, mappings=mappings)
 
