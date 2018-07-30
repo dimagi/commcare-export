@@ -96,7 +96,7 @@ class TestExcelQuery(unittest.TestCase):
                  headings = [
                      Literal('Form Type'), Literal('Fecha de Nacimiento'), Literal('Sexo'),
                      Literal('Danger 0'), Literal('Danger 1'), Literal('Danger Fever'),
-                     Literal('Danger error'), Literal('Danger error')
+                     Literal('Danger error'), Literal('Danger error'), Literal('special')
                  ],
                  source=Apply(Reference("api_data"), Literal("form")),
                  body=List([
@@ -108,6 +108,7 @@ class TestExcelQuery(unittest.TestCase):
                      Apply(Reference("selected"), Reference("dangers"), Literal('fever')),
                      Literal('Error: selected-at index must be an integer: selected-at(abc)'),
                      Literal('Error: Unable to parse: selected(fever'),
+                     Reference('path."#text"')
                  ])
              )),
 
@@ -193,7 +194,7 @@ class TestExcelQuery(unittest.TestCase):
             headings =[
                 Literal('Form Type'), Literal('Fecha de Nacimiento'), Literal('Sexo'),
                 Literal('Danger 0'), Literal('Danger 1'), Literal('Danger Fever'),
-                Literal('Danger error'), Literal('Danger error')
+                Literal('Danger error'), Literal('Danger error'), Literal('special')
             ],
             source = Map(
                 source=Apply(Reference("api_data"), Literal("form")),
@@ -206,6 +207,7 @@ class TestExcelQuery(unittest.TestCase):
                     Apply(Reference("selected"), Reference("dangers"), Literal('fever')),
                     Literal('Error: selected-at index must be an integer: selected-at(abc)'),
                     Literal('Error: Unable to parse: selected(fever'),
+                    Reference('path."#text"')
                 ]))
         )
 
@@ -309,10 +311,4 @@ class TestExcelQuery(unittest.TestCase):
         print("Parsing {}".format(filename))
         abs_path = os.path.join(os.path.dirname(__file__), filename)
         compiled = get_queries_from_excel(openpyxl.load_workbook(abs_path), missing_value='---', combine_emits=combine)
-        # Print will be suppressed by pytest unless it fails
-        if not (compiled == minilinq):
-            print('In %s:' % filename)
-            pprint.pprint(compiled.to_jvalue())
-            print('!=')
-            pprint.pprint(minilinq.to_jvalue())
-        assert compiled == minilinq
+        assert compiled.to_jvalue() == minilinq.to_jvalue(), filename
