@@ -9,6 +9,7 @@ import openpyxl
 from commcare_export.env import BuiltInEnv
 from commcare_export.env import JsonPathEnv
 from commcare_export.excel_query import *
+from commcare_export.excel_query import _get_safe_source_field
 
 
 class TestExcelQuery(unittest.TestCase):
@@ -23,6 +24,13 @@ class TestExcelQuery(unittest.TestCase):
         assert split_leftmost(parse_jsonpath('foo.baz.bar')) == (jsonpath.Fields('foo'), jsonpath.Fields('baz').child(jsonpath.Fields('bar')))
         assert split_leftmost(parse_jsonpath('[*].baz')) == (jsonpath.Slice(), jsonpath.Fields('baz'))
         assert split_leftmost(parse_jsonpath('foo[*].baz')) == (jsonpath.Fields('foo'), jsonpath.Slice().child(jsonpath.Fields('baz')))
+
+    def test_get_safe_source_field(self):
+        assert _get_safe_source_field('foo.bar.baz') == Reference('foo.bar.baz')
+        assert _get_safe_source_field('foo[*].baz') == Reference('foo[*].baz')
+        assert _get_safe_source_field('foo..baz[*]') == Reference('foo..baz[*]')
+        assert _get_safe_source_field('foo.#baz') == Reference('foo."#baz"')
+        assert _get_safe_source_field('foo.bar[*]..%baz') == Reference('foo.bar[*].."%baz"')
 
     def test_compile_mappings(self):
         test_cases = [
