@@ -2,6 +2,7 @@ from __future__ import unicode_literals, print_function, absolute_import, divisi
 import re
 from collections import defaultdict, namedtuple
 
+from jsonpath_rw.lexer import JsonPathLexerError
 from six.moves import xrange
 
 from jsonpath_rw import jsonpath
@@ -73,9 +74,30 @@ def extended_to_len(desired_len, some_list, value=None):
     return [some_list[i] if i < len(some_list) else value
             for i in xrange(0, desired_len)]
 
-def compile_field(field, source_field, map_via=None, format_via=None, mappings=None):
-    expr = Reference(source_field)    
 
+def _get_safe_source_field(source_field):
+    def _safe_node(node):
+        try:
+            parse_jsonpath(node)
+        except JsonPathLexerError:
+            # quote nodes with special characters
+            return '"{}"'.format(node)
+        else:
+            return node
+
+    try:
+        parse_jsonpath(source_field)
+    except JsonPathLexerError:
+        source_field = '.'.join([
+            _safe_node(node) if node else node
+            for node in source_field.split('.')
+        ])
+
+    return Reference(source_field)
+
+
+def compile_field(field, source_field, map_via=None, format_via=None, mappings=None):
+    expr = _get_safe_source_field(source_field)
     if map_via:
         expr = compile_map_format_via(expr, map_via)
 
