@@ -54,7 +54,7 @@ def get_columns_by_prefix(worksheet, column_prefix):
     for col in xrange(1, worksheet.get_highest_column() + 1):
         value = worksheet.cell(row=1, column=col).value
         if value and value.lower().startswith(column_prefix):
-            yield without_empty_tail([
+            yield value, without_empty_tail([
                 worksheet.cell(row=i, column=col) for i in xrange(2, worksheet.get_highest_row() + 1)
             ])
 
@@ -126,9 +126,10 @@ def _get_alternate_source_fields_from_csv(worksheet, num_fields):
 
 
 def _get_alternate_source_fields_from_columns(worksheet, num_fields):
+    matching_columns = sorted(get_columns_by_prefix(worksheet, 'alternate source field'), key=lambda x: x[0])
     alt_source_cols = [
         extended_to_len(num_fields, [cell.value if cell else cell for cell in alt_col])
-        for alt_col in get_columns_by_prefix(worksheet, 'alternate source field')
+        for col_name, alt_col in matching_columns
     ]
     # transpose columns to rows
     alt_srouce_fields = map(list, zip(*alt_source_cols))

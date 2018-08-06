@@ -236,7 +236,7 @@ class TestExcelQuery(unittest.TestCase):
                     ]))
             ),
 
-            # Second sheet uses multiple alternate source field columns
+            # Second sheet uses multiple alternate source field columns (listed out of order)
             Emit(
                 table='Forms1', missing_value='---',
                 headings=[
