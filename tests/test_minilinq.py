@@ -100,6 +100,10 @@ class TestMiniLinq(unittest.TestCase):
         with pytest.raises(LazinessException):
             Apply(Reference("or"), Literal(None), Literal(laziness_iterator)).eval(env)
 
+        env = env | JsonPathEnv({'a': {'c': 'c val'}})
+        assert Apply(Reference("or"), Reference('a.b'), Reference('a.c')).eval(env) == 'c val'
+        assert Apply(Reference("or"), Reference('a.b'), Reference('a.d')).eval(env) is None
+
     def test_attachment_url(self):
         env = BuiltInEnv({'commcarehq_base_url': 'https://www.commcarehq.org'}) | JsonPathEnv({'id': '123', 'domain': 'd1', 'photo': 'a.jpg'})
         expected = 'https://www.commcarehq.org/a/d1/api/form/attachment/123/a.jpg'
