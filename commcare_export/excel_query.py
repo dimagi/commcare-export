@@ -146,6 +146,7 @@ def get_alternate_source_fields(worksheet, num_fields):
     return (
         _get_alternate_source_fields_from_csv(worksheet, num_fields)
         or _get_alternate_source_fields_from_columns(worksheet, num_fields)
+        or extended_to_len(num_fields, [])
     )
 
 
