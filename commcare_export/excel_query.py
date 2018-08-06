@@ -290,8 +290,6 @@ def parse_workbook(workbook):
     mappings_sheet = workbook.get_sheet_by_name('Mappings')
     mappings = compile_mappings(mappings_sheet) if mappings_sheet else None
 
-    queries = [] # A lit of queries will be built up; one per emit sheet
-    
     emit_sheets = [sheet_name for sheet_name in workbook.get_sheet_names() if sheet_name != 'Mappings']
 
     parsed_sheets = []
