@@ -217,6 +217,7 @@ class TestExcelQuery(unittest.TestCase):
 
     def test_alternate_source_fields(self):
         minilinq = List([
+            # First sheet uses a CSV column and also tests combining "Map Via"
             Emit(
                 table='Forms', missing_value='---',
                 headings =[
@@ -234,6 +235,8 @@ class TestExcelQuery(unittest.TestCase):
                         ),
                     ]))
             ),
+
+            # Second sheet uses multiple alternate source field columns
             Emit(
                 table='Forms1', missing_value='---',
                 headings=[
