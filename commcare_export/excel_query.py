@@ -162,13 +162,18 @@ def compile_fields(worksheet, mappings=None):
 
     alternate_source_fields = get_alternate_source_fields(worksheet, len(fields))
 
-    return [compile_field(field        = field.value,
-                          source_field = source_field.value,
-                          alternate_source_fields=alt_source_field,
-                          map_via      = map_via.value if map_via else None, 
-                          format_via   = format_via.value if format_via else None,
-                          mappings     = mappings)
-            for field, source_field, alt_source_field, map_via, format_via in zip(fields, source_fields, alternate_source_fields, map_vias, format_vias)]
+    args = zip(fields, source_fields, alternate_source_fields, map_vias, format_vias)
+    return [
+        compile_field(
+            field=field.value,
+            source_field=source_field.value,
+            alternate_source_fields=alt_source_field,
+            map_via=map_via.value if map_via else None,
+            format_via=format_via.value if format_via else None,
+            mappings=mappings
+        )
+        for field, source_field, alt_source_field, map_via, format_via in args
+    ]
 
 def split_leftmost(jsonpath_expr):
     if isinstance(jsonpath_expr, jsonpath.Child):
