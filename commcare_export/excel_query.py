@@ -37,6 +37,7 @@ def map_value(mappings_sheet, mapping_name, source_value):
     "From the mappings_sheet, replaces the source_value with appropriate output value"
     return source_value
 
+
 def get_column_by_name(worksheet, column_name):
     # columns and rows are indexed from 1
     for col in xrange(1, worksheet.get_highest_column() + 1):
@@ -46,6 +47,17 @@ def get_column_by_name(worksheet, column_name):
             return without_empty_tail([
                 worksheet.cell(row=i, column=col) for i in xrange(2, worksheet.get_highest_row() + 1)
             ])
+
+
+def get_columns_by_prefix(worksheet, column_prefix):
+    # columns and rows are indexed from 1
+    for col in xrange(1, worksheet.get_highest_column() + 1):
+        value = worksheet.cell(row=1, column=col).value
+        if value and value.lower().startswith(column_prefix):
+            yield without_empty_tail([
+                worksheet.cell(row=i, column=col) for i in xrange(2, worksheet.get_highest_row() + 1)
+            ])
+
 
 def compile_mappings(worksheet):
     mapping_names = get_column_by_name(worksheet, "mapping name")
@@ -73,8 +85,11 @@ def extended_to_len(desired_len, some_list, value=None):
     return [some_list[i] if i < len(some_list) else value
             for i in xrange(0, desired_len)]
 
-def compile_field(field, source_field, map_via=None, format_via=None, mappings=None):
-    expr = Reference(source_field)    
+def compile_field(field, source_field, alternate_source_fields=None, map_via=None, format_via=None, mappings=None):
+    expr = Reference(source_field)
+
+    if alternate_source_fields:
+        expr = Apply(Reference('or'), expr, *[Reference(alt_field) for alt_field in alternate_source_fields])
 
     if map_via:
         expr = compile_map_format_via(expr, map_via)
@@ -98,6 +113,41 @@ def compile_mapped_field(field_mappings, field_expression):
     return Apply(Reference('default'), mapped_value, field_expression)
 
 
+def _get_alternate_source_fields_from_csv(worksheet, num_fields):
+    def _clean_csv_field(field):
+        if not field or not field.value:
+            return None
+
+        return [val.strip() for val in field.value.split(',')]
+
+    alt_source_col = get_column_by_name(worksheet, 'alternate source fields')
+
+    if alt_source_col:
+        alt_source_fields = extended_to_len(num_fields, alt_source_col)
+        return [_clean_csv_field(field) for field in alt_source_fields]
+
+
+def _get_alternate_source_fields_from_columns(worksheet, num_fields):
+    alt_source_cols = [
+        extended_to_len(num_fields, alt_col)
+        for alt_col in get_columns_by_prefix(worksheet, 'alternate source field')
+    ]
+    # get cell values
+    alt_source_cols = [
+        [cell.value if cell else cell for cell in col]
+        for col in alt_source_cols
+    ]
+    # transpose columns to rows
+    alt_srouce_fields = map(list, zip(*alt_source_cols))
+    return [filter(None, fields) for fields in alt_srouce_fields]
+
+
+def get_alternate_source_fields(worksheet, num_fields):
+    return (
+        _get_alternate_source_fields_from_csv(worksheet, num_fields)
+        or _get_alternate_source_fields_from_columns(worksheet, num_fields)
+    )
+
 
 def compile_fields(worksheet, mappings=None):
     fields = without_empty_tail(get_column_by_name(worksheet, 'field') or [])
@@ -109,12 +159,15 @@ def compile_fields(worksheet, mappings=None):
     map_vias      = extended_to_len(len(fields), get_column_by_name(worksheet, 'map via') or [])
     format_vias   = extended_to_len(len(fields), get_column_by_name(worksheet, 'format via') or [])
 
-    return [compile_field(field        = field.value, 
+    alternate_source_fields = get_alternate_source_fields(worksheet, len(fields))
+
+    return [compile_field(field        = field.value,
                           source_field = source_field.value,
+                          alternate_source_fields=alt_source_field,
                           map_via      = map_via.value if map_via else None, 
                           format_via   = format_via.value if format_via else None,
                           mappings     = mappings)
-            for field, source_field, map_via, format_via in zip(fields, source_fields, map_vias, format_vias)]
+            for field, source_field, alt_source_field, map_via, format_via in zip(fields, source_fields, alternate_source_fields, map_vias, format_vias)]
 
 def split_leftmost(jsonpath_expr):
     if isinstance(jsonpath_expr, jsonpath.Child):

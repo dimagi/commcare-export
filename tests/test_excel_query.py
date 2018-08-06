@@ -228,7 +228,7 @@ class TestExcelQuery(unittest.TestCase):
                         Apply(
                             Reference("str2date"),
                             Apply(
-                                Reference("OR"),
+                                Reference("or"),
                                 Reference("dob"), Reference("date_of_birth"), Reference("d_o_b")
                             )
                         ),
@@ -237,15 +237,15 @@ class TestExcelQuery(unittest.TestCase):
             Emit(
                 table='Forms1', missing_value='---',
                 headings=[
-                    Literal('dob'),
+                    Literal('dob'), Literal('Sex'),
                 ],
                 source=Map(
                     source=Apply(Reference("api_data"), Literal("form")),
                     body=List([
                         Reference("dob"),
                         Apply(
-                            Reference("OR"),
-                            Reference("gender"), Reference("sex"), Reference("sexo")
+                            Reference("or"),
+                            Reference("gender"), Reference("sex"), Reference("sex0")
                         )
                     ]))
             ),
