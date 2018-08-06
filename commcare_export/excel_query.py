@@ -115,10 +115,8 @@ def compile_mapped_field(field_mappings, field_expression):
 
 def _get_alternate_source_fields_from_csv(worksheet, num_fields):
     def _clean_csv_field(field):
-        if not field or not field.value:
-            return None
-
-        return [val.strip() for val in field.value.split(',')]
+        if field and field.value:
+            return [val.strip() for val in field.value.split(',')]
 
     alt_source_col = get_column_by_name(worksheet, 'alternate source fields')
 
@@ -129,13 +127,8 @@ def _get_alternate_source_fields_from_csv(worksheet, num_fields):
 
 def _get_alternate_source_fields_from_columns(worksheet, num_fields):
     alt_source_cols = [
-        extended_to_len(num_fields, alt_col)
+        extended_to_len(num_fields, [cell.value if cell else cell for cell in alt_col])
         for alt_col in get_columns_by_prefix(worksheet, 'alternate source field')
-    ]
-    # get cell values
-    alt_source_cols = [
-        [cell.value if cell else cell for cell in col]
-        for col in alt_source_cols
     ]
     # transpose columns to rows
     alt_srouce_fields = map(list, zip(*alt_source_cols))
@@ -167,12 +160,12 @@ def compile_fields(worksheet, mappings=None):
         compile_field(
             field=field.value,
             source_field=source_field.value,
-            alternate_source_fields=alt_source_field,
+            alternate_source_fields=alt_source_fields,
             map_via=map_via.value if map_via else None,
             format_via=format_via.value if format_via else None,
             mappings=mappings
         )
-        for field, source_field, alt_source_field, map_via, format_via in args
+        for field, source_field, alt_source_fields, map_via, format_via in args
     ]
 
 def split_leftmost(jsonpath_expr):
