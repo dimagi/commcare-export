@@ -119,6 +119,7 @@ def checkpoint_manager(pg_db_params):
     return CheckpointManager(pg_db_params['url'], 'query', '123', poolclass=sqlalchemy.pool.NullPool)
 
 
+@pytest.mark.dbtest
 class TestCLIIntegrationTests(object):
     def test_write_to_sql_with_checkpoints(self, writer, checkpoint_manager, caplog):
         def _pull_data(since, until, batch_size=10):
