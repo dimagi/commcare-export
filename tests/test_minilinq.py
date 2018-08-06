@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import unittest
 from itertools import *
+
+import pytest
 from six.moves import map, xrange
 
 from jsonpath_rw import jsonpath
@@ -86,6 +88,17 @@ class TestMiniLinq(unittest.TestCase):
         assert Apply(Reference("default"), Literal(None), Literal('a')).eval(env) == 'a'
         assert Apply(Reference("default"), Literal('b'), Literal('a')).eval(env) == 'b'
         assert Apply(Reference("count-selected"), Literal(u'a bb 日本')).eval(env) == 3
+
+    def test_or(self):
+        env = BuiltInEnv()
+        assert Apply(Reference("or"), Literal(None), Literal(2)).eval(env) == 2
+
+        laziness_iterator = RepeatableIterator(lambda: (i if i < 1 else die('Not lazy enough') for i in range(2)))
+        assert Apply(Reference("or"), Literal(1), Literal(laziness_iterator)).eval(env) == 1
+        assert Apply(Reference("or"), Literal(''), Literal(laziness_iterator)).eval(env) == ''
+        assert Apply(Reference("or"), Literal(0), Literal(laziness_iterator)).eval(env) == 0
+        with pytest.raises(LazinessException):
+            Apply(Reference("or"), Literal(None), Literal(laziness_iterator)).eval(env)
 
     def test_attachment_url(self):
         env = BuiltInEnv({'commcarehq_base_url': 'https://www.commcarehq.org'}) | JsonPathEnv({'id': '123', 'domain': 'd1', 'photo': 'a.jpg'})
