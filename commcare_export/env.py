@@ -362,6 +362,15 @@ def template(format_template, *args):
     return format_template.format(*args)
 
 
+def _or(*args):
+    unwrapped_args = (unwrap_val(arg) for arg in args)
+    vals = (val for val in unwrapped_args if val is not None and val != [])
+    try:
+        return next(vals)
+    except StopIteration:
+        pass
+
+
 class BuiltInEnv(DictEnv):
     """
     A built-in environment of operators and functions
@@ -399,6 +408,7 @@ class BuiltInEnv(DictEnv):
             'template': template,
             'attachment_url': attachment_url,
             'filter_empty': _not_val,
+            'or': _or,
         })
         return super(BuiltInEnv, self).__init__(d)
 

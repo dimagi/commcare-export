@@ -101,6 +101,7 @@ class TestWriters(object):
             ]
 
 
+@pytest.mark.dbtest
 class TestSQLWriters(object):
     def _type_convert(self, connection, row):
         """

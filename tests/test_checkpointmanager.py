@@ -20,6 +20,7 @@ def manager(db_params):
             manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS alembic_version'))
 
 
+@pytest.mark.dbtest
 class TestCheckpointManager(object):
     def test_create_checkpoint_table(self, manager):
         manager.create_checkpoint_table()
