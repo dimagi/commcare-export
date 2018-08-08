@@ -155,7 +155,7 @@ def _get_alternate_source_fields_from_columns(worksheet, num_fields):
     ]
     # transpose columns to rows
     alt_srouce_fields = map(list, zip(*alt_source_cols))
-    return [filter(None, fields) for fields in alt_srouce_fields]
+    return [list(filter(None, fields)) for fields in alt_srouce_fields]
 
 
 def get_alternate_source_fields(worksheet, num_fields):
