@@ -35,23 +35,21 @@ class TestCheckpointManager(object):
 
     def test_get_time_of_last_run(self, manager):
         manager.create_checkpoint_table()
-        with manager:
-            manager.set_batch_checkpoint(datetime.datetime.utcnow())
-            second_run = datetime.datetime.utcnow()
-            manager.set_batch_checkpoint(second_run)
+        manager.set_batch_checkpoint(datetime.datetime.utcnow())
+        second_run = datetime.datetime.utcnow()
+        manager.set_batch_checkpoint(second_run)
 
-            assert manager.get_time_of_last_run() == second_run.isoformat()
+        assert manager.get_time_of_last_run() == second_run.isoformat()
 
     def test_clean_on_final_run(self, manager):
         manager.create_checkpoint_table()
-        with manager:
-            manager.set_batch_checkpoint(datetime.datetime.utcnow())
-            manager.set_batch_checkpoint(datetime.datetime.utcnow())
+        manager.set_batch_checkpoint(datetime.datetime.utcnow())
+        manager.set_batch_checkpoint(datetime.datetime.utcnow())
 
-            def _get_non_final_rows_count():
-                with session_scope(manager.Session) as session:
-                    return session.query(ExportRun).filter_by(final=False).count()
+        def _get_non_final_rows_count():
+            with session_scope(manager.Session) as session:
+                return session.query(ExportRun).filter_by(final=False).count()
 
-            assert _get_non_final_rows_count() == 2
-            manager.set_final_checkpoint()
-            assert _get_non_final_rows_count() == 0
+        assert _get_non_final_rows_count() == 2
+        manager.set_final_checkpoint()
+        assert _get_non_final_rows_count() == 0

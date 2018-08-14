@@ -180,8 +180,7 @@ def _get_writer(output_format, output, strict_types):
 
 def get_date_params(args, checkpoint_manager):
     if not args.since and not args.start_over and checkpoint_manager:
-        with checkpoint_manager:
-            args.since = checkpoint_manager.get_time_of_last_run()
+        args.since = checkpoint_manager.get_time_of_last_run()
 
         if args.since:
             logger.debug('Last successful run was %s', args.since)
@@ -232,8 +231,7 @@ def main_with_args(args):
             logger.warning("Checkpointing disabled for non file-based query")
         else:
             checkpoint_manager = _get_checkpoint_manager(args)
-            with checkpoint_manager:
-                checkpoint_manager.create_checkpoint_table()
+            checkpoint_manager.create_checkpoint_table()
 
     if not args.username:
         args.username = input('Please provide a username: ')
@@ -263,8 +261,7 @@ def main_with_args(args):
                 list(r) if r else r
 
     if checkpoint_manager:
-        with checkpoint_manager:
-            checkpoint_manager.set_final_checkpoint()
+        checkpoint_manager.set_final_checkpoint()
 
     if args.output_format == 'json':
         print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))

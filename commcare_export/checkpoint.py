@@ -90,10 +90,9 @@ class CheckpointManager(SqlMixin):
             ).delete()
 
     def get_time_of_last_run(self):
-        if 'commcare_export_runs' in self.metadata.tables:
-            with session_scope(self.Session) as session:
-                run = session.query(ExportRun).filter_by(
-                    query_file_md5=self.query_md5
-                ).order_by(ExportRun.since_param.desc()).first()
-                if run:
-                    return run.since_param
+        with session_scope(self.Session) as session:
+            run = session.query(ExportRun).filter_by(
+                query_file_md5=self.query_md5
+            ).order_by(ExportRun.since_param.desc()).first()
+            if run:
+                return run.since_param
