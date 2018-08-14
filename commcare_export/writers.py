@@ -5,7 +5,9 @@ import sys
 import zipfile
 from itertools import chain
 
+import alembic
 import six
+import sqlalchemy
 from six import StringIO, u
 
 logger = logging.getLogger(__name__)
@@ -230,19 +232,9 @@ class SqlMixin(object):
     MAX_VARCHAR_LEN = 255  # Arbitrary point at which we switch to TEXT; for postgres VARCHAR == TEXT anyhow
 
     def __init__(self, db_url, poolclass=None):
-        try:
-            import sqlalchemy
-            import alembic
-            self.sqlalchemy = sqlalchemy
-            self.alembic = alembic
-        except ImportError:
-            raise Exception("It doesn't look like this machine is configured for "
-                            "SQL export. To export to SQL you have to run the "
-                            "command:  pip install sqlalchemy alembic")
-
         self.db_url = db_url
         self.collation = 'utf8_bin' if 'mysql' in db_url else None
-        self.engine = self.sqlalchemy.create_engine(db_url, poolclass=poolclass)
+        self.engine = sqlalchemy.create_engine(db_url, poolclass=poolclass)
 
     def __enter__(self):
         self.connection = self.engine.connect()
@@ -271,18 +263,18 @@ class SqlMixin(object):
                 raise Exception('Tried to reflect via a closed connection')
             if self.connection.invalidated:
                 raise Exception('Tried to reflect via an invalidated connection')
-            self._metadata = self.sqlalchemy.MetaData()
+            self._metadata = sqlalchemy.MetaData()
             self._metadata.bind = self.connection
             self._metadata.reflect()
         return self._metadata
 
     def table(self, table_name):
-        return self.sqlalchemy.Table(table_name, self.metadata, autoload=True, autoload_with=self.connection)
+        return sqlalchemy.Table(table_name, self.metadata, autoload=True, autoload_with=self.connection)
 
     def get_id_column(self):
-        return self.sqlalchemy.Column(
+        return sqlalchemy.Column(
             'id',
-            self.sqlalchemy.Unicode(self.MAX_VARCHAR_LEN),
+            sqlalchemy.Unicode(self.MAX_VARCHAR_LEN),
             primary_key=True
         )
 
@@ -300,34 +292,34 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
     def best_type_for(self, val):
         if isinstance(val, bool):
-            return self.sqlalchemy.Boolean()
+            return sqlalchemy.Boolean()
         elif isinstance(val, datetime.datetime):
-            return self.sqlalchemy.DateTime()
+            return sqlalchemy.DateTime()
         elif isinstance(val, datetime.date):
-            return self.sqlalchemy.Date()
+            return sqlalchemy.Date()
 
         if isinstance(val, int):
-            return self.sqlalchemy.Integer()
+            return sqlalchemy.Integer()
         elif isinstance(val, six.string_types):
             # Notes on the conversions between various string types:
             # 1. PostgreSQL is the best; you can use TEXT everywhere and it works like a charm.
             # 2. MySQL cannot build an index on TEXT due to the lack of a field length, so we
             #    try to use VARCHAR when possible.
             if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
-                return self.sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
+                return sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
             else:
-                return self.sqlalchemy.UnicodeText(collation=self.collation)
+                return sqlalchemy.UnicodeText(collation=self.collation)
         else:
             # We do not have a name for "bottom" in SQL aka the type whose least upper bound
             # with any other type is the other type.
-            return self.sqlalchemy.UnicodeText(collation=self.collation)
+            return sqlalchemy.UnicodeText(collation=self.collation)
 
     def compatible(self, source_type, dest_type):
         """
         Checks _coercion_ compatibility.
         """
-        if isinstance(source_type, self.sqlalchemy.String):
-            if not isinstance(dest_type, self.sqlalchemy.String):
+        if isinstance(source_type, sqlalchemy.String):
+            if not isinstance(dest_type, sqlalchemy.String):
                 return False
             elif source_type.length is None:
                 # The length being None means that we are looking at indefinite strings aka TEXT.
@@ -339,16 +331,16 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 return dest_type.length is None or (dest_type.length >= source_type.length)
 
         compatibility = {
-            self.sqlalchemy.String: (self.sqlalchemy.Text,),
-            self.sqlalchemy.Integer: (self.sqlalchemy.String, self.sqlalchemy.Text),
-            self.sqlalchemy.Boolean: (self.sqlalchemy.String, self.sqlalchemy.Text, self.sqlalchemy.Integer),
-            self.sqlalchemy.DateTime: (self.sqlalchemy.String, self.sqlalchemy.Text, self.sqlalchemy.Date),
-            self.sqlalchemy.Date: (self.sqlalchemy.String, self.sqlalchemy.Text),
+            sqlalchemy.String: (sqlalchemy.Text,),
+            sqlalchemy.Integer: (sqlalchemy.String, sqlalchemy.Text),
+            sqlalchemy.Boolean: (sqlalchemy.String, sqlalchemy.Text, sqlalchemy.Integer),
+            sqlalchemy.DateTime: (sqlalchemy.String, sqlalchemy.Text, sqlalchemy.Date),
+            sqlalchemy.Date: (sqlalchemy.String, sqlalchemy.Text),
         }
 
         # add dialect specific types
         try:
-            compatibility[self.sqlalchemy.Boolean] += (self.sqlalchemy.dialects.mssql.base.BIT,)
+            compatibility[sqlalchemy.Boolean] += (sqlalchemy.dialects.mssql.base.BIT,)
         except AttributeError:
             pass
 
@@ -357,14 +349,14 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 return isinstance(dest_type, (_type,) + types)
 
     def strict_types_compatibility_check(self, source_type, dest_type):
-        if isinstance(source_type, self.sqlalchemy.String):
-            if not isinstance(dest_type, self.sqlalchemy.String):
+        if isinstance(source_type, sqlalchemy.String):
+            if not isinstance(dest_type, sqlalchemy.String):
                 return  # Can't do anything
             elif dest_type.length is None:
                 # already a TEXT column
                 return
             elif source_type.length is None:
-                return self.sqlalchemy.UnicodeText(collation=self.collation)
+                return sqlalchemy.UnicodeText(collation=self.collation)
             elif dest_type.length < source_type.length:
                 return source_type
 
@@ -376,23 +368,23 @@ class SqlTableWriter(SqlMixin, TableWriter):
         """
 
         # FIXME: Don't be so silly
-        return self.sqlalchemy.UnicodeText(collation=self.collation)
+        return sqlalchemy.UnicodeText(collation=self.collation)
 
     def make_table_compatible(self, table_name, row_dict):
-        ctx = self.alembic.migration.MigrationContext.configure(self.connection)
-        op = self.alembic.operations.Operations(ctx)
+        ctx = alembic.migration.MigrationContext.configure(self.connection)
+        op = alembic.operations.Operations(ctx)
 
         if not table_name in self.metadata.tables:
             def get_columns():
                 return [self.get_id_column()] + [
-                    self.sqlalchemy.Column(name, self.best_type_for(val), nullable=True)
+                    sqlalchemy.Column(name, self.best_type_for(val), nullable=True)
                     for name, val in row_dict.items() if val is not None and name != 'id'
                 ]
 
             if self.strict_types:
-                create_sql = self.sqlalchemy.schema.CreateTable(self.sqlalchemy.Table(
+                create_sql = sqlalchemy.schema.CreateTable(sqlalchemy.Table(
                     table_name,
-                    self.sqlalchemy.MetaData(),
+                    sqlalchemy.MetaData(),
                     *get_columns()
                 )).compile(self.connection.engine)
                 logger.warn("Table '{table_name}' does not exist. Creating table with:\n{schema}".format(
@@ -420,7 +412,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             ty = self.best_type_for(val)
             if not column in columns:
                 logger.warn("Adding column '{}.{} {}'".format(table_name, column, ty))
-                op.add_column(table_name, self.sqlalchemy.Column(column, ty, nullable=True))
+                op.add_column(table_name, sqlalchemy.Column(column, ty, nullable=True))
                 self.metadata.clear()
                 self.metadata.reflect()
                 columns = get_cols()
@@ -450,7 +442,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
         try:
             insert = table.insert().values(**row_dict)
             self.connection.execute(insert)
-        except self.sqlalchemy.exc.IntegrityError:
+        except sqlalchemy.exc.IntegrityError:
             update = table.update().where(table.c.id == row_dict['id']).values(**row_dict)
             self.connection.execute(update)
 

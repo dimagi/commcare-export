@@ -16,8 +16,8 @@ def manager(db_params):
         yield manager
     finally:
         with manager:
-            manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS commcare_export_runs'))
-            manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE IF EXISTS alembic_version'))
+            manager.connection.execute(sqlalchemy.sql.text('DROP TABLE IF EXISTS commcare_export_runs'))
+            manager.connection.execute(sqlalchemy.sql.text('DROP TABLE IF EXISTS alembic_version'))
 
 
 @pytest.mark.dbtest
@@ -30,7 +30,7 @@ class TestCheckpointManager(object):
     def test_checkpoint_table_exists(self, manager):
         self.test_create_checkpoint_table(manager)
         with manager:
-            manager.connection.execute(manager.sqlalchemy.sql.text('DROP TABLE alembic_version'))
+            manager.connection.execute(sqlalchemy.sql.text('DROP TABLE alembic_version'))
         manager.create_checkpoint_table()
 
     def test_get_time_of_last_run(self, manager):
@@ -50,7 +50,7 @@ class TestCheckpointManager(object):
 
             def _get_non_final_rows_count():
                 cursor = manager.connection.execute(
-                    manager.sqlalchemy.sql.text('select count(*) from {} where final = :final'.format(manager.table_name)),
+                    sqlalchemy.sql.text('select count(*) from {} where final = :final'.format(manager.table_name)),
                     final=False
                 )
                 for row in cursor:
