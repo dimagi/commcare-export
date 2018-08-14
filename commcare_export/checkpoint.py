@@ -81,13 +81,13 @@ class CheckpointManager(SqlMixin):
                 final=final
             ))
 
-    def create_checkpoint_table(self):
+    def create_checkpoint_table(self, revision='head'):
         from alembic import command, config
         cfg = config.Config(os.path.join(self.migrations_repository, 'alembic.ini'))
         cfg.set_main_option('script_location', self.migrations_repository)
         with self.engine.begin() as connection:
             cfg.attributes['connection'] = connection
-            command.upgrade(cfg, "head")
+            command.upgrade(cfg, revision)
 
     def _cleanup(self):
         with session_scope(self.Session) as session:

@@ -22,13 +22,16 @@ def manager(db_params):
 
 @pytest.mark.dbtest
 class TestCheckpointManager(object):
-    def test_create_checkpoint_table(self, manager):
-        manager.create_checkpoint_table()
+    def test_create_checkpoint_table(self, manager, revision='head'):
+        manager.create_checkpoint_table(revision)
         with manager:
             assert 'commcare_export_runs' in manager.metadata.tables
 
     def test_checkpoint_table_exists(self, manager):
-        self.test_create_checkpoint_table(manager)
+        # Test that the migrations don't fail for tables that existed before
+        # migrations were used.
+        # This test can be removed at some point in the future.
+        self.test_create_checkpoint_table(manager, '9945abb4ec70')
         with manager:
             manager.connection.execute(sqlalchemy.sql.text('DROP TABLE alembic_version'))
         manager.create_checkpoint_table()
