@@ -2,6 +2,7 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 
 import datetime
+import uuid
 
 import pytest
 import sqlalchemy
@@ -43,6 +44,23 @@ class TestCheckpointManager(object):
         manager.set_batch_checkpoint(second_run)
 
         assert manager.get_time_of_last_run() == second_run.isoformat()
+
+    def test_get_time_of_last_run_no_args(self, manager):
+        # test that we can still get the time of last run no project and commcare args
+        manager.create_checkpoint_table()
+        with session_scope(manager.Session) as session:
+            since_param = datetime.datetime.utcnow().isoformat()
+            session.add(ExportRun(
+                id=uuid.uuid4().hex,
+                query_file_name=manager.query,
+                query_file_md5=manager.query_md5,
+                project=None,
+                commcare=None,
+                since_param=since_param,
+                time_of_run=datetime.datetime.utcnow().isoformat(),
+                final=True
+            ))
+        assert manager.get_time_of_last_run() == since_param
 
     def test_clean_on_final_run(self, manager):
         manager.create_checkpoint_table()

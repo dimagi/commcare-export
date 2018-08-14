@@ -111,9 +111,15 @@ class CheckpointManager(SqlMixin):
 
     def get_time_of_last_run(self):
         with session_scope(self.Session) as session:
-            run = session.query(ExportRun).filter_by(
-                query_file_md5=self.query_md5, project=self.project,
-                commcare=self.commcare
-            ).order_by(ExportRun.since_param.desc()).first()
-            if run:
-                return run.since_param
+            run = self._get_last_run(
+                session, query_file_md5=self.query_md5,
+                project=self.project, commcare=self.commcare
+            )
+            if not run:
+                # Check for run without the args
+                run = self._get_last_run(session, query_file_md5=self.query_md5)
+            return run.since_param if run else None
+
+    def _get_last_run(self, session, **filters):
+        return session.query(ExportRun).filter_by(**filters)\
+            .order_by(ExportRun.since_param.desc()).first()
