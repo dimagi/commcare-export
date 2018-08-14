@@ -30,6 +30,19 @@ class ExportRun(Base):
     time_of_run = Column(String)
     final = Column(Boolean)
 
+    def __repr__(self):
+        return (
+            "<ExportRun("
+            "id={r.id}, "
+            "query_file_name={r.query_file_name}, "
+            "query_file_md5={r.query_file_md5}, "
+            "project={r.project}, "
+            "commcare={r.commcare}, "
+            "since_param={r.since_param}, "
+            "time_of_run={r.time_of_run}, "
+            "final={r.final})>".format(r=self)
+        )
+
 
 @contextmanager
 def session_scope(Session):
@@ -55,7 +68,7 @@ class CheckpointManager(SqlMixin):
         self.query_md5 = query_md5
         self.project = project
         self.commcare = commcare
-        self.Session = sessionmaker(self.engine)
+        self.Session = sessionmaker(self.engine, expire_on_commit=False)
 
     def set_batch_checkpoint(self, checkpoint_time):
         self._set_checkpoint(checkpoint_time, False)
