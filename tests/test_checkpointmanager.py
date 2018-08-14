@@ -6,7 +6,7 @@ import datetime
 import pytest
 import sqlalchemy
 
-from commcare_export.checkpoint import CheckpointManager
+from commcare_export.checkpoint import CheckpointManager, ExportRun, session_scope
 
 
 @pytest.fixture()
@@ -49,12 +49,8 @@ class TestCheckpointManager(object):
             manager.set_batch_checkpoint(datetime.datetime.utcnow())
 
             def _get_non_final_rows_count():
-                cursor = manager.connection.execute(
-                    sqlalchemy.sql.text('select count(*) from {} where final = :final'.format(manager.table_name)),
-                    final=False
-                )
-                for row in cursor:
-                    return row[0]
+                with session_scope(manager.Session) as session:
+                    return session.query(ExportRun).filter_by(final=False).count()
 
             assert _get_non_final_rows_count() == 2
             manager.set_final_checkpoint()
