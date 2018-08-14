@@ -205,7 +205,10 @@ def _get_api_client(args, checkpoint_manager, commcarehq_base_url):
 
 
 def _get_checkpoint_manager(args):
-    return CheckpointManager(args.output, args.query, misc.digest_file(args.query))
+    return CheckpointManager(
+        args.output, args.query, args.project, args.commcare_hq,
+        misc.digest_file(args.query)
+    )
 
 
 def main_with_args(args):

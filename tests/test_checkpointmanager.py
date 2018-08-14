@@ -11,7 +11,7 @@ from commcare_export.checkpoint import CheckpointManager, ExportRun, session_sco
 
 @pytest.fixture()
 def manager(db_params):
-    manager = CheckpointManager(db_params['url'], 'query', '123', poolclass=sqlalchemy.pool.NullPool)
+    manager = CheckpointManager(db_params['url'], 'query', '123', 'test', 'hq', poolclass=sqlalchemy.pool.NullPool)
     try:
         yield manager
     finally:

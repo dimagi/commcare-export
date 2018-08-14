@@ -24,6 +24,8 @@ class ExportRun(Base):
     id = Column(String, primary_key=True)
     query_file_name = Column(String)
     query_file_md5 = Column(String)
+    project = Column(String)
+    commcare = Column(String)
     since_param = Column(String)
     time_of_run = Column(String)
     final = Column(Boolean)
@@ -47,10 +49,12 @@ class CheckpointManager(SqlMixin):
     table_name = 'commcare_export_runs'
     migrations_repository = os.path.join(repo_root, 'migrations')
 
-    def __init__(self, db_url, query, query_md5, poolclass=None):
+    def __init__(self, db_url, query, query_md5, project, commcare, poolclass=None):
         super(CheckpointManager, self).__init__(db_url, poolclass=poolclass)
         self.query = query
         self.query_md5 = query_md5
+        self.project = project
+        self.commcare = commcare
         self.Session = sessionmaker(self.engine)
 
     def set_batch_checkpoint(self, checkpoint_time):
@@ -70,6 +74,8 @@ class CheckpointManager(SqlMixin):
                 id=uuid.uuid4().hex,
                 query_file_name=self.query,
                 query_file_md5=self.query_md5,
+                project=self.project,
+                commcare=self.commcare,
                 since_param=checkpoint_time.isoformat(),
                 time_of_run=datetime.datetime.utcnow().isoformat(),
                 final=final
@@ -86,13 +92,15 @@ class CheckpointManager(SqlMixin):
     def _cleanup(self):
         with session_scope(self.Session) as session:
             session.query(ExportRun).filter_by(
-                final=False, query_file_md5=self.query_md5
+                final=False, query_file_md5=self.query_md5,
+                project=self.project, commcare=self.commcare
             ).delete()
 
     def get_time_of_last_run(self):
         with session_scope(self.Session) as session:
             run = session.query(ExportRun).filter_by(
-                query_file_md5=self.query_md5
+                query_file_md5=self.query_md5, project=self.project,
+                commcare=self.commcare
             ).order_by(ExportRun.since_param.desc()).first()
             if run:
                 return run.since_param
