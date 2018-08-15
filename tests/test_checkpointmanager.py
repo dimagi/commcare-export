@@ -74,3 +74,14 @@ class TestCheckpointManager(object):
         assert _get_non_final_rows_count() == 2
         manager.set_final_checkpoint()
         assert _get_non_final_rows_count() == 0
+
+    def test_get_time_of_last_run__with_key(self, manager):
+        manager.create_checkpoint_table()
+        manager.key = 'my key'
+        last_run_time = datetime.datetime.utcnow()
+        manager.set_batch_checkpoint(last_run_time)
+
+        assert manager.get_time_of_last_run() == last_run_time.isoformat()
+        manager.key = None
+        assert manager.get_time_of_last_run() is None
+

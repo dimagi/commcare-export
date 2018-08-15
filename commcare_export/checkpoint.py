@@ -24,6 +24,7 @@ class ExportRun(Base):
     id = Column(String, primary_key=True)
     query_file_name = Column(String)
     query_file_md5 = Column(String)
+    key = Column(String)
     project = Column(String)
     commcare = Column(String)
     since_param = Column(String)
@@ -36,6 +37,7 @@ class ExportRun(Base):
             "id={r.id}, "
             "query_file_name={r.query_file_name}, "
             "query_file_md5={r.query_file_md5}, "
+            "key={r.key}, "
             "project={r.project}, "
             "commcare={r.commcare}, "
             "since_param={r.since_param}, "
@@ -62,12 +64,13 @@ class CheckpointManager(SqlMixin):
     table_name = 'commcare_export_runs'
     migrations_repository = os.path.join(repo_root, 'migrations')
 
-    def __init__(self, db_url, query, query_md5, project, commcare, poolclass=None):
+    def __init__(self, db_url, query, query_md5, project, commcare, key=None, poolclass=None):
         super(CheckpointManager, self).__init__(db_url, poolclass=poolclass)
         self.query = query
         self.query_md5 = query_md5
         self.project = project
         self.commcare = commcare
+        self.key = key
         self.Session = sessionmaker(self.engine, expire_on_commit=False)
 
     def set_batch_checkpoint(self, checkpoint_time):
@@ -87,6 +90,7 @@ class CheckpointManager(SqlMixin):
                 id=uuid.uuid4().hex,
                 query_file_name=self.query,
                 query_file_md5=self.query_md5,
+                key=self.key,
                 project=self.project,
                 commcare=self.commcare,
                 since_param=checkpoint_time.isoformat(),
@@ -111,14 +115,20 @@ class CheckpointManager(SqlMixin):
 
     def get_time_of_last_run(self):
         with session_scope(self.Session) as session:
-            run = self._get_last_run(
-                session, query_file_md5=self.query_md5,
-                project=self.project, commcare=self.commcare
-            )
-            if not run:
-                # Check for run without the args
-                run = self._get_last_run(session, query_file_md5=self.query_md5)
-            return run.since_param if run else None
+            if self.key:
+                run = self._get_last_run(
+                    session, key=self.key,
+                    project=self.project, commcare=self.commcare
+                )
+            else:
+                run = self._get_last_run(
+                    session, query_file_md5=self.query_md5,
+                    project=self.project, commcare=self.commcare, key=self.key
+                )
+                if not run:
+                    # Check for run without the args
+                    run = self._get_last_run(session, query_file_md5=self.query_md5, key=self.key)
+        return run.since_param if run else None
 
     def _get_last_run(self, session, **filters):
         return session.query(ExportRun).filter_by(**filters)\
