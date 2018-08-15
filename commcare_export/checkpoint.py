@@ -140,7 +140,7 @@ class CheckpointManager(SqlMixin):
 
     def _get_last_checkpoint(self, session, **filters):
         return session.query(Checkpoint).filter_by(**filters)\
-            .order_by(Checkpoint.since_param.desc()).first()
+            .order_by(Checkpoint.time_of_run.desc()).first()
 
     def log_warnings(self, run):
         # type: (Checkpoint) -> None
