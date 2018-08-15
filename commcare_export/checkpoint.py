@@ -1,3 +1,5 @@
+from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+
 import datetime
 import logging
 import uuid
@@ -114,6 +116,12 @@ class CheckpointManager(SqlMixin):
             ).delete()
 
     def get_time_of_last_run(self, log_warnings=True):
+        run = self.get_last_run()
+        if run and log_warnings:
+            self.log_warnings(run)
+        return run.since_param if run else None
+
+    def get_last_run(self):
         with session_scope(self.Session) as session:
             if self.key:
                 run = self._get_last_run(
@@ -128,9 +136,7 @@ class CheckpointManager(SqlMixin):
                 if not run:
                     # Check for run without the args
                     run = self._get_last_run(session, query_file_md5=self.query_md5, key=self.key)
-        if run and log_warnings:
-            self.log_warnings(run)
-        return run.since_param if run else None
+        return run
 
     def _get_last_run(self, session, **filters):
         return session.query(ExportRun).filter_by(**filters)\
@@ -148,3 +154,29 @@ class CheckpointManager(SqlMixin):
                 run.query_file_name, run.query_file_md5,
                 self.query, self.query_md5
             )
+
+    def list_runs(self, limit=20):
+        """List checkpoints filtered by:
+        * file name
+        * project
+        * commcare
+        * key
+
+        Don't filter by MD5 on purpose.
+        """
+        with session_scope(self.Session) as session:
+            query = session.query(ExportRun)
+            if self.query:
+                query = query.filter(ExportRun.query_file_name == self.query)
+            if self.project:
+                query = query.filter(ExportRun.project == self.project)
+            if self.commcare:
+                query = query.filter(ExportRun.commcare == self.commcare)
+            if self.key:
+                query = query.filter(ExportRun.key == self.key)
+
+            return query.order_by(ExportRun.time_of_run.desc())[:limit]
+
+    def update_run(self, run):
+        with session_scope(self.Session) as session:
+            session.merge(run)

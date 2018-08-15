@@ -211,15 +211,34 @@ class StreamingMarkdownTableWriter(TableWriter):
     """
     supports_multi_table_write = False
 
-    def __init__(self, output_stream):
+    def __init__(self, output_stream, compute_widths=False):
         self.output_stream = output_stream
+        self.compute_widths = compute_widths
     
-    def write_table(self, table):
-        self.output_stream.write('\n# %s \n\n' % table['name'])
-        self.output_stream.write('|%s|\n' % '|'.join(table['headings']))
+    def write_table(self, table, ):
+        col_widths = None
+        if self.compute_widths:
+            col_widths = self._get_column_widths(table)
+            row_template = ' | '.join(['{{:<{}}}'.format(width) for width in col_widths])
+        else:
+            row_template = ' | '.join(['{}'] * len(table['headings']))
+
+        if table.get('name'):
+            self.output_stream.write('\n# %s \n\n' % table['name'])
+
+        self.output_stream.write('| %s |\n' % row_template.format(*table['headings']))
+        if col_widths:
+            self.output_stream.write('| %s |\n' % row_template.format(*['-' * width for width in col_widths]))
 
         for row in table['rows']:
-            self.output_stream.write('|%s|\n' % '|'.join(ensure_text(val, convert_none=True) for val in row))
+            text_row = (ensure_text(val, convert_none=True) for val in row)
+            self.output_stream.write('| %s |\n' % row_template.format(*text_row))
+
+    def _get_column_widths(self, table):
+        all_rows = [table['headings']] + table['rows']
+        columns = list(map(list, zip(*all_rows)))
+        col_widths = map(len, [max(col, key=len) for col in columns])
+        return col_widths
 
 
 class SqlMixin(object):
