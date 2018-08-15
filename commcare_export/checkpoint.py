@@ -77,7 +77,7 @@ class CheckpointManager(SqlMixin):
         self._set_checkpoint(checkpoint_time, False)
 
     def set_final_checkpoint(self):
-        last_run = self.get_time_of_last_run()
+        last_run = self.get_time_of_last_run(log_warnings=False)
         if last_run:
             self._set_checkpoint(dateutil.parser.parse(last_run), True)
             self._cleanup()
@@ -113,7 +113,7 @@ class CheckpointManager(SqlMixin):
                 project=self.project, commcare=self.commcare
             ).delete()
 
-    def get_time_of_last_run(self):
+    def get_time_of_last_run(self, log_warnings=True):
         with session_scope(self.Session) as session:
             if self.key:
                 run = self._get_last_run(
@@ -128,8 +128,23 @@ class CheckpointManager(SqlMixin):
                 if not run:
                     # Check for run without the args
                     run = self._get_last_run(session, query_file_md5=self.query_md5, key=self.key)
+        if run and log_warnings:
+            self.log_warnings(run)
         return run.since_param if run else None
 
     def _get_last_run(self, session, **filters):
         return session.query(ExportRun).filter_by(**filters)\
             .order_by(ExportRun.since_param.desc()).first()
+
+    def log_warnings(self, run):
+        # type: (ExportRun) -> None
+        md5_mismatch = run.query_file_md5 != self.query_md5
+        name_mismatch = run.query_file_name != self.query
+        if md5_mismatch or name_mismatch:
+            logger.warning(
+                "Query differs from most recent checkpoint:\n"
+                "From checkpoint:         name=%s, md5=%s\n"
+                "From command line args:  name=%s, md5=%s\n",
+                run.query_file_name, run.query_file_md5,
+                self.query, self.query_md5
+            )
