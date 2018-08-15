@@ -7,7 +7,7 @@ import uuid
 import pytest
 import sqlalchemy
 
-from commcare_export.checkpoint import CheckpointManager, ExportRun, session_scope
+from commcare_export.checkpoint import CheckpointManager, Checkpoint, session_scope
 
 
 @pytest.fixture()
@@ -50,7 +50,7 @@ class TestCheckpointManager(object):
         manager.create_checkpoint_table()
         with session_scope(manager.Session) as session:
             since_param = datetime.datetime.utcnow().isoformat()
-            session.add(ExportRun(
+            session.add(Checkpoint(
                 id=uuid.uuid4().hex,
                 query_file_name=manager.query,
                 query_file_md5=manager.query_md5,
@@ -69,7 +69,7 @@ class TestCheckpointManager(object):
 
         def _get_non_final_rows_count():
             with session_scope(manager.Session) as session:
-                return session.query(ExportRun).filter_by(final=False).count()
+                return session.query(Checkpoint).filter_by(final=False).count()
 
         assert _get_non_final_rows_count() == 2
         manager.set_final_checkpoint()

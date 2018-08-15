@@ -20,7 +20,7 @@ repo_root = os.path.abspath(os.path.join(__file__, os.pardir, os.pardir))
 Base = declarative_base()
 
 
-class ExportRun(Base):
+class Checkpoint(Base):
     __tablename__ = 'commcare_export_runs'
 
     id = Column(String, primary_key=True)
@@ -35,7 +35,7 @@ class ExportRun(Base):
 
     def __repr__(self):
         return (
-            "<ExportRun("
+            "<Checkpoint("
             "id={r.id}, "
             "query_file_name={r.query_file_name}, "
             "query_file_md5={r.query_file_md5}, "
@@ -88,7 +88,7 @@ class CheckpointManager(SqlMixin):
         logger.info('Setting %s checkpoint: %s', 'final' if final else 'batch', checkpoint_time)
         checkpoint_time = checkpoint_time or datetime.datetime.utcnow()
         with session_scope(self.Session) as session:
-            session.add(ExportRun(
+            session.add(Checkpoint(
                 id=uuid.uuid4().hex,
                 query_file_name=self.query,
                 query_file_md5=self.query_md5,
@@ -110,7 +110,7 @@ class CheckpointManager(SqlMixin):
 
     def _cleanup(self):
         with session_scope(self.Session) as session:
-            session.query(ExportRun).filter_by(
+            session.query(Checkpoint).filter_by(
                 final=False, query_file_md5=self.query_md5,
                 project=self.project, commcare=self.commcare
             ).delete()
@@ -139,11 +139,11 @@ class CheckpointManager(SqlMixin):
         return run
 
     def _get_last_run(self, session, **filters):
-        return session.query(ExportRun).filter_by(**filters)\
-            .order_by(ExportRun.since_param.desc()).first()
+        return session.query(Checkpoint).filter_by(**filters)\
+            .order_by(Checkpoint.since_param.desc()).first()
 
     def log_warnings(self, run):
-        # type: (ExportRun) -> None
+        # type: (Checkpoint) -> None
         md5_mismatch = run.query_file_md5 != self.query_md5
         name_mismatch = run.query_file_name != self.query
         if md5_mismatch or name_mismatch:
@@ -165,17 +165,17 @@ class CheckpointManager(SqlMixin):
         Don't filter by MD5 on purpose.
         """
         with session_scope(self.Session) as session:
-            query = session.query(ExportRun)
+            query = session.query(Checkpoint)
             if self.query:
-                query = query.filter(ExportRun.query_file_name == self.query)
+                query = query.filter(Checkpoint.query_file_name == self.query)
             if self.project:
-                query = query.filter(ExportRun.project == self.project)
+                query = query.filter(Checkpoint.project == self.project)
             if self.commcare:
-                query = query.filter(ExportRun.commcare == self.commcare)
+                query = query.filter(Checkpoint.commcare == self.commcare)
             if self.key:
-                query = query.filter(ExportRun.key == self.key)
+                query = query.filter(Checkpoint.key == self.key)
 
-            return query.order_by(ExportRun.time_of_run.desc())[:limit]
+            return query.order_by(Checkpoint.time_of_run.desc())[:limit]
 
     def update_run(self, run):
         with session_scope(self.Session) as session:
