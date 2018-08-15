@@ -73,6 +73,8 @@ CLI_ARGS = [
                  help="When saving to a SQL database don't allow changing column types once they are created."),
         Argument('missing-value', default=None, help="Value to use when a field is missing from the form / case."),
         Argument('batch-size', default=1000, help="Number of records to process per batch."),
+        Argument('checkpoint-key', help="Use this key for all checkpoints instead of the query file MD5 hash "
+                                        "in order to prevent table rebuilds after a query file has been edited."),
     ]
 
 
@@ -207,7 +209,7 @@ def _get_api_client(args, checkpoint_manager, commcarehq_base_url):
 def _get_checkpoint_manager(args):
     return CheckpointManager(
         args.output, args.query, misc.digest_file(args.query),
-        args.project, args.commcare_hq
+        args.project, args.commcare_hq, args.checkpoint_key
     )
 
 
