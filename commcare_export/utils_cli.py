@@ -26,8 +26,12 @@ class BaseCommand(object):
 
 
 class ListHistoryCommand(BaseCommand):
-    slug = 'list-history'
-    help = """List export history. History will be filtered by arguments provided."""
+    slug = 'history'
+    help = """List export history. History will be filtered by arguments provided.
+    
+    This command only applies when exporting to a SQL database. The command lists
+    the checkpoints that have been created by the command.
+    """
 
     @classmethod
     def add_arguments(cls, parser):
@@ -51,7 +55,7 @@ class ListHistoryCommand(BaseCommand):
         if manager.key:
             print("    key:            {}".format(manager.key))
 
-        runs = manager.list_runs(args.limit)
+        runs = manager.list_checkpoints(args.limit)
         print_runs(runs)
 
 
@@ -90,14 +94,14 @@ class SetKeyCommand(BaseCommand):
     def run(self, args):
         key = args.checkpoint_key
         manager = get_checkpoint_manager(args)
-        run_with_key = manager.get_last_run()
+        run_with_key = manager.get_last_checkpoint()
 
         if run_with_key:
             print("A checkpoint with that key already exists.")
             return
 
         manager.key = None
-        run_no_key = manager.get_last_run()
+        run_no_key = manager.get_last_checkpoint()
 
         if not run_no_key:
             print(args)
@@ -107,7 +111,7 @@ class SetKeyCommand(BaseCommand):
         print_runs([run_no_key])
         if confirm("Do you want to set the key for this checkpoint to '{}'".format(key)):
             run_no_key.key = key
-            manager.update_run(run_no_key)
+            manager.update_checkpoint(run_no_key)
 
         print("\nUpdated checkpoint:")
         print_runs([run_no_key])

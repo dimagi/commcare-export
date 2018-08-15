@@ -79,7 +79,7 @@ class CheckpointManager(SqlMixin):
         self._set_checkpoint(checkpoint_time, False)
 
     def set_final_checkpoint(self):
-        last_run = self.get_time_of_last_run(log_warnings=False)
+        last_run = self.get_time_of_last_checkpoint(log_warnings=False)
         if last_run:
             self._set_checkpoint(dateutil.parser.parse(last_run), True)
             self._cleanup()
@@ -115,30 +115,30 @@ class CheckpointManager(SqlMixin):
                 project=self.project, commcare=self.commcare
             ).delete()
 
-    def get_time_of_last_run(self, log_warnings=True):
-        run = self.get_last_run()
+    def get_time_of_last_checkpoint(self, log_warnings=True):
+        run = self.get_last_checkpoint()
         if run and log_warnings:
             self.log_warnings(run)
         return run.since_param if run else None
 
-    def get_last_run(self):
+    def get_last_checkpoint(self):
         with session_scope(self.Session) as session:
             if self.key:
-                run = self._get_last_run(
+                run = self._get_last_checkpoint(
                     session, key=self.key,
                     project=self.project, commcare=self.commcare
                 )
             else:
-                run = self._get_last_run(
+                run = self._get_last_checkpoint(
                     session, query_file_md5=self.query_md5,
                     project=self.project, commcare=self.commcare, key=self.key
                 )
                 if not run:
                     # Check for run without the args
-                    run = self._get_last_run(session, query_file_md5=self.query_md5, key=self.key)
+                    run = self._get_last_checkpoint(session, query_file_md5=self.query_md5, key=self.key)
         return run
 
-    def _get_last_run(self, session, **filters):
+    def _get_last_checkpoint(self, session, **filters):
         return session.query(Checkpoint).filter_by(**filters)\
             .order_by(Checkpoint.since_param.desc()).first()
 
@@ -155,7 +155,7 @@ class CheckpointManager(SqlMixin):
                 self.query, self.query_md5
             )
 
-    def list_runs(self, limit=20):
+    def list_checkpoints(self, limit=20):
         """List checkpoints filtered by:
         * file name
         * project
@@ -177,6 +177,6 @@ class CheckpointManager(SqlMixin):
 
             return query.order_by(Checkpoint.time_of_run.desc())[:limit]
 
-    def update_run(self, run):
+    def update_checkpoint(self, run):
         with session_scope(self.Session) as session:
             session.merge(run)

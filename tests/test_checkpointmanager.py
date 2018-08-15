@@ -37,15 +37,15 @@ class TestCheckpointManager(object):
             manager.connection.execute(sqlalchemy.sql.text('DROP TABLE alembic_version'))
         manager.create_checkpoint_table()
 
-    def test_get_time_of_last_run(self, manager):
+    def test_get_time_of_last_checkpoint(self, manager):
         manager.create_checkpoint_table()
         manager.set_batch_checkpoint(datetime.datetime.utcnow())
         second_run = datetime.datetime.utcnow()
         manager.set_batch_checkpoint(second_run)
 
-        assert manager.get_time_of_last_run() == second_run.isoformat()
+        assert manager.get_time_of_last_checkpoint() == second_run.isoformat()
 
-    def test_get_time_of_last_run_no_args(self, manager):
+    def test_get_time_of_last_checkpoint_no_args(self, manager):
         # test that we can still get the time of last run no project and commcare args
         manager.create_checkpoint_table()
         with session_scope(manager.Session) as session:
@@ -60,7 +60,7 @@ class TestCheckpointManager(object):
                 time_of_run=datetime.datetime.utcnow().isoformat(),
                 final=True
             ))
-        assert manager.get_time_of_last_run() == since_param
+        assert manager.get_time_of_last_checkpoint() == since_param
 
     def test_clean_on_final_run(self, manager):
         manager.create_checkpoint_table()
@@ -75,13 +75,13 @@ class TestCheckpointManager(object):
         manager.set_final_checkpoint()
         assert _get_non_final_rows_count() == 0
 
-    def test_get_time_of_last_run__with_key(self, manager):
+    def test_get_time_of_last_checkpoint__with_key(self, manager):
         manager.create_checkpoint_table()
         manager.key = 'my key'
         last_run_time = datetime.datetime.utcnow()
         manager.set_batch_checkpoint(last_run_time)
 
-        assert manager.get_time_of_last_run() == last_run_time.isoformat()
+        assert manager.get_time_of_last_checkpoint() == last_run_time.isoformat()
         manager.key = None
-        assert manager.get_time_of_last_run() is None
+        assert manager.get_time_of_last_checkpoint() is None
 

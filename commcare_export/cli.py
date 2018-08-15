@@ -182,7 +182,7 @@ def _get_writer(output_format, output, strict_types):
 
 def get_date_params(args, checkpoint_manager):
     if not args.since and not args.start_over and checkpoint_manager:
-        args.since = checkpoint_manager.get_time_of_last_run()
+        args.since = checkpoint_manager.get_time_of_last_checkpoint()
 
         if args.since:
             logger.debug('Last successful run was %s', args.since)
