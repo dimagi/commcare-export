@@ -116,7 +116,7 @@ def writer(pg_db_params):
 
 @pytest.fixture(scope='class')
 def checkpoint_manager(pg_db_params):
-    return CheckpointManager(pg_db_params['url'], 'query', '123', poolclass=sqlalchemy.pool.NullPool)
+    return CheckpointManager(pg_db_params['url'], 'query', '123', 'test', 'hq', poolclass=sqlalchemy.pool.NullPool)
 
 
 @pytest.mark.dbtest
