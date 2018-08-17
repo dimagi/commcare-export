@@ -399,7 +399,12 @@ https://github.com/dimagi/commcare-export/releases
 
 Testing databases
 -----------------
-Supported databases are PostgreSQL, MySQL, MSSQL
+Supported databases are PostgreSQL, MySQL, MSSQL.
+
+To run tests against selected databases can be done using test marks as follows:
+```
+py.test -m [postgres,mysql,mssql]
+``` 
 
 Postgresql
 ==========

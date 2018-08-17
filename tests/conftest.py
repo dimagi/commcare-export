@@ -46,17 +46,17 @@ def _db_params(request, db_name):
 
 
 @pytest.fixture(scope="class", params=[
-    {
+    pytest.param({
         'url': "postgresql://postgres@localhost/%s",
         'admin_db': 'postgres'
-    },
-    {
+    }, marks=pytest.mark.postgres),
+    pytest.param({
         'url': 'mysql+pymysql://travis@/%s?charset=utf8',
-    },
-    {
+    }, marks=pytest.mark.mysql),
+    pytest.param({
         'url': 'mssql+pyodbc://SA:Password@123@localhost/%s?driver=ODBC+Driver+17+for+SQL+Server',
         'admin_db': 'master'
-    }
+    }, marks=pytest.mark.mssql)
 ], ids=['postgres', 'mysql', 'mssql'])
 def db_params(request):
     return _db_params(request, TEST_DB)

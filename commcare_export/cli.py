@@ -12,9 +12,8 @@ import dateutil.parser
 from six.moves import input
 
 from commcare_export import excel_query
-from commcare_export import misc
 from commcare_export import writers
-from commcare_export.checkpoint import CheckpointManager
+from commcare_export.utils import get_checkpoint_manager
 from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION
 from commcare_export.commcare_minilinq import CommCareHqEnv
 from commcare_export.env import BuiltInEnv, JsonPathEnv, EmitterEnv
@@ -43,8 +42,9 @@ class Argument(object):
     def default(self):
         return self._kwargs.get('default')
 
-    def add_to_parser(self, parser):
-        parser.add_argument(*self._args, **self._kwargs)
+    def add_to_parser(self, parser, **additional_kwargs):
+        additional_kwargs.update(self._kwargs)
+        parser.add_argument(*self._args, **additional_kwargs)
 
 
 CLI_ARGS = [
@@ -73,6 +73,8 @@ CLI_ARGS = [
                  help="When saving to a SQL database don't allow changing column types once they are created."),
         Argument('missing-value', default=None, help="Value to use when a field is missing from the form / case."),
         Argument('batch-size', default=1000, help="Number of records to process per batch."),
+        Argument('checkpoint-key', help="Use this key for all checkpoints instead of the query file MD5 hash "
+                                        "in order to prevent table rebuilds after a query file has been edited."),
     ]
 
 
@@ -179,11 +181,14 @@ def _get_writer(output_format, output, strict_types):
 
 
 def get_date_params(args, checkpoint_manager):
+    if args.start_over and checkpoint_manager:
+        logger.warn('Ignoring all checkpoints and re-fetching all data from CommCare.')
+
     if not args.since and not args.start_over and checkpoint_manager:
-        args.since = checkpoint_manager.get_time_of_last_run()
+        args.since = checkpoint_manager.get_time_of_last_checkpoint()
 
         if args.since:
-            logger.debug('Last successful run was %s', args.since)
+            logger.debug('Last successful checkpoint was %s', args.since)
         else:
             logger.warn('No successful runs found, and --since not specified: will import ALL data')
 
@@ -201,13 +206,6 @@ def _get_api_client(args, checkpoint_manager, commcarehq_base_url):
         auth_mode=args.auth_mode,
         version=args.api_version,
         checkpoint_manager=checkpoint_manager
-    )
-
-
-def _get_checkpoint_manager(args):
-    return CheckpointManager(
-        args.output, args.query, misc.digest_file(args.query),
-        args.project, args.commcare_hq
     )
 
 
@@ -233,7 +231,7 @@ def main_with_args(args):
         if not os.path.exists(args.query):
             logger.warning("Checkpointing disabled for non file-based query")
         else:
-            checkpoint_manager = _get_checkpoint_manager(args)
+            checkpoint_manager = get_checkpoint_manager(args)
             checkpoint_manager.create_checkpoint_table()
 
     if not args.username:
@@ -272,6 +270,7 @@ def main_with_args(args):
 
 def entry_point():
     main(sys.argv[1:])
-    
+
+
 if __name__ == '__main__':
     entry_point()

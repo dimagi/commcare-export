@@ -54,7 +54,12 @@ setuptools.setup(
     author = 'Dimagi',
     author_email = 'information@dimagi.com',
     url = "https://github.com/dimagi/commcare-export",
-    entry_points = { 'console_scripts': ['commcare-export = commcare_export.cli:entry_point'] },
+    entry_points = {
+        'console_scripts': [
+            'commcare-export = commcare_export.cli:entry_point',
+            'commcare-export-utils = commcare_export.utils_cli:entry_point'
+        ]
+    },
     packages = setuptools.find_packages(exclude=['tests*']),
     data_files = [
         (os.path.join('share', 'commcare-export', 'examples'), glob.glob('examples/*.json') + glob.glob('examples/*.xlsx')),
