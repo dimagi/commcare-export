@@ -428,6 +428,14 @@ class SqlTableWriter(SqlMixin, TableWriter):
             if val is None:
                 continue
 
+            # if it is a dictionary that has '#text', return that, otherwise set it to the empty string
+            if isinstance(val, dict):
+                if '#text' in val:
+                    row_dict[column] = val = val.get('#text')
+                else:
+                    row_dict[column] = val = ''                    
+                    continue
+            
             ty = self.best_type_for(val)
             if not column in columns:
                 logger.warn("Adding column '{}.{} {}'".format(table_name, column, ty))
