@@ -441,6 +441,10 @@ class EmitterEnv(Env):
 
     @staticmethod
     def _unwrap_row_vals(rows):
+        """The XMLtoJSON conversion in CommCare can result in a field being a JSON object
+        instead of a simple field (if the XML tag has attributes or different namespace from
+        the default). In this case the actual value of the XML element is stored in a '#text' field.
+        """
         def _unwrap_val(val):
             if isinstance(val, dict):
                 if '#text' in val:
