@@ -138,8 +138,8 @@ class TestSQLWriters(object):
         assert len(result) == 4
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 2, 'c': 3, 's': 'hi'}
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': 5, 'c': 6, 's': 'hello'}
-        assert dict(result['bozzle']) == {'id': 'bazzle', 'a': 7, 'b': 8, 'c': 9, 's': 'test_text'}
-        assert dict(result['buzzle']) == {'id': 'bazzle', 'a': 1, 'b': 8, 'c': 7, 's': ''}
+        assert dict(result['bozzle']) == {'id': 'bozzle', 'a': 7, 'b': 8, 'c': 9, 's': 'test_text'}
+        assert dict(result['buzzle']) == {'id': 'buzzle', 'a': 1, 'b': 8, 'c': 7, 's': ''}
 
     def test_upsert(self, writer):
         with writer:
