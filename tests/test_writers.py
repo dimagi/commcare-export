@@ -133,7 +133,7 @@ class TestSQLWriters(object):
 
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
         with writer:
-            result = dict([(row['id'], row) for row in writer.connection.execute('SELECT id, a, b, c FROM foo_insert')])
+            result = dict([(row['id'], row) for row in writer.connection.execute('SELECT id, a, b, c, s FROM foo_insert')])
 
         assert len(result) == 4
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 2, 'c': 3, 's': 'hi'}
