@@ -127,7 +127,6 @@ class TestSQLWriters(object):
                     ['bizzle', 1, 2, 3, 'hi'],
                     ['bazzle', 4, 5, 6, 'hello'],
                     ['bozzle', 7, 8, 9, {'#text': 'test_text','@case_type': 'person','@relationship': 'child','id': 'nothing'}],
-                    ['buzzle', 1, 8, 7, {'@case_type': '', '@relationship': 'child', 'id': 'some_id'}],
                 ]
             })
 
