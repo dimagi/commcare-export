@@ -449,6 +449,8 @@ class EmitterEnv(Env):
             if isinstance(val, dict):
                 if '#text' in val:
                     return val.get('#text')
+                elif all(key == 'id' or key.startswith('@') for key in val):
+                    return ''
             return val
 
         for row in rows:
