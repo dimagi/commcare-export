@@ -433,7 +433,26 @@ class EmitterEnv(Env):
 
     def emit_table(self, table_spec):
         self.emitted = True
+        table_spec['rows'] = self._unwrap_row_vals(table_spec['rows'])
         self.writer.write_table(table_spec)
 
     def has_emitted_tables(self):
         return self.emitted
+
+    @staticmethod
+    def _unwrap_row_vals(rows):
+        """The XMLtoJSON conversion in CommCare can result in a field being a JSON object
+        instead of a simple field (if the XML tag has attributes or different namespace from
+        the default). In this case the actual value of the XML element is stored in a '#text' field.
+        """
+        def _unwrap_val(val):
+            if isinstance(val, dict):
+                if '#text' in val:
+                    return val.get('#text')
+                elif all(key == 'id' or key.startswith('@') for key in val):
+                    # this implies the XML element was empty since all keys are from attributes
+                    return ''
+            return val
+
+        for row in rows:
+            yield [_unwrap_val(val) for val in row]

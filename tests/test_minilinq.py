@@ -275,3 +275,24 @@ class TestMiniLinq(unittest.TestCase):
         named = [{'n': n} for n in range(1, 5)]
         assert list(Filter(Literal(named), Apply(Reference('>'), Reference('n'), Literal(2))).eval(env)) == [{'n': 3}, {'n': 4}]
         assert list(Filter(Literal([1, 2, 3, 4]), Apply(Reference('>'), Reference('n'), Literal(2)), 'n').eval(env)) == [3, 4]
+
+    def test_emit_table_unwrap_dicts(self):
+        writer = JValueTableWriter()
+        env = EmitterEnv(writer)
+        env.emit_table({
+            'name': 't1',
+            'headings': ['a'],
+            'rows':[
+                ['hi'],
+                [{'#text': 'test_text','@case_type': 'person','@relationship': 'child','id': 'nothing'}],
+                [{'@case_type': '', '@relationship': 'child', 'id': 'some_id'}],
+                [{'t': 123}],
+            ]
+        })
+
+        writer.tables['t1']['rows'] = [
+            ['hi'],
+            ['test_text'],
+            [''],
+            [{'t': 123}]
+        ]
