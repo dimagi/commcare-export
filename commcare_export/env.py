@@ -450,6 +450,7 @@ class EmitterEnv(Env):
                 if '#text' in val:
                     return val.get('#text')
                 elif all(key == 'id' or key.startswith('@') for key in val):
+                    # this implies the XML element was empty since all keys are from attributes
                     return ''
             return val
 
