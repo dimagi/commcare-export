@@ -122,23 +122,20 @@ class TestSQLWriters(object):
         with writer:
             writer.write_table({
                 'name': 'foo_insert',
-                'headings': ['id', 'a', 'b', 'c', 's'],
+                'headings': ['id', 'a', 'b', 'c'],
                 'rows': [
-                    ['bizzle', 1, 2, 3, 'hi'],
-                    ['bazzle', 4, 5, 6, 'hello'],
-                    ['bozzle', 7, 8, 9, {'#text': 'test_text','@case_type': 'person','@relationship': 'child','id': 'nothing'}],
+                    ['bizzle', 1, 2, 3],
+                    ['bazzle', 4, 5, 6],
                 ]
             })
 
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
         with writer:
-            result = dict([(row['id'], row) for row in writer.connection.execute('SELECT id, a, b, c, s FROM foo_insert')])
+            result = dict([(row['id'], row) for row in writer.connection.execute('SELECT id, a, b, c FROM foo_insert')])
 
-        assert len(result) == 4
-        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 2, 'c': 3, 's': 'hi'}
-        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': 5, 'c': 6, 's': 'hello'}
-        assert dict(result['bozzle']) == {'id': 'bozzle', 'a': 7, 'b': 8, 'c': 9, 's': 'test_text'}
-        assert dict(result['buzzle']) == {'id': 'buzzle', 'a': 1, 'b': 8, 'c': 7, 's': ''}
+        assert len(result) == 2
+        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': 2, 'c': 3}
+        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': 5, 'c': 6}
 
     def test_upsert(self, writer):
         with writer:
