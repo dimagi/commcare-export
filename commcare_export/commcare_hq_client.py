@@ -2,13 +2,11 @@ from __future__ import unicode_literals, print_function, absolute_import, divisi
 
 import logging
 from collections import OrderedDict
-from copy import deepcopy
 
 import backoff
 import requests
-from datetime import datetime
-from requests.auth import HTTPDigestAuth
 from requests.auth import AuthBase
+from requests.auth import HTTPDigestAuth
 
 AUTH_MODE_DIGEST = 'digest'
 AUTH_MODE_APIKEY = 'apikey'
@@ -29,15 +27,22 @@ LATEST_KNOWN_VERSION='0.5'
 
 
 def on_backoff(details):
-    logger.warn("Request failed after {tries} attempts. Waiting for retry.".format(**details))
+    _log_backoff(details, 'Waiting for retry.')
 
 
 def on_giveup(details):
-    logger.warn("Request failed after {tries} attempts. Giving up.".format(**details))
+    _log_backoff(details, 'Giving up.')
+
+
+def _log_backoff(details, action_message):
+    details['__suffix'] = action_message
+    logger.warn("Request failed after {tries} attempts ({elapsed:.1f}s). {__suffix}".format(**details))
 
 
 def is_client_error(ex):
-    return 400 <= ex.response.status_code < 500
+    if hasattr(ex, 'response') and ex.response:
+        return 400 <= ex.response.status_code < 500
+    return False
 
 
 class CommCareHqClient(object):
