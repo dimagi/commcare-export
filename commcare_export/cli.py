@@ -101,6 +101,8 @@ def main(argv):
         logging.basicConfig(level=logging.WARN,
                             format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
+    logging.getLogger('alembic').setLevel(logging.WARN)
+
     if args.version:
         print('commcare-export version {}'.format(__version__))
         exit(0)
