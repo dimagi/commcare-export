@@ -100,7 +100,7 @@ class CommCareHqClient(object):
         """
         logger.debug("Fetching batch: %s", params)
         resource_url = '%s/%s/' % (self.api_url, resource)
-        response = self.session.get(resource_url, params=params, auth=self.__auth)
+        response = self.session.get(resource_url, params=params, auth=self.__auth, timeout=60)
         response.raise_for_status()
         return response.json()
             
