@@ -232,6 +232,8 @@ def main_with_args(args):
     if writer.support_checkpoints:
         if not os.path.exists(args.query):
             logger.warning("Checkpointing disabled for non file-based query")
+        elif args.since or args.until:
+            logger.warning("Checkpointing disabled when using '--since' or '--until'")
         else:
             checkpoint_manager = get_checkpoint_manager(args)
             checkpoint_manager.create_checkpoint_table()
