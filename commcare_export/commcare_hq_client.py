@@ -87,7 +87,7 @@ class CommCareHqClient(object):
 
     @backoff.on_exception(
         backoff.expo, requests.exceptions.RequestException,
-        giveup=is_client_error,
+        max_time=300, giveup=is_client_error,
         on_backoff=on_backoff, on_giveup=on_giveup
     )
     def get(self, resource, params=None):
