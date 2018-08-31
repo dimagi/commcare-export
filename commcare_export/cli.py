@@ -103,6 +103,7 @@ def main(argv):
                             format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
     logging.getLogger('alembic').setLevel(logging.WARN)
+    logging.getLogger('backoff').setLevel(logging.FATAL)
 
     if args.version:
         print('commcare-export version {}'.format(__version__))
