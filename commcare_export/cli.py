@@ -211,6 +211,17 @@ def _get_api_client(args, checkpoint_manager, commcarehq_base_url):
     )
 
 
+def _get_checkpoint_manager(args):
+    if not os.path.exists(args.query):
+        logger.warning("Checkpointing disabled for non file-based query")
+    elif args.since or args.until:
+        logger.warning("Checkpointing disabled when using '--since' or '--until'")
+    else:
+        checkpoint_manager = get_checkpoint_manager(args)
+        checkpoint_manager.create_checkpoint_table()
+        return checkpoint_manager
+
+
 def main_with_args(args):
     writer = _get_writer(args.output_format, args.output, args.strict_types)
 
@@ -230,11 +241,7 @@ def main_with_args(args):
 
     checkpoint_manager = None
     if writer.support_checkpoints:
-        if not os.path.exists(args.query):
-            logger.warning("Checkpointing disabled for non file-based query")
-        else:
-            checkpoint_manager = get_checkpoint_manager(args)
-            checkpoint_manager.create_checkpoint_table()
+        checkpoint_manager = _get_checkpoint_manager(args)
 
     if not args.username:
         args.username = input('Please provide a username: ')

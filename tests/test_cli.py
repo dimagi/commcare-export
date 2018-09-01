@@ -116,7 +116,9 @@ def writer(pg_db_params):
 
 @pytest.fixture(scope='class')
 def checkpoint_manager(pg_db_params):
-    return CheckpointManager(pg_db_params['url'], 'query', '123', 'test', 'hq', poolclass=sqlalchemy.pool.NullPool)
+    cm = CheckpointManager(pg_db_params['url'], 'query', '123', 'test', 'hq', poolclass=sqlalchemy.pool.NullPool)
+    cm.create_checkpoint_table()
+    return cm
 
 
 @pytest.mark.dbtest
@@ -138,7 +140,7 @@ class TestCLIIntegrationTests(object):
 
             # have to mock these to override the pool class otherwise they hold the db connection open
             writer_patch = mock.patch('commcare_export.cli._get_writer', return_value=writer)
-            checkpoint_patch = mock.patch('commcare_export.cli.get_checkpoint_manager', return_value=checkpoint_manager)
+            checkpoint_patch = mock.patch('commcare_export.cli._get_checkpoint_manager', return_value=checkpoint_manager)
             with writer_patch, checkpoint_patch:
                 main_with_args(args)
 
