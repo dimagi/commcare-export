@@ -13,7 +13,7 @@ from commcare_export.commcare_minilinq import SimplePaginator, DatePaginator, re
 
 
 class FakeSession(object):
-    def get(self, resource_url, params=None, auth=None):
+    def get(self, resource_url, params=None, auth=None, timeout=None):
         result = self._get_results(params)
         # Mutatey construction method required by requests.Response
         response = requests.Response()

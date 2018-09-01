@@ -9,6 +9,7 @@ import os.path
 import sys
 
 import dateutil.parser
+import requests
 from six.moves import input
 
 from commcare_export import excel_query
@@ -102,6 +103,7 @@ def main(argv):
                             format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
     logging.getLogger('alembic').setLevel(logging.WARN)
+    logging.getLogger('backoff').setLevel(logging.FATAL)
 
     if args.version:
         print('commcare-export version {}'.format(__version__))
@@ -264,11 +266,19 @@ def main_with_args(args):
     )
 
     with env:
-        lazy_result = query.eval(env)
-        if lazy_result is not None:
-            # evaluate lazy results
-            for r in lazy_result:
-                list(r) if r else r
+        try:
+            lazy_result = query.eval(env)
+            if lazy_result is not None:
+                # evaluate lazy results
+                for r in lazy_result:
+                    list(r) if r else r
+        except requests.exceptions.RequestException as e:
+            if e.response.status_code == 401:
+                print("\nAuthentication failed. Please check your credentials.")
+                return
+            else:
+                raise
+
 
     if checkpoint_manager:
         checkpoint_manager.set_final_checkpoint()

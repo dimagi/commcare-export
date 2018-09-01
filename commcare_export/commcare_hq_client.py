@@ -2,12 +2,11 @@ from __future__ import unicode_literals, print_function, absolute_import, divisi
 
 import logging
 from collections import OrderedDict
-from copy import deepcopy
 
+import backoff
 import requests
-from datetime import datetime
-from requests.auth import HTTPDigestAuth
 from requests.auth import AuthBase
+from requests.auth import HTTPDigestAuth
 
 AUTH_MODE_DIGEST = 'digest'
 AUTH_MODE_APIKEY = 'apikey'
@@ -25,6 +24,25 @@ from commcare_export.repeatable_iterator import RepeatableIterator
 logger = logging.getLogger(__file__)
 
 LATEST_KNOWN_VERSION='0.5'
+
+
+def on_backoff(details):
+    _log_backoff(details, 'Waiting for retry.')
+
+
+def on_giveup(details):
+    _log_backoff(details, 'Giving up.')
+
+
+def _log_backoff(details, action_message):
+    details['__suffix'] = action_message
+    logger.warn("Request failed after {tries} attempts ({elapsed:.1f}s). {__suffix}".format(**details))
+
+
+def is_client_error(ex):
+    if hasattr(ex, 'response') and ex.response:
+        return 400 <= ex.response.status_code < 500
+    return False
 
 
 class CommCareHqClient(object):
@@ -67,6 +85,11 @@ class CommCareHqClient(object):
     def api_url(self):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
 
+    @backoff.on_exception(
+        backoff.expo, requests.exceptions.RequestException,
+        max_time=300, giveup=is_client_error,
+        on_backoff=on_backoff, on_giveup=on_giveup
+    )
     def get(self, resource, params=None):
         """
         Gets the named resource.
@@ -77,12 +100,9 @@ class CommCareHqClient(object):
         """
         logger.debug("Fetching batch: %s", params)
         resource_url = '%s/%s/' % (self.api_url, resource)
-        response = self.session.get(resource_url, params=params, auth=self.__auth)
-
-        if response.status_code != 200:
-            raise Exception('GET %s failed (%s): %s' % (resource_url, response.status_code, response.text))
-        else:
-            return response.json()
+        response = self.session.get(resource_url, params=params, auth=self.__auth, timeout=60)
+        response.raise_for_status()
+        return response.json()
             
     def iterate(self, resource, paginator, params=None):
         """
