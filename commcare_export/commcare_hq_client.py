@@ -8,7 +8,7 @@ import requests
 from requests.auth import AuthBase
 from requests.auth import HTTPDigestAuth
 
-AUTH_MODE_DIGEST = 'digest'
+AUTH_MODE_PASSWORD = 'password'
 AUTH_MODE_APIKEY = 'apikey'
 
 try:
@@ -51,7 +51,7 @@ class CommCareHqClient(object):
     """
 
     def __init__(self, url, project, username, password,
-                 auth_mode=AUTH_MODE_DIGEST, version=LATEST_KNOWN_VERSION, checkpoint_manager=None):
+                 auth_mode=AUTH_MODE_PASSWORD, version=LATEST_KNOWN_VERSION, checkpoint_manager=None):
         self.version = version
         self.url = url
         self.project = project
@@ -60,7 +60,7 @@ class CommCareHqClient(object):
         self.__session = None
 
     def _get_auth(self, username, password, mode):
-        if mode == AUTH_MODE_DIGEST:
+        if mode == AUTH_MODE_PASSWORD:
             return HTTPDigestAuth(username, password)
         elif mode == AUTH_MODE_APIKEY:
             return ApiKeyAuth(username, password)

@@ -59,7 +59,7 @@ CLI_ARGS = [
         Argument('project'),
         Argument('username'),
         Argument('password', help='Enter password, or if using apikey auth-mode, enter the api key.'),
-        Argument('auth-mode', default='digest', choices=['digest', 'apikey'],
+        Argument('auth-mode', default='password', choices=['password', 'apikey'],
                  help='Use "digest" auth, or "apikey" auth (for two factor enabled domains).'),
         Argument('since', help='Export all data after this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS'),
         Argument('until', help='Export all data up until this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS'),
