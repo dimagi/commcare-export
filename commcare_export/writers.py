@@ -82,12 +82,17 @@ class CsvTableWriter(TableWriter):
         if self.archive is None:
             raise Exception('Attempt to write to a closed CsvWriter')
 
+        def _encode_row(row):
+            return [
+                val.encode('utf-8') if isinstance(val, six.text_type) else val
+                for val in row
+            ]
+
         tempfile = StringIO()
         writer = csv.writer(tempfile, dialect=csv.excel)
-        writer.writerow(table['headings'])
+        writer.writerow(_encode_row(table['headings']))
         for row in table['rows']:
-            writer.writerow([val.encode('utf-8') if isinstance(val, six.text_type) else val
-                             for val in row])
+            writer.writerow(_encode_row(row))
 
         # TODO: make this a polite zip and put everything in a subfolder with the same basename
         # as the zipfile
