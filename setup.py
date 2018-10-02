@@ -79,7 +79,8 @@ setuptools.setup(
         'sqlalchemy',
         'pytz',
         'sqlalchemy-migrate',
-        'backoff'
+        'backoff',
+        'csv342'
     ],
     tests_require = ['pytest', 'psycopg2', 'mock'],
     cmdclass = {'test': PyTest},

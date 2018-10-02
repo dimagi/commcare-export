@@ -1,14 +1,14 @@
-import csv
 import datetime
+import io
 import logging
 import sys
 import zipfile
-from itertools import chain
 
 import alembic
+import csv342 as csv
 import six
 import sqlalchemy
-from six import StringIO, u
+from six import u
 
 logger = logging.getLogger(__name__)
 
@@ -84,11 +84,11 @@ class CsvTableWriter(TableWriter):
 
         def _encode_row(row):
             return [
-                val.encode('utf-8') if isinstance(val, six.text_type) else val
+                val.encode('utf-8') if isinstance(val, bytes) else val
                 for val in row
             ]
 
-        tempfile = StringIO()
+        tempfile = io.StringIO()
         writer = csv.writer(tempfile, dialect=csv.excel)
         writer.writerow(_encode_row(table['headings']))
         for row in table['rows']:
@@ -97,7 +97,7 @@ class CsvTableWriter(TableWriter):
         # TODO: make this a polite zip and put everything in a subfolder with the same basename
         # as the zipfile
         self.archive.writestr('%s.csv' % self.zip_safe_name(table['name']),
-                              tempfile.getvalue())
+                              tempfile.getvalue().encode('utf-8'))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.archive.close()

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import csv
+import csv342 as csv
 import os
 import unittest
 from argparse import Namespace

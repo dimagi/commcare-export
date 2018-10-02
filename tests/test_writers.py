@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 
-import csv
+import csv342 as csv
 import datetime
+import io
 import tempfile
 import zipfile
 
@@ -114,14 +115,16 @@ class TestWriters(object):
                     ]
                 })
 
-            output_zip = zipfile.ZipFile(file.name, 'r')
-            output = csv.reader(output_zip.read('foo.csv').splitlines())
+            with zipfile.ZipFile(file.name, 'r') as output_zip:
+                output_zip.extract('foo.csv', '/home/skelly/foo.csv')
+                with output_zip.open('foo.csv') as csv_file:
+                    output = csv.reader(io.TextIOWrapper(csv_file, encoding='utf-8'))
 
-            assert [[val.decode('utf-8') for val in row] for row in output] == [
-                ['a', 'bjørn', 'c'],
-                ['1', '2', '3'],
-                ['4', '日本', '6'],
-            ]
+                    assert [row for row in output] == [
+                        ['a', 'bjørn', 'c'],
+                        ['1', '2', '3'],
+                        ['4', '日本', '6'],
+                    ]
 
 
 @pytest.mark.dbtest
