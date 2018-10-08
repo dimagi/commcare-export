@@ -116,7 +116,6 @@ class TestWriters(object):
                 })
 
             with zipfile.ZipFile(file.name, 'r') as output_zip:
-                output_zip.extract('foo.csv', '/home/skelly/foo.csv')
                 with output_zip.open('foo.csv') as csv_file:
                     output = csv.reader(io.TextIOWrapper(csv_file, encoding='utf-8'))
 
