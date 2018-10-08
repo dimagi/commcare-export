@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 
+import csv342 as csv
 import datetime
+import io
 import tempfile
+import zipfile
 
 import openpyxl
 import pytest
 import sqlalchemy
 
-from commcare_export.writers import SqlTableWriter, JValueTableWriter, Excel2007TableWriter
+from commcare_export.writers import SqlTableWriter, JValueTableWriter, Excel2007TableWriter, CsvTableWriter
 
 
 @pytest.fixture()
@@ -99,6 +102,28 @@ class TestWriters(object):
                 ['1', '2', '3'], # Note how pyxl does some best-effort parsing to *whatever* type
                 ['4', '日本', '6'],
             ]
+
+    def test_CsvTableWriter(self):
+        with tempfile.NamedTemporaryFile() as file:
+            with CsvTableWriter(file=file) as writer:
+                writer.write_table({
+                    'name': 'foo',
+                    'headings': ['a', 'bjørn', 'c'],
+                    'rows': [
+                        [1, '2', 3],
+                        [4, '日本', 6],
+                    ]
+                })
+
+            with zipfile.ZipFile(file.name, 'r') as output_zip:
+                with output_zip.open('foo.csv') as csv_file:
+                    output = csv.reader(io.TextIOWrapper(csv_file, encoding='utf-8'))
+
+                    assert [row for row in output] == [
+                        ['a', 'bjørn', 'c'],
+                        ['1', '2', '3'],
+                        ['4', '日本', '6'],
+                    ]
 
 
 @pytest.mark.dbtest
