@@ -91,7 +91,7 @@ def _get_safe_source_field(source_field):
     def _safe_node(node):
         try:
             parse_jsonpath(node)
-        except JsonPathLexerError:
+        except Exception:
             # quote nodes with special characters
             return '"{}"'.format(node)
         else:
@@ -99,11 +99,13 @@ def _get_safe_source_field(source_field):
 
     try:
         parse_jsonpath(source_field)
-    except JsonPathLexerError:
+    except Exception:
         source_field = '.'.join([
             _safe_node(node) if node else node
             for node in source_field.split('.')
         ])
+        if source_field.endswith('.'):
+            raise Exception("Blank node path: {}".format(source_field))
 
     return Reference(source_field)
 

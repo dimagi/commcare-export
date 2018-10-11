@@ -31,6 +31,13 @@ class TestExcelQuery(unittest.TestCase):
         assert _get_safe_source_field('foo..baz[*]') == Reference('foo..baz[*]')
         assert _get_safe_source_field('foo.#baz') == Reference('foo."#baz"')
         assert _get_safe_source_field('foo.bar[*]..%baz') == Reference('foo.bar[*].."%baz"')
+        assert _get_safe_source_field('foo.bar:1.baz') == Reference('foo."bar:1".baz')
+
+        try:
+            assert _get_safe_source_field('foo.bar.')
+            assert False, "Expected exception"
+        except Exception:
+            pass
 
     def test_compile_mappings(self):
         test_cases = [
