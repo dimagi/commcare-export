@@ -279,6 +279,9 @@ def main_with_args(args):
                 return
             else:
                 raise
+        except KeyboardInterrupt:
+            print('\nExport aborted')
+            return
 
 
     if checkpoint_manager:
