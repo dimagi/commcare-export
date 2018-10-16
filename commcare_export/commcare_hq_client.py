@@ -40,7 +40,7 @@ def _log_backoff(details, action_message):
 
 
 def is_client_error(ex):
-    if hasattr(ex, 'response') and ex.response:
+    if hasattr(ex, 'response') and ex.response is not None:
         return 400 <= ex.response.status_code < 500
     return False
 
