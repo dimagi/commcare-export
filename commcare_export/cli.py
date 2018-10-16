@@ -104,6 +104,7 @@ def main(argv):
 
     logging.getLogger('alembic').setLevel(logging.WARN)
     logging.getLogger('backoff').setLevel(logging.FATAL)
+    logging.getLogger('urllib3').setLevel(logging.WARN)
 
     if args.version:
         print('commcare-export version {}'.format(__version__))

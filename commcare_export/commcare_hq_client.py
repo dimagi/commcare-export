@@ -21,7 +21,7 @@ except ImportError:
 import commcare_export
 from commcare_export.repeatable_iterator import RepeatableIterator
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 LATEST_KNOWN_VERSION='0.5'
 
@@ -40,6 +40,7 @@ def _log_backoff(details, action_message):
 
 
 def is_client_error(ex):
+    logger.info(str(ex))
     if hasattr(ex, 'response') and ex.response is not None:
         return 400 <= ex.response.status_code < 500
     return False

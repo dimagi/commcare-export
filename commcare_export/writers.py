@@ -485,4 +485,4 @@ class SqlTableWriter(SqlMixin, TableWriter):
             self.make_table_compatible(table_name, row_dict)
             self.upsert(self.table(table_name), row_dict)
 
-        if logger.getEffectiveLevel() == 'DEBUG': sys.stderr.write('\n')
+        if logger.getEffectiveLevel() == logging.DEBUG: sys.stderr.write('\n')
