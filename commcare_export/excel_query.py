@@ -8,7 +8,7 @@ from six.moves import xrange
 from jsonpath_rw import jsonpath
 from jsonpath_rw.parser import parse as parse_jsonpath
 
-from commcare_export.exceptions import LongFieldsException
+from commcare_export.exceptions import LongFieldsException, MissingColumnException
 from commcare_export.map_format import compile_map_format_via
 from commcare_export.minilinq import *
 
@@ -297,6 +297,12 @@ class SheetParts(namedtuple('SheetParts', 'name headings source body root_expr')
     def __new__(cls, name, headings, source, body, root_expr=None):
         return super(SheetParts, cls).__new__(cls, name, headings, source, body, root_expr)
 
+    @property
+    def columns(self):
+        return [
+            col.v for col in self.headings
+        ]
+
 
 def parse_workbook(workbook):
     """
@@ -418,17 +424,31 @@ def get_single_emit_query(sheet, missing_value):
 def check_field_length(parsed_sheets, max_column_length):
     long_fields = defaultdict(list)
     for sheet in parsed_sheets:
-        for header in sheet.headings:
-            if len(header.v) > max_column_length:
-                long_fields[sheet.name].append(header.v)
+        for col in sheet.columns:
+            if len(col) > max_column_length:
+                long_fields[sheet.name].append(col)
 
     if long_fields:
         raise LongFieldsException(long_fields, max_column_length)
 
 
-def get_queries_from_excel(workbook, missing_value=None, combine_emits=False, max_column_length=None):
+def check_columns(parsed_sheets, columns):
+    columns = set(columns)
+    errors_by_sheet = {}
+    for sheet in parsed_sheets:
+        missing = columns - set(sheet.columns)
+        if missing:
+            errors_by_sheet[sheet.name] = list(missing)
+    if errors_by_sheet:
+        raise MissingColumnException(errors_by_sheet)
+
+
+def get_queries_from_excel(workbook, missing_value=None, combine_emits=False,
+                           max_column_length=None, required_columns=None):
     parsed_sheets = parse_workbook(workbook)
     if max_column_length:
         check_field_length(parsed_sheets, max_column_length)
+    if required_columns:
+        check_columns(parsed_sheets, required_columns)
     queries = compile_queries(parsed_sheets, missing_value, combine_emits)
     return List(queries) if len(queries) > 1 else queries[0]

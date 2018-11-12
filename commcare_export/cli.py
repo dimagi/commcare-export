@@ -18,7 +18,7 @@ from commcare_export.utils import get_checkpoint_manager
 from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION
 from commcare_export.commcare_minilinq import CommCareHqEnv
 from commcare_export.env import BuiltInEnv, JsonPathEnv, EmitterEnv
-from commcare_export.exceptions import LongFieldsException
+from commcare_export.exceptions import LongFieldsException, DataExportException
 from commcare_export.minilinq import MiniLinq
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.version import __version__
@@ -141,6 +141,7 @@ def _get_query(args, writer):
             args.missing_value,
             writer.supports_multi_table_write,
             writer.max_column_length,
+            writer.required_columns
         )
     else:
         try:
@@ -151,12 +152,15 @@ def _get_query(args, writer):
                 "Try using the '--query' parameter to pass your query as an Excel file", e
             )
 
-def _get_query_from_file(query_arg, missing_value, combine_emits, max_column_length):
+def _get_query_from_file(query_arg, missing_value, combine_emits, max_column_length, required_columns):
     if os.path.exists(query_arg):
         if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
             import openpyxl
             workbook = openpyxl.load_workbook(query_arg)
-            return excel_query.get_queries_from_excel(workbook, missing_value, combine_emits, max_column_length)
+            return excel_query.get_queries_from_excel(
+                workbook, missing_value, combine_emits,
+                max_column_length, required_columns
+            )
         else:
             with io.open(query_arg, encoding='utf-8') as fh:
                 return MiniLinq.from_jvalue(json.loads(fh.read()))
@@ -230,7 +234,7 @@ def main_with_args(args):
 
     try:
         query = _get_query(args, writer)
-    except LongFieldsException as e:
+    except DataExportException as e:
         print(e.message)
         return EXIT_STATUS_ERROR
 
