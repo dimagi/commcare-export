@@ -55,6 +55,8 @@ class TableWriter(object):
     # set to False if writer does not support writing to the same table multiple times
     supports_multi_table_write = True
 
+    required_columns = None
+
     def __enter__(self):
         return self
     
@@ -309,6 +311,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
     (TODO) with "upsert" based on primary key.
     """
     support_checkpoints = True
+    required_columns = ['id']
 
     def __init__(self, db_url, strict_types=False, poolclass=None):
         super(SqlTableWriter, self).__init__(db_url, poolclass=poolclass)
