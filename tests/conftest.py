@@ -2,6 +2,7 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 
 import logging
+import os
 import uuid
 
 import pytest
@@ -45,16 +46,21 @@ def _db_params(request, db_name):
     return params
 
 
+postgres_base = os.environ.get('POSTGRES_URL', 'postgresql://postgres@localhost/')
+mysql_base = os.environ.get('MYSQL_URL', 'mysql+pymysql://travis@/')
+mssql_base = os.environ.get('MSSQL_URL', 'mssql+pyodbc://SA:Password@123@localhost/')
+
+
 @pytest.fixture(scope="class", params=[
     pytest.param({
-        'url': "postgresql://postgres@localhost/%s",
+        'url': "{}%s".format(postgres_base),
         'admin_db': 'postgres'
     }, marks=pytest.mark.postgres),
     pytest.param({
-        'url': 'mysql+pymysql://travis@/%s?charset=utf8',
+        'url': '{}%s?charset=utf8'.format(mysql_base),
     }, marks=pytest.mark.mysql),
     pytest.param({
-        'url': 'mssql+pyodbc://SA:Password@123@localhost/%s?driver=ODBC+Driver+17+for+SQL+Server',
+        'url': '{}%s?driver=ODBC+Driver+17+for+SQL+Server'.format(mssql_base),
         'admin_db': 'master'
     }, marks=pytest.mark.mssql)
 ], ids=['postgres', 'mysql', 'mssql'])
@@ -64,7 +70,7 @@ def db_params(request):
 
 @pytest.fixture(scope="class", params=[
     {
-        'url': "postgresql://postgres@localhost/%s",
+        'url': "{}%s".format(postgres_base),
         'admin_db': 'postgres'
     },
 ], ids=['postgres'])

@@ -406,6 +406,13 @@ To run tests against selected databases can be done using test marks as follows:
 py.test -m [postgres,mysql,mssql]
 ``` 
 
+Database URLs can be overridden via environment variables:
+```
+POSTGRES_URL=postgresql://user:password@host/
+MYSQL_URL=mysql+pymysql://user:password@host/
+MSSQL_URL=mssql+pyodbc://user:password@host/
+```
+
 Postgresql
 ==========
 ```
