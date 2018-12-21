@@ -329,15 +329,22 @@ class SqlTableWriter(SqlMixin, TableWriter):
             return sqlalchemy.Integer()
         elif isinstance(val, six.string_types):
             if 'postgres' in self.db_url:
+                # PostgreSQL is the best; you can use TEXT everywhere and it works like a charm.
                 return sqlalchemy.UnicodeText(collation=self.collation)
-            # Notes on the conversions between various string types:
-            # 1. PostgreSQL is the best; you can use TEXT everywhere and it works like a charm.
-            # 2. MySQL cannot build an index on TEXT due to the lack of a field length, so we
-            #    try to use VARCHAR when possible.
-            if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
-                return sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
+            elif 'mysql' in self.db_url:
+                # MySQL cannot build an index on TEXT due to the lack of a field length, so we
+                # try to use VARCHAR when possible.
+                if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
+                    return sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
+                else:
+                    return sqlalchemy.UnicodeText(collation=self.collation)
+            elif 'mssql' in self.db_url:
+                if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
+                    return sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
+                else:
+                    return sqlalchemy.UnicodeText(collation=self.collation)
             else:
-                return sqlalchemy.UnicodeText(collation=self.collation)
+                raise Exception("Unknown database dialect: {}".format(self.db_url))
         else:
             # We do not have a name for "bottom" in SQL aka the type whose least upper bound
             # with any other type is the other type.
