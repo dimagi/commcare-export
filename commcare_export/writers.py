@@ -339,10 +339,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 else:
                     return sqlalchemy.UnicodeText(collation=self.collation)
             elif 'mssql' in self.db_url:
-                if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
-                    return sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
-                else:
-                    return sqlalchemy.UnicodeText(collation=self.collation)
+                return sqlalchemy.NVARCHAR(collation=self.collation)
             else:
                 raise Exception("Unknown database dialect: {}".format(self.db_url))
         else:
