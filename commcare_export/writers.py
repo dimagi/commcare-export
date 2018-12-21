@@ -459,6 +459,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     new_type = self.least_upper_bound(ty, current_ty)
 
                 if new_type:
+                    print('test print')
                     logger.warn('Altering column %s from %s to %s for value: "%s:%s"', columns[column], current_ty, new_type, type(val), val)
                     op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
