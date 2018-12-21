@@ -408,6 +408,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
         op = alembic.operations.Operations(ctx)
 
         if not table_name in self.metadata.tables:
+            print('making the table')
             def get_columns():
                 return [self.get_id_column()] + [
                     sqlalchemy.Column(name, self.best_type_for(val), nullable=True)
@@ -437,6 +438,8 @@ class SqlTableWriter(SqlMixin, TableWriter):
             return {c.name: c for c in self.table(table_name).columns}
 
         columns = get_cols()
+        print('columns:')
+        print(columns)
 
         for column, val in row_dict.items():
             if val is None:
@@ -444,12 +447,14 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
             ty = self.best_type_for(val)
             if not column in columns:
+                print('add new column')
                 logger.warn("Adding column '{}.{} {}'".format(table_name, column, ty))
                 op.add_column(table_name, sqlalchemy.Column(column, ty, nullable=True))
                 self.metadata.clear()
                 self.metadata.reflect()
                 columns = get_cols()
             else:
+                print("let's see if we have to alter a column")
                 current_ty = columns[column].type
                 new_type = None
                 if self.strict_types:
@@ -459,7 +464,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     new_type = self.least_upper_bound(ty, current_ty)
 
                 if new_type:
-                    print('test print')
+                    print('Yes! alter column')
                     logger.warn('Altering column %s from %s to %s for value: "%s:%s"', columns[column], current_ty, new_type, type(val), val)
                     op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
