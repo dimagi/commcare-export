@@ -328,6 +328,8 @@ class SqlTableWriter(SqlMixin, TableWriter):
         if isinstance(val, int):
             return sqlalchemy.Integer()
         elif isinstance(val, six.string_types):
+            if 'postgres' in self.db_url:
+                return sqlalchemy.UnicodeText(collation=self.collation)
             # Notes on the conversions between various string types:
             # 1. PostgreSQL is the best; you can use TEXT everywhere and it works like a charm.
             # 2. MySQL cannot build an index on TEXT due to the lack of a field length, so we
