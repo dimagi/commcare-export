@@ -327,15 +327,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
         if isinstance(val, int):
             return sqlalchemy.Integer()
-        elif isinstance(val, six.string_types):
-            # Notes on the conversions between various string types:
-            # 1. PostgreSQL is the best; you can use TEXT everywhere and it works like a charm.
-            # 2. MySQL cannot build an index on TEXT due to the lack of a field length, so we
-            #    try to use VARCHAR when possible.
-            if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
-                return sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
-            else:
-                return sqlalchemy.UnicodeText(collation=self.collation)
         else:
             # We do not have a name for "bottom" in SQL aka the type whose least upper bound
             # with any other type is the other type.
