@@ -353,8 +353,8 @@ class SqlTableWriter(SqlMixin, TableWriter):
         Checks _coercion_ compatibility.
         """
         print('compatible: source_type=%s, dest_type=%s)' % (source_type, dest_type))
-        if source_type == dest_type:
-            return True
+        # if source_type == dest_type:
+        #     return True
         if isinstance(source_type, sqlalchemy.String):
             if not isinstance(dest_type, sqlalchemy.String):
                 return False
