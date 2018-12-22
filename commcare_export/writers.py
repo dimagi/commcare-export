@@ -458,8 +458,8 @@ class SqlTableWriter(SqlMixin, TableWriter):
             if val is None:
                 continue
 
-            if column == 'id':
-                return sqlalchemy.Unicode(self.MAX_VARCHAR_LEN)
+            # if column == 'id':
+            #     return sqlalchemy.Unicode(self.MAX_VARCHAR_LEN)
             ty = self.best_type_for(val)
             print('ty= %s' % ty)
             if not column in columns:
@@ -470,6 +470,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 self.metadata.reflect()
                 columns = get_cols()
             else:
+                if columns[column].primary_key:
+                    print('got a primary key!')
+                    return sqlalchemy.Unicode(self.MAX_VARCHAR_LEN)
                 print("let's see if we have to alter a column")
                 print('self.strict_types: %s' % self.strict_types)
                 current_ty = columns[column].type
