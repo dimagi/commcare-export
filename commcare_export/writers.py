@@ -469,10 +469,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 self.metadata.clear()
                 self.metadata.reflect()
                 columns = get_cols()
-            else:
-                if columns[column].primary_key:
-                    print('got a primary key!')
-                    return sqlalchemy.Unicode(self.MAX_VARCHAR_LEN)
+            elif not columns[column].primary_key:
+                # if columns[column].primary_key:
+                #     print('got a primary key!')
+                #     return sqlalchemy.Unicode(self.MAX_VARCHAR_LEN)
                 print("let's see if we have to alter a column")
                 print('self.strict_types: %s' % self.strict_types)
                 current_ty = columns[column].type
