@@ -410,10 +410,13 @@ class SqlTableWriter(SqlMixin, TableWriter):
         if not table_name in self.metadata.tables:
             print('making the table')
             def get_columns():
-                return [self.get_id_column()] + [
+                print('get_columns')
+                cs = [self.get_id_column()] + [
                     sqlalchemy.Column(name, self.best_type_for(val), nullable=True)
                     for name, val in row_dict.items() if val is not None and name != 'id'
                 ]
+                print(cs)
+                return cs
 
             if self.strict_types:
                 create_sql = sqlalchemy.schema.CreateTable(sqlalchemy.Table(
