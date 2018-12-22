@@ -452,6 +452,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 continue
 
             ty = self.best_type_for(val)
+            print('ty= %s' % ty)
             if not column in columns:
                 print('add new column')
                 logger.warn("Adding column '{}.{} {}'".format(table_name, column, ty))
@@ -461,6 +462,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 columns = get_cols()
             else:
                 print("let's see if we have to alter a column")
+                print('self.strict_types: %s' % self.strict_types)
                 current_ty = columns[column].type
                 new_type = None
                 if self.strict_types:
@@ -471,6 +473,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
                 if new_type:
                     print('Yes! alter column')
+                    print('new_type= %s' % new_type)
                     logger.warn('Altering column %s from %s to %s for value: "%s:%s"', columns[column], current_ty, new_type, type(val), val)
                     op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
