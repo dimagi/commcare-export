@@ -328,7 +328,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
         if isinstance(val, int):
             return sqlalchemy.Integer()
         elif isinstance(val, six.string_types):
-            print(self.db_url)
             if 'postgres' in self.db_url:
                 # PostgreSQL is the best; you can use TEXT everywhere and it works like a charm.
                 return sqlalchemy.UnicodeText(collation=self.collation)
@@ -352,9 +351,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
         """
         Checks _coercion_ compatibility.
         """
-        print('compatible: source_type=%s, dest_type=%s)' % (source_type, dest_type))
-        # if source_type == dest_type:
-        #     return True
         if isinstance(source_type, sqlalchemy.String):
             if not isinstance(dest_type, sqlalchemy.String):
                 return False
@@ -412,16 +408,11 @@ class SqlTableWriter(SqlMixin, TableWriter):
         op = alembic.operations.Operations(ctx)
 
         if not table_name in self.metadata.tables:
-            print('making the table')
-            print('self.strict_types: %s' % self.strict_types)
             def get_columns():
-                print('get_columns')
-                cs = [self.get_id_column()] + [
+                return [self.get_id_column()] + [
                     sqlalchemy.Column(name, self.best_type_for(val), nullable=True)
                     for name, val in row_dict.items() if val is not None and name != 'id'
                 ]
-                print(cs)
-                return cs
 
             if self.strict_types:
                 create_sql = sqlalchemy.schema.CreateTable(sqlalchemy.Table(
@@ -440,41 +431,25 @@ class SqlTableWriter(SqlMixin, TableWriter):
             op.create_table(table_name, *get_columns())
             self.metadata.clear()
             self.metadata.reflect()
-            print('return from make_table_compatible')
             return
 
         def get_cols():
             return {c.name: c for c in self.table(table_name).columns}
 
         columns = get_cols()
-        print('columns:')
-        print(columns)
-
-        print(self.metadata)
-        print(self.table(table_name))
 
         for column, val in row_dict.items():
-            print((column, val))
             if val is None:
                 continue
 
-            # if column == 'id':
-            #     return sqlalchemy.Unicode(self.MAX_VARCHAR_LEN)
             ty = self.best_type_for(val)
-            print('ty= %s' % ty)
             if not column in columns:
-                print('add new column')
                 logger.warn("Adding column '{}.{} {}'".format(table_name, column, ty))
                 op.add_column(table_name, sqlalchemy.Column(column, ty, nullable=True))
                 self.metadata.clear()
                 self.metadata.reflect()
                 columns = get_cols()
             elif not columns[column].primary_key:
-                # if columns[column].primary_key:
-                #     print('got a primary key!')
-                #     return sqlalchemy.Unicode(self.MAX_VARCHAR_LEN)
-                print("let's see if we have to alter a column")
-                print('self.strict_types: %s' % self.strict_types)
                 current_ty = columns[column].type
                 new_type = None
                 if self.strict_types:
@@ -484,8 +459,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     new_type = self.least_upper_bound(ty, current_ty)
 
                 if new_type:
-                    print('Yes! alter column')
-                    print('new_type= %s' % new_type)
                     logger.warn('Altering column %s from %s to %s for value: "%s:%s"', columns[column], current_ty, new_type, type(val), val)
                     op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
@@ -519,9 +492,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
             row_dict = dict(zip(headings, row))
             self.make_table_compatible(table_name, row_dict)
-            print('**************')
-            print({c.name: c for c in self.table(table_name).columns})
-            print(row_dict)
             self.upsert(self.table(table_name), row_dict)
 
         if logger.getEffectiveLevel() == logging.DEBUG: sys.stderr.write('\n')
