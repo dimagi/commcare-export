@@ -328,6 +328,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
         if isinstance(val, int):
             return sqlalchemy.Integer()
         elif isinstance(val, six.string_types):
+            print(self.db_url)
             if 'postgres' in self.db_url:
                 # PostgreSQL is the best; you can use TEXT everywhere and it works like a charm.
                 return sqlalchemy.UnicodeText(collation=self.collation)
