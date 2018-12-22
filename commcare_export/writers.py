@@ -519,6 +519,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
             row_dict = dict(zip(headings, row))
             self.make_table_compatible(table_name, row_dict)
+            print('**************')
+            print({c.name: c for c in self.table(table_name).columns})
+            print(row_dict)
             self.upsert(self.table(table_name), row_dict)
 
         if logger.getEffectiveLevel() == logging.DEBUG: sys.stderr.write('\n')
