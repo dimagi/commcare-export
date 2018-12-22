@@ -450,6 +450,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
         print('columns:')
         print(columns)
 
+        print(self.metadata)
+        print(self.table(table_name))
+
         for column, val in row_dict.items():
             print((column, val))
             if val is None:
