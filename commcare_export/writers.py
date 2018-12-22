@@ -447,6 +447,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
         print(columns)
 
         for column, val in row_dict.items():
+            print((column, val))
             if val is None:
                 continue
 
