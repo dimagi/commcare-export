@@ -409,6 +409,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
         if not table_name in self.metadata.tables:
             print('making the table')
+            print('self.strict_types: %s' % self.strict_types)
             def get_columns():
                 print('get_columns')
                 cs = [self.get_id_column()] + [
@@ -435,6 +436,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             op.create_table(table_name, *get_columns())
             self.metadata.clear()
             self.metadata.reflect()
+            print('return from make_table_compatible')
             return
 
         def get_cols():
