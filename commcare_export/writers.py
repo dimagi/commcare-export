@@ -300,7 +300,7 @@ class SqlMixin(object):
     def get_id_column(self):
         return sqlalchemy.Column(
             'id',
-            sqlalchemy.NVARCHAR,
+            sqlalchemy.Unicode(self.MAX_VARCHAR_LEN),
             primary_key=True
         )
 
