@@ -458,6 +458,8 @@ class SqlTableWriter(SqlMixin, TableWriter):
             if val is None:
                 continue
 
+            if 'column' == 'id':
+                return sqlalchemy.Unicode(self.MAX_VARCHAR_LEN)
             ty = self.best_type_for(val)
             print('ty= %s' % ty)
             if not column in columns:
