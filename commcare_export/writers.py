@@ -455,7 +455,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 self.metadata.clear()
                 self.metadata.reflect()
                 columns = get_cols()
-            else:
+            elif not columns[column].primary_key:
                 current_ty = columns[column].type
                 new_type = None
                 if self.strict_types:
