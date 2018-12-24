@@ -270,14 +270,26 @@ class SqlMixin(object):
         self.connection.close()
 
     @property
+    def is_postgres(self):
+        return 'postgres' in self.db_url
+
+    @property
+    def is_mysql(self):
+        return 'mysql' in self.db_url
+
+    @property
+    def is_mssql(self):
+        return 'mssql' in self.db_url
+
+    @property
     def max_column_length(self):
-        if 'postgres' in self.db_url:
+        if self.is_postgres:
             # https://www.postgresql.org/docs/current/static/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
             return 63
-        if 'mysql' in self.db_url:
+        if self.is_mysql:
             # https://dev.mysql.com/doc/refman/8.0/en/identifiers.html
             return 64
-        if 'mssql' in self.db_url:
+        if self.is_mssql:
             # https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers?view=sql-server-2017
             return 128
         raise Exception("Unknown database dialect: {}".format(self.db_url))
@@ -328,14 +340,20 @@ class SqlTableWriter(SqlMixin, TableWriter):
         if isinstance(val, int):
             return sqlalchemy.Integer()
         elif isinstance(val, six.string_types):
-            # Notes on the conversions between various string types:
-            # 1. PostgreSQL is the best; you can use TEXT everywhere and it works like a charm.
-            # 2. MySQL cannot build an index on TEXT due to the lack of a field length, so we
-            #    try to use VARCHAR when possible.
-            if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
-                return sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
-            else:
+            if self.is_postgres:
+                # PostgreSQL is the best; you can use TEXT everywhere and it works like a charm.
                 return sqlalchemy.UnicodeText(collation=self.collation)
+            elif self.is_mysql:
+                # MySQL cannot build an index on TEXT due to the lack of a field length, so we
+                # try to use VARCHAR when possible.
+                if len(val) < self.MAX_VARCHAR_LEN:  # FIXME: Is 255 an interesting cutoff?
+                    return sqlalchemy.Unicode(max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
+                else:
+                    return sqlalchemy.UnicodeText(collation=self.collation)
+            elif self.is_mssql:
+                return sqlalchemy.NVARCHAR(collation=self.collation)
+            else:
+                raise Exception("Unknown database dialect: {}".format(self.db_url))
         else:
             # We do not have a name for "bottom" in SQL aka the type whose least upper bound
             # with any other type is the other type.
@@ -443,7 +461,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 self.metadata.clear()
                 self.metadata.reflect()
                 columns = get_cols()
-            else:
+            elif not columns[column].primary_key:
                 current_ty = columns[column].type
                 new_type = None
                 if self.strict_types:
