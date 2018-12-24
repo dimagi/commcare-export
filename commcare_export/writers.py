@@ -346,8 +346,8 @@ class SqlTableWriter(SqlMixin, TableWriter):
             elif self.is_mysql:
                 # MySQL cannot build an index on TEXT due to the lack of a field length, so we
                 # try to use VARCHAR when possible.
-                if len(val) < self.MAX_VARCHAR_LEN: # FIXME: Is 255 an interesting cutoff?
-                    return sqlalchemy.Unicode( max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
+                if len(val) < self.MAX_VARCHAR_LEN:  # FIXME: Is 255 an interesting cutoff?
+                    return sqlalchemy.Unicode(max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
                 else:
                     return sqlalchemy.UnicodeText(collation=self.collation)
             elif self.is_mssql:
