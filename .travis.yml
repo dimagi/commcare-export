@@ -3,6 +3,7 @@ sudo: required
 python:
  - "2.7"
  - "3.6"
+ - "3.7"
 env:
   global:
     - MSSQL_SA_PASSWORD=Password@123
