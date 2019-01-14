@@ -37,6 +37,6 @@ script: coverage run setup.py test
 after_success:
  - coveralls
 services:
- - postgres
+ - postgresql
  - mysql
  - docker
