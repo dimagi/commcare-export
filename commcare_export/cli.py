@@ -191,7 +191,7 @@ def _get_writer(output_format, output, strict_types):
 
 def get_date_params(args, checkpoint_manager):
     if args.start_over and checkpoint_manager:
-        logger.warn('Ignoring all checkpoints and re-fetching all data from CommCare.')
+        logger.warning('Ignoring all checkpoints and re-fetching all data from CommCare.')
 
     if not args.since and not args.start_over and checkpoint_manager:
         args.since = checkpoint_manager.get_time_of_last_checkpoint()
@@ -199,7 +199,7 @@ def get_date_params(args, checkpoint_manager):
         if args.since:
             logger.debug('Last successful checkpoint was %s', args.since)
         else:
-            logger.warn('No successful runs found, and --since not specified: will import ALL data')
+            logger.warning('No successful runs found, and --since not specified: will import ALL data')
 
     since = dateutil.parser.parse(args.since) if args.since else None
     until = dateutil.parser.parse(args.until) if args.until else None
