@@ -397,14 +397,28 @@ https://pypi.python.org/pypi/commcare-export
 
 https://github.com/dimagi/commcare-export/releases
 
-Testing databases
------------------
-Supported databases are PostgreSQL, MySQL, MSSQL.
+
+Testing and Test Databases
+--------------------------
+
+The following command will run the entire test suite (requires DB environment variables to be set as per below):
+
+```
+$ py.test
+```
+
+To exclude the database tests you can run:
+
+```
+$ py.test -m "not dbtest"
+```
+
+When running database tests, supported databases are PostgreSQL, MySQL, MSSQL.
 
 To run tests against selected databases can be done using test marks as follows:
 ```
 py.test -m [postgres,mysql,mssql]
-``` 
+```
 
 Database URLs can be overridden via environment variables:
 ```
