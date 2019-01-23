@@ -41,22 +41,22 @@ def map_value(mappings_sheet, mapping_name, source_value):
 
 def get_column_by_name(worksheet, column_name):
     # columns and rows are indexed from 1
-    for col in xrange(1, worksheet.get_highest_column() + 1):
+    for col in xrange(1, worksheet.max_column + 1):
         value = worksheet.cell(row=1, column=col).value
         value = value.lower() if value else value
         if column_name == value:
             return without_empty_tail([
-                worksheet.cell(row=i, column=col) for i in xrange(2, worksheet.get_highest_row() + 1)
+                worksheet.cell(row=i, column=col) for i in xrange(2, worksheet.max_row + 1)
             ])
 
 
 def get_columns_by_prefix(worksheet, column_prefix):
     # columns and rows are indexed from 1
-    for col in xrange(1, worksheet.get_highest_column() + 1):
+    for col in xrange(1, worksheet.max_column + 1):
         value = worksheet.cell(row=1, column=col).value
         if value and value.lower().startswith(column_prefix):
             yield value, without_empty_tail([
-                worksheet.cell(row=i, column=col) for i in xrange(2, worksheet.get_highest_row() + 1)
+                worksheet.cell(row=i, column=col) for i in xrange(2, worksheet.max_row + 1)
             ])
 
 
@@ -316,7 +316,10 @@ def parse_workbook(workbook):
 
     2. Each other sheet represents one data table to emit
     """
-    mappings_sheet = workbook.get_sheet_by_name('Mappings')
+    try:
+        mappings_sheet = workbook.get_sheet_by_name('Mappings')
+    except KeyError:
+        mappings_sheet = None
     mappings = compile_mappings(mappings_sheet) if mappings_sheet else None
 
     emit_sheets = [sheet_name for sheet_name in workbook.get_sheet_names() if sheet_name != 'Mappings']
