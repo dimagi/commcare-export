@@ -120,7 +120,7 @@ class Excel2007TableWriter(TableWriter):
                             "command:  pip install openpyxl")
 
         self.file = file
-        self.book = openpyxl.workbook.Workbook(optimized_write=True)
+        self.book = openpyxl.workbook.Workbook(write_only=True)
         self.sheets = {}
 
     def __enter__(self):
