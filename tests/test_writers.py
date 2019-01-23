@@ -59,7 +59,7 @@ class TestWriters(object):
         }
 
     def test_Excel2007TableWriter(self):
-        with tempfile.NamedTemporaryFile() as file:
+        with tempfile.NamedTemporaryFile(suffix='.xlsx') as file:
             with Excel2007TableWriter(file=file) as writer:
                 writer.write_table({
                     'name': 'foo',
@@ -73,7 +73,7 @@ class TestWriters(object):
             self._check_Excel2007TableWriter_output(file.name)
 
     def test_Excel2007TableWriter_write_mutli(self):
-        with tempfile.NamedTemporaryFile() as file:
+        with tempfile.NamedTemporaryFile(suffix='.xlsx') as file:
             with Excel2007TableWriter(file=file) as writer:
                 writer.write_table({
                     'name': 'foo',
@@ -97,7 +97,7 @@ class TestWriters(object):
 
             assert list(output_wb.get_sheet_names()) == ['foo']
             foo_sheet = output_wb.get_sheet_by_name('foo')
-            assert [ [cell.value for cell in row] for row in foo_sheet.range('A1:C3')] == [
+            assert [ [cell.value for cell in row] for row in foo_sheet['A1:C3']] == [
                 ['a', 'bjørn', 'c'],
                 ['1', '2', '3'], # Note how pyxl does some best-effort parsing to *whatever* type
                 ['4', '日本', '6'],
