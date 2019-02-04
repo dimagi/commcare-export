@@ -120,7 +120,7 @@ class Excel2007TableWriter(TableWriter):
                             "command:  pip install openpyxl")
 
         self.file = file
-        self.book = openpyxl.workbook.Workbook(optimized_write=True)
+        self.book = openpyxl.workbook.Workbook(write_only=True)
         self.sheets = {}
 
     def __enter__(self):
@@ -432,13 +432,13 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     sqlalchemy.MetaData(),
                     *get_columns()
                 )).compile(self.connection.engine)
-                logger.warn("Table '{table_name}' does not exist. Creating table with:\n{schema}".format(
+                logger.warning("Table '{table_name}' does not exist. Creating table with:\n{schema}".format(
                     table_name=table_name,
                     schema=create_sql
                 ))
                 empty_cols = [name for name, val in row_dict.items() if val is None]
                 if empty_cols:
-                    logger.warn("This schema does not include the following columns since we are unable "
+                    logger.warning("This schema does not include the following columns since we are unable "
                                 "to determine the column type at this stage: {}".format(empty_cols))
             op.create_table(table_name, *get_columns())
             self.metadata.clear()
@@ -456,7 +456,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
             ty = self.best_type_for(val)
             if not column in columns:
-                logger.warn("Adding column '{}.{} {}'".format(table_name, column, ty))
+                logger.warning("Adding column '{}.{} {}'".format(table_name, column, ty))
                 op.add_column(table_name, sqlalchemy.Column(column, ty, nullable=True))
                 self.metadata.clear()
                 self.metadata.reflect()
@@ -471,7 +471,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     new_type = self.least_upper_bound(ty, current_ty)
 
                 if new_type:
-                    logger.warn('Altering column %s from %s to %s for value: "%s:%s"', columns[column], current_ty, new_type, type(val), val)
+                    logger.warning('Altering column %s from %s to %s for value: "%s:%s"', columns[column], current_ty, new_type, type(val), val)
                     op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
                     self.metadata.reflect()

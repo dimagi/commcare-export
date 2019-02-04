@@ -70,7 +70,7 @@ setuptools.setup(
         'alembic',
         'argparse',
         'jsonpath-rw>=1.2.1',
-        'openpyxl<2.1.0',
+        'openpyxl==2.5.12',
         'python-dateutil',
         'requests',
         'ndg-httpsclient',

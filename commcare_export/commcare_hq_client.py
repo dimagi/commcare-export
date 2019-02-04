@@ -36,7 +36,7 @@ def on_giveup(details):
 
 def _log_backoff(details, action_message):
     details['__suffix'] = action_message
-    logger.warn("Request failed after {tries} attempts ({elapsed:.1f}s). {__suffix}".format(**details))
+    logger.warning("Request failed after {tries} attempts ({elapsed:.1f}s). {__suffix}".format(**details))
 
 
 def is_client_error(ex):
