@@ -230,6 +230,7 @@ def _get_checkpoint_manager(args):
 
 
 def main_with_args(args):
+    logger.info("CommCare Export Version {}".format(__version__))
     writer = _get_writer(args.output_format, args.output, args.strict_types)
 
     try:
