@@ -114,14 +114,17 @@ class CommCareHqClient(object):
         def iterate_resource(resource=resource, params=params):
             more_to_fetch = True
             last_batch_ids = set()
+            total_count = None
+            fetched = 0
 
             while more_to_fetch:
                 batch = self.get(resource, params)
-                total_count = int(batch['meta']['total_count']) if batch['meta']['total_count'] else 'unknown'
-                logger.debug('Received %s-%s of %s', 
-                             batch['meta']['offset'], 
-                             int(batch['meta']['offset'])+int(batch['meta']['limit']),
-                             total_count)
+                if not total_count or total_count == 'unknown' or fetched >= total_count:
+                    total_count = int(batch['meta']['total_count']) if batch['meta']['total_count'] else 'unknown'
+                    fetched = 0
+
+                fetched += len(batch['objects'])
+                logger.debug('Received %s of %s', fetched, total_count)
                 
                 if not batch['objects']:
                     more_to_fetch = False
