@@ -454,9 +454,9 @@ $ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=Password@123" -p 1433:1433
 
 # install driver
 $ curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-$ echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/16.04/prod xenial main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+$ echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -rs) main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
 
-$ sudo apt-get update -qq
+$ sudo apt-get update
 $ sudo ACCEPT_EULA=Y apt-get install msodbcsql17
 $ odbcinst -q -d
 ```
