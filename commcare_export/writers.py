@@ -245,7 +245,7 @@ class StreamingMarkdownTableWriter(TableWriter):
         all_rows = [table['headings']] + table['rows']
         columns = list(map(list, zip(*all_rows)))
         col_widths = map(len, [max(col, key=len) for col in columns])
-        return col_widths
+        return list(col_widths)
 
 
 class SqlMixin(object):
