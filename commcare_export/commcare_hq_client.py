@@ -141,7 +141,7 @@ class CommCareHqClient(object):
                     else:
                         more_to_fetch = False
 
-                self.checkpoint(paginator, batch)
+                    self.checkpoint(paginator, batch)
                 
         return RepeatableIterator(iterate_resource)
 
