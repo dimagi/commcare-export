@@ -97,7 +97,7 @@ class CheckpointManager(SqlMixin):
                 key=self.key,
                 project=self.project,
                 commcare=self.commcare,
-                since_param=checkpoint_time.isoformat() if checkpoint_time else '',
+                since_param=checkpoint_time.isoformat(),
                 time_of_run=datetime.datetime.utcnow().isoformat(),
                 final=final
             ))
