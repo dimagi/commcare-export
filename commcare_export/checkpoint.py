@@ -86,7 +86,6 @@ class CheckpointManager(SqlMixin):
 
     def _set_checkpoint(self, checkpoint_time, final):
         logger.info('Setting %s checkpoint: %s', 'final' if final else 'batch', checkpoint_time)
-        checkpoint_time = checkpoint_time or datetime.datetime.utcnow()
         with session_scope(self.Session) as session:
             session.add(Checkpoint(
                 id=uuid.uuid4().hex,
@@ -95,7 +94,7 @@ class CheckpointManager(SqlMixin):
                 key=self.key,
                 project=self.project,
                 commcare=self.commcare,
-                since_param=checkpoint_time.isoformat(),
+                since_param=checkpoint_time.isoformat() if checkpoint_time else '',
                 time_of_run=datetime.datetime.utcnow().isoformat(),
                 final=final
             ))
