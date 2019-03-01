@@ -151,6 +151,8 @@ class CommCareHqClient(object):
             since_date = paginator.get_since_date(batch)
             if since_date:
                 self._checkpoint_manager.set_batch_checkpoint(checkpoint_time=since_date)
+            else:
+                logger.warning('Failed to get a checkpoint date from a batch of data.')
 
 
 class MockCommCareHqClient(object):
