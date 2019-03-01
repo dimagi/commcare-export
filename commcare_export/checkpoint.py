@@ -12,6 +12,7 @@ from sqlalchemy import Column, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+from commcare_export.exceptions import DataExportException
 from commcare_export.writers import SqlMixin
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,8 @@ class CheckpointManager(SqlMixin):
 
     def _set_checkpoint(self, checkpoint_time, final):
         logger.info('Setting %s checkpoint: %s', 'final' if final else 'batch', checkpoint_time)
+        if not checkpoint_time:
+            raise DataExportException('Tried to set an empty checkpoint. This is not allowed.')
         with session_scope(self.Session) as session:
             session.add(Checkpoint(
                 id=uuid.uuid4().hex,
