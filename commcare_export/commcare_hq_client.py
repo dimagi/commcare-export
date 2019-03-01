@@ -149,7 +149,8 @@ class CommCareHqClient(object):
         from commcare_export.commcare_minilinq import DatePaginator
         if self._checkpoint_manager and isinstance(paginator, DatePaginator):
             since_date = paginator.get_since_date(batch)
-            self._checkpoint_manager.set_batch_checkpoint(checkpoint_time=since_date)
+            if since_date:
+                self._checkpoint_manager.set_batch_checkpoint(checkpoint_time=since_date)
 
 
 class MockCommCareHqClient(object):
