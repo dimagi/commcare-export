@@ -6,6 +6,7 @@ import uuid
 
 import os
 from contextlib import contextmanager
+from operator import attrgetter
 
 import dateutil.parser
 from sqlalchemy import Column, String, Boolean
@@ -27,6 +28,7 @@ class Checkpoint(Base):
     id = Column(String, primary_key=True)
     query_file_name = Column(String)
     query_file_md5 = Column(String)
+    table_name = Column(String)
     key = Column(String)
     project = Column(String)
     commcare = Column(String)
@@ -40,6 +42,7 @@ class Checkpoint(Base):
             "id={r.id}, "
             "query_file_name={r.query_file_name}, "
             "query_file_md5={r.query_file_md5}, "
+            "table_name={r.table_name}, "
             "key={r.key}, "
             "project={r.project}, "
             "commcare={r.commcare}, "
@@ -67,40 +70,47 @@ class CheckpointManager(SqlMixin):
     table_name = 'commcare_export_runs'
     migrations_repository = os.path.join(repo_root, 'migrations')
 
-    def __init__(self, db_url, query, query_md5, project, commcare, key=None, poolclass=None):
-        super(CheckpointManager, self).__init__(db_url, poolclass=poolclass)
+    def __init__(self, db_url, query, query_md5, project, commcare, key=None, table_names=None, poolclass=None, engine=None):
+        super(CheckpointManager, self).__init__(db_url, poolclass=poolclass, engine=engine)
         self.query = query
         self.query_md5 = query_md5
         self.project = project
         self.commcare = commcare
         self.key = key
         self.Session = sessionmaker(self.engine, expire_on_commit=False)
+        self.table_names = table_names
 
-    def set_batch_checkpoint(self, checkpoint_time):
-        self._set_checkpoint(checkpoint_time, False)
+    def for_tables(self, table_names):
+        return CheckpointManager(
+            self.db_url, self.query, self.query_md5, self.project, self.commcare, self.key,
+            engine=self.engine, table_names=table_names
+        )
 
-    def set_final_checkpoint(self):
-        last_run = self.get_time_of_last_checkpoint(log_warnings=False)
-        if last_run:
-            self._set_checkpoint(dateutil.parser.parse(last_run), True)
+    def set_checkpoint(self, checkpoint_time, is_final=False):
+        self._set_checkpoint(checkpoint_time, is_final)
+        if is_final:
             self._cleanup()
 
     def _set_checkpoint(self, checkpoint_time, final):
         logger.info('Setting %s checkpoint: %s', 'final' if final else 'batch', checkpoint_time)
         if not checkpoint_time:
             raise DataExportException('Tried to set an empty checkpoint. This is not allowed.')
+        self._validate_tables()
+
         with session_scope(self.Session) as session:
-            session.add(Checkpoint(
-                id=uuid.uuid4().hex,
-                query_file_name=self.query,
-                query_file_md5=self.query_md5,
-                key=self.key,
-                project=self.project,
-                commcare=self.commcare,
-                since_param=checkpoint_time.isoformat(),
-                time_of_run=datetime.datetime.utcnow().isoformat(),
-                final=final
-            ))
+            for table in self.table_names:
+                session.add(Checkpoint(
+                    id=uuid.uuid4().hex,
+                    query_file_name=self.query,
+                    query_file_md5=self.query_md5,
+                    table_name=table,
+                    key=self.key,
+                    project=self.project,
+                    commcare=self.commcare,
+                    since_param=checkpoint_time.isoformat(),
+                    time_of_run=datetime.datetime.utcnow().isoformat(),
+                    final=final
+                ))
 
     def create_checkpoint_table(self, revision='head'):
         from alembic import command, config
@@ -111,11 +121,12 @@ class CheckpointManager(SqlMixin):
             command.upgrade(cfg, revision)
 
     def _cleanup(self):
+        self._validate_tables()
         with session_scope(self.Session) as session:
             session.query(Checkpoint).filter_by(
                 final=False, query_file_md5=self.query_md5,
                 project=self.project, commcare=self.commcare
-            ).delete()
+            ).filter(Checkpoint.table_name.in_(self.table_names)).delete(synchronize_session='fetch')
 
     def get_time_of_last_checkpoint(self, log_warnings=True):
         run = self.get_last_checkpoint()
@@ -124,25 +135,38 @@ class CheckpointManager(SqlMixin):
         return run.since_param if run else None
 
     def get_last_checkpoint(self):
+        self._validate_tables()
+        table_runs = []
         with session_scope(self.Session) as session:
-            if self.key:
-                run = self._get_last_checkpoint(
-                    session, key=self.key,
-                    project=self.project, commcare=self.commcare
-                )
-            else:
-                run = self._get_last_checkpoint(
-                    session, query_file_md5=self.query_md5,
-                    project=self.project, commcare=self.commcare, key=self.key
-                )
-                if not run:
-                    # Check for run without the args
-                    run = self._get_last_checkpoint(session, query_file_md5=self.query_md5, key=self.key)
-        return run
+            for table in self.table_names:
+                if self.key:
+                    table_run = self._get_last_checkpoint(
+                        session, table_name=table,
+                        key=self.key, project=self.project, commcare=self.commcare
+                    )
+                else:
+                    table_run = self._get_last_checkpoint(
+                        session, table_name=table,
+                        query_file_md5=self.query_md5, project=self.project, commcare=self.commcare, key=self.key
+                    )
+                    if not table_run:
+                        # Check for run without the args
+                        table_run = self._get_last_checkpoint(
+                            session, table_name=table,
+                            query_file_md5=self.query_md5, key=self.key
+                        )
+                table_runs.append(table_run)
 
-    def _get_last_checkpoint(self, session, **filters):
-        return session.query(Checkpoint).filter_by(**filters)\
-            .order_by(Checkpoint.time_of_run.desc()).first()
+        sorted_runs = list(sorted(filter(None, table_runs), key=attrgetter('time_of_run')))
+        return sorted_runs[0] if sorted_runs else None
+
+    def _get_last_checkpoint(self, session, *criterion_filters, **kwarg_filters):
+        query = session.query(Checkpoint)
+        if criterion_filters:
+            query = query.filter(*criterion_filters)
+        if kwarg_filters:
+            query = query.filter_by(**kwarg_filters)
+        return query.order_by(Checkpoint.time_of_run.desc()).first()
 
     def log_warnings(self, run):
         # type: (Checkpoint) -> None
@@ -182,3 +206,35 @@ class CheckpointManager(SqlMixin):
     def update_checkpoint(self, run):
         with session_scope(self.Session) as session:
             session.merge(run)
+
+    def _validate_tables(self):
+        if not self.table_names:
+            raise Exception("Not tables set in checkpoint manager")
+
+
+class EnvCheckpointManager(object):
+    def __init__(self, base_checkpoint_manager=None, since=None, start_over=None):
+        self.start_over = start_over
+        self.since = since
+        self.base_checkpoint_manager = base_checkpoint_manager
+        self._checkpoint_manager = None
+
+    def get_since(self):
+        if self.start_over:
+            return None
+
+        if self.since:
+            return self.since
+
+        if self._checkpoint_manager:
+            since = self._checkpoint_manager.get_time_of_last_checkpoint()
+            return dateutil.parser.parse(since)
+
+    def get_checkpoint_manager(self, table_names):
+        if self.base_checkpoint_manager:
+            self._checkpoint_manager = self.base_checkpoint_manager.for_tables(table_names)
+        return self
+
+    def set_checkpoint(self, checkpoint_time, is_final=False):
+        if self._checkpoint_manager:
+            self._checkpoint_manager.set_checkpoint(checkpoint_time, is_final)

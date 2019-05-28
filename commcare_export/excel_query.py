@@ -244,7 +244,7 @@ def compile_source(worksheet):
     if isinstance(maybe_redundant_slice, jsonpath.Slice):
         data_source_jsonpath = remaining_jsonpath
 
-    api_query_args = [Reference("api_data"), Literal(data_source), Reference('since')]
+    api_query_args = [Reference("api_data"), Literal(data_source), Reference('checkpoint_manager')]
     
     if not filters:
         if include_referenced_items:
@@ -397,7 +397,7 @@ def get_multi_emit_query(source, sheets, missing_value):
         )
 
     table_names = [sheet.name for sheet in sheets]
-    return Bind('since', Apply(Reference('get_since'), Literal(table_names)), multi_query)
+    return Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal(table_names)), multi_query)
 
 
 def get_single_emit_query(sheet, missing_value):
@@ -423,7 +423,7 @@ def get_single_emit_query(sheet, missing_value):
         ),
         missing_value=missing_value
     )
-    return Bind('since', Apply(Reference('get_since'), Literal([sheet.name])), emit)
+    return Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal([sheet.name])), emit)
 
 
 def check_field_length(parsed_sheets, max_column_length):

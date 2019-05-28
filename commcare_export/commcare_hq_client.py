@@ -56,7 +56,6 @@ class CommCareHqClient(object):
         self.version = version
         self.url = url
         self.project = project
-        self._checkpoint_manager = checkpoint_manager
         self.__auth = self._get_auth(username, password, auth_mode)
         self.__session = None
 
@@ -105,7 +104,7 @@ class CommCareHqClient(object):
         response.raise_for_status()
         return response.json()
             
-    def iterate(self, resource, paginator, params=None):
+    def iterate(self, resource, paginator, params=None, checkpoint_manager=None):
         """
         Assumes the endpoint is a list endpoint, and iterates over it
         making a lot of assumptions that it is like a tastypie endpoint.
@@ -141,16 +140,16 @@ class CommCareHqClient(object):
                     else:
                         more_to_fetch = False
 
-                    self.checkpoint(paginator, batch)
+                    self.checkpoint(checkpoint_manager, paginator, batch, not more_to_fetch)
                 
         return RepeatableIterator(iterate_resource)
 
-    def checkpoint(self, paginator, batch):
+    def checkpoint(self, checkpoint_manager, paginator, batch, is_final):
         from commcare_export.commcare_minilinq import DatePaginator
-        if self._checkpoint_manager and isinstance(paginator, DatePaginator):
+        if checkpoint_manager and isinstance(paginator, DatePaginator):
             since_date = paginator.get_since_date(batch)
             if since_date:
-                self._checkpoint_manager.set_batch_checkpoint(checkpoint_time=since_date)
+                checkpoint_manager.set_checkpoint(since_date, is_final)
             else:
                 logger.warning('Failed to get a checkpoint date from a batch of data.')
 
@@ -179,7 +178,7 @@ class MockCommCareHqClient(object):
         self.mock_data = dict([(resource, dict([(urlencode(OrderedDict(sorted(params.items()))), result) for params, result in resource_results]))
                               for resource, resource_results in mock_data.items()])
 
-    def iterate(self, resource, paginator, params=None):
+    def iterate(self, resource, paginator, params=None, checkpoint_manager=None):
         logger.debug('Mock client call to resource "%s" with params "%s"', resource, params)
         return self.mock_data[resource][urlencode(OrderedDict(sorted(params.items())))]
 

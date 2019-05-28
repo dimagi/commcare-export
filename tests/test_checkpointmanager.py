@@ -39,9 +39,10 @@ class TestCheckpointManager(object):
 
     def test_get_time_of_last_checkpoint(self, manager):
         manager.create_checkpoint_table()
-        manager.set_batch_checkpoint(datetime.datetime.utcnow())
+        manager = manager.for_tables(['t1'])
+        manager.set_checkpoint(datetime.datetime.utcnow())
         second_run = datetime.datetime.utcnow()
-        manager.set_batch_checkpoint(second_run)
+        manager.set_checkpoint(second_run)
 
         assert manager.get_time_of_last_checkpoint() == second_run.isoformat()
 
@@ -54,32 +55,36 @@ class TestCheckpointManager(object):
                 id=uuid.uuid4().hex,
                 query_file_name=manager.query,
                 query_file_md5=manager.query_md5,
+                table_name='t1',
                 project=None,
                 commcare=None,
                 since_param=since_param,
                 time_of_run=datetime.datetime.utcnow().isoformat(),
                 final=True
             ))
+        manager = manager.for_tables(['t1'])
         assert manager.get_time_of_last_checkpoint() == since_param
 
     def test_clean_on_final_run(self, manager):
         manager.create_checkpoint_table()
-        manager.set_batch_checkpoint(datetime.datetime.utcnow())
-        manager.set_batch_checkpoint(datetime.datetime.utcnow())
+        manager = manager.for_tables(['t1'])
+        manager.set_checkpoint(datetime.datetime.utcnow())
+        manager.set_checkpoint(datetime.datetime.utcnow())
 
         def _get_non_final_rows_count():
             with session_scope(manager.Session) as session:
                 return session.query(Checkpoint).filter_by(final=False).count()
 
         assert _get_non_final_rows_count() == 2
-        manager.set_final_checkpoint()
+        manager.set_checkpoint(datetime.datetime.utcnow(), True)
         assert _get_non_final_rows_count() == 0
 
     def test_get_time_of_last_checkpoint__with_key(self, manager):
         manager.create_checkpoint_table()
+        manager = manager.for_tables(['t1'])
         manager.key = 'my key'
         last_run_time = datetime.datetime.utcnow()
-        manager.set_batch_checkpoint(last_run_time)
+        manager.set_checkpoint(last_run_time)
 
         assert manager.get_time_of_last_checkpoint() == last_run_time.isoformat()
         manager.key = None

@@ -257,10 +257,10 @@ class SqlMixin(object):
     MIN_VARCHAR_LEN = 32
     MAX_VARCHAR_LEN = 255  # Arbitrary point at which we switch to TEXT; for postgres VARCHAR == TEXT anyhow
 
-    def __init__(self, db_url, poolclass=None):
+    def __init__(self, db_url, poolclass=None, engine=None):
         self.db_url = db_url
         self.collation = 'utf8_bin' if 'mysql' in db_url else None
-        self.engine = sqlalchemy.create_engine(db_url, poolclass=poolclass)
+        self.engine = engine or sqlalchemy.create_engine(db_url, poolclass=poolclass)
 
     def __enter__(self):
         self.connection = self.engine.connect()

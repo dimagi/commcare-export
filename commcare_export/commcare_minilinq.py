@@ -9,6 +9,8 @@ import json
 from commcare_export.env import DictEnv, CannotBind, CannotReplace
 from datetime import datetime
 
+from commcare_export.misc import unwrap
+
 try:
     from urllib.parse import urlparse, parse_qs
 except ImportError:
@@ -98,23 +100,26 @@ class CommCareHqEnv(DictEnv):
     CommCareHq API.
     """
     
-    def __init__(self, commcare_hq_client, since=None, until=None, page_size=1000):
+    def __init__(self, commcare_hq_client, until=None, page_size=1000):
         self.commcare_hq_client = commcare_hq_client
-        self.since = since
         self.until = until
         self.page_size = page_size
         super(CommCareHqEnv, self).__init__({
             'api_data' : self.api_data
         })
 
-    def api_data(self, resource, since, payload=None, include_referenced_items=None):
+    @unwrap('checkpoint_manager')
+    def api_data(self, resource, checkpoint_manager, payload=None, include_referenced_items=None):
         if resource not in resource_since_params:
             raise ValueError('I do not know how to access the API resource "%s"' % resource)
 
         paginator = get_paginator(resource, self.page_size)
         paginator.init(payload, include_referenced_items, self.until)
-        initial_params = paginator.next_page_params_since(since)
-        return self.commcare_hq_client.iterate(resource, paginator, params=initial_params)
+        initial_params = paginator.next_page_params_since(checkpoint_manager.get_since())
+        return self.commcare_hq_client.iterate(
+            resource, paginator,
+            params=initial_params, checkpoint_manager=checkpoint_manager
+        )
 
     def bind(self, name, value):
         raise CannotBind()
