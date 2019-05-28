@@ -139,6 +139,8 @@ class CheckpointManager(SqlMixin):
             ).filter(Checkpoint.table_name.in_(self.table_names)).delete(synchronize_session='fetch')
 
     def get_time_of_last_checkpoint(self, log_warnings=True):
+        """Return the earliest time from the list of checkpoints that for the current
+        query file / key."""
         run = self.get_last_checkpoint()
         if run and log_warnings:
             self.log_warnings(run)
@@ -280,6 +282,12 @@ class EnvCheckpointManager(object):
             return dateutil.parser.parse(since)
 
     def get_checkpoint_manager(self, table_names):
+        """This get's called before each table is exported and set in the `env`. It is then
+        passed to the API client and used to set the checkpoints.
+
+        :param table_names: List of table names being exported to. This is a list since
+                            multiple tables can be processed by a since API query.
+        """
         if self.base_checkpoint_manager:
             self._checkpoint_manager = self.base_checkpoint_manager.for_tables(table_names)
         return self
