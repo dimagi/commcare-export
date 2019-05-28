@@ -46,7 +46,7 @@ class TestCheckpointManager(object):
 
         assert manager.get_time_of_last_checkpoint() == second_run.isoformat()
 
-    def test_get_time_of_last_checkpoint_no_args(self, manager):
+    def test_get_last_checkpoint_no_args(self, manager):
         # test that we can still get the time of last run no project and commcare args
         manager.create_checkpoint_table()
         with session_scope(manager.Session) as session:
@@ -55,15 +55,53 @@ class TestCheckpointManager(object):
                 id=uuid.uuid4().hex,
                 query_file_name=manager.query,
                 query_file_md5=manager.query_md5,
-                table_name='t1',
                 project=None,
                 commcare=None,
                 since_param=since_param,
                 time_of_run=datetime.datetime.utcnow().isoformat(),
                 final=True
             ))
-        manager = manager.for_tables(['t1'])
-        assert manager.get_time_of_last_checkpoint() == since_param
+        manager = manager.for_tables(['t1', 't2'])
+        checkpoint = manager.get_last_checkpoint()
+        assert checkpoint.since_param == since_param
+        assert checkpoint.project == manager.project
+        assert checkpoint.commcare == manager.commcare
+        assert len(manager.get_latest_checkpoints()) == 2
+
+    def test_get_last_checkpoint_no_table(self, manager):
+        # test that we can still get the time of last run no table
+        # also tests that new checkoints are created with the tables
+        manager.create_checkpoint_table()
+        with session_scope(manager.Session) as session:
+            since_param = datetime.datetime.utcnow().isoformat()
+            session.add(Checkpoint(
+                id=uuid.uuid4().hex,
+                query_file_name=manager.query,
+                query_file_md5=manager.query_md5,
+                project=None,
+                commcare=None,
+                since_param=since_param,
+                time_of_run=datetime.datetime.utcnow().isoformat(),
+                final=True
+            ))
+
+            session.add(Checkpoint(
+                id=uuid.uuid4().hex,
+                query_file_name=manager.query,
+                query_file_md5=manager.query_md5,
+                project=manager.project,
+                commcare=manager.commcare,
+                since_param=since_param,
+                time_of_run=datetime.datetime.utcnow().isoformat(),
+                final=True
+            ))
+        manager = manager.for_tables(['t1', 't2'])
+        checkpoint = manager.get_last_checkpoint()
+        assert checkpoint.since_param == since_param
+        assert checkpoint.table_name in manager.table_names
+        checkpoints = manager.get_latest_checkpoints()
+        assert len(checkpoints) == 2
+        assert {c.table_name for c in checkpoints} == set(manager.table_names)
 
     def test_clean_on_final_run(self, manager):
         manager.create_checkpoint_table()

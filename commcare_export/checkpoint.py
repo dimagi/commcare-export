@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from operator import attrgetter
 
 import dateutil.parser
+import six
 from sqlalchemy import Column, String, Boolean, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -91,15 +92,21 @@ class CheckpointManager(SqlMixin):
         if is_final:
             self._cleanup()
 
-    def _set_checkpoint(self, checkpoint_time, final):
+    def _set_checkpoint(self, checkpoint_time, final, time_of_run=None):
         logger.info('Setting %s checkpoint: %s', 'final' if final else 'batch', checkpoint_time)
         if not checkpoint_time:
             raise DataExportException('Tried to set an empty checkpoint. This is not allowed.')
         self._validate_tables()
 
+        if isinstance(checkpoint_time, six.text_type):
+            since_param = checkpoint_time
+        else:
+            since_param = checkpoint_time.isoformat()
+
+        created = []
         with session_scope(self.Session) as session:
             for table in self.table_names:
-                session.add(Checkpoint(
+                checkpoint = Checkpoint(
                     id=uuid.uuid4().hex,
                     query_file_name=self.query,
                     query_file_md5=self.query_md5,
@@ -107,10 +114,13 @@ class CheckpointManager(SqlMixin):
                     key=self.key,
                     project=self.project,
                     commcare=self.commcare,
-                    since_param=checkpoint_time.isoformat(),
-                    time_of_run=datetime.datetime.utcnow().isoformat(),
+                    since_param=since_param,
+                    time_of_run=time_of_run or datetime.datetime.utcnow().isoformat(),
                     final=final
-                ))
+                )
+                session.add(checkpoint)
+                created.append(checkpoint)
+        return created
 
     def create_checkpoint_table(self, revision='head'):
         from alembic import command, config
@@ -151,16 +161,31 @@ class CheckpointManager(SqlMixin):
                         session, table_name=table,
                         query_file_md5=self.query_md5, project=self.project, commcare=self.commcare, key=self.key
                     )
-                    if not table_run:
-                        # Check for run without the args
-                        table_run = self._get_last_checkpoint(
-                            session, table_name=table,
-                            query_file_md5=self.query_md5, key=self.key
-                        )
-                table_runs.append(table_run)
+                if table_run:
+                   table_runs.append(table_run)
 
-        sorted_runs = list(sorted(filter(None, table_runs), key=attrgetter('time_of_run')))
+        if not table_runs:
+            table_runs = self.get_legacy_checkpoints()
+
+        sorted_runs = list(sorted(table_runs, key=attrgetter('time_of_run')))
         return sorted_runs[0] if sorted_runs else None
+
+    def get_legacy_checkpoints(self):
+        with session_scope(self.Session) as session:
+            # check without table_name
+            table_run = self._get_last_checkpoint(
+                session, query_file_md5=self.query_md5,
+                project=self.project, commcare=self.commcare, key=self.key
+            )
+            if table_run:
+                return self._set_checkpoint(table_run.since_param, table_run.final, table_run.time_of_run)
+
+            # Check for run without the args
+            table_run = self._get_last_checkpoint(
+                session, query_file_md5=self.query_md5, key=self.key
+            )
+            if table_run:
+                return self._set_checkpoint(table_run.since_param, table_run.final, table_run.time_of_run)
 
     def _get_last_checkpoint(self, session, *criterion_filters, **kwarg_filters):
         query = session.query(Checkpoint)
@@ -219,7 +244,8 @@ class CheckpointManager(SqlMixin):
                 partition_by=Checkpoint.table_name, order_by=Checkpoint.time_of_run.desc()
             ).label("row_number")
             inner_query = self._filter_query(session.query(Checkpoint, window_func))
-            inner_query = inner_query.filter(Checkpoint.query_file_md5 == self.query_md5).subquery()
+            inner_query = inner_query.filter(Checkpoint.query_file_md5 == self.query_md5)
+            inner_query = inner_query.filter(Checkpoint.table_name.isnot(None)).subquery()
 
             query = session.query(Checkpoint).select_entity_from(inner_query)\
                 .filter(inner_query.c.row_number == 1)\
