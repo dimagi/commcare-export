@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from operator import attrgetter
 
 import dateutil.parser
-from sqlalchemy import Column, String, Boolean
+from sqlalchemy import Column, String, Boolean, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -135,6 +135,8 @@ class CheckpointManager(SqlMixin):
         return run.since_param if run else None
 
     def get_last_checkpoint(self):
+        """Return a single checkpoint such that it has the earliest `since_param` of all
+        checkpoints for the active tables."""
         self._validate_tables()
         table_runs = []
         with session_scope(self.Session) as session:
@@ -182,7 +184,7 @@ class CheckpointManager(SqlMixin):
             )
 
     def list_checkpoints(self, limit=20):
-        """List checkpoints filtered by:
+        """List all checkpoints filtered by:
         * file name
         * project
         * commcare
@@ -191,17 +193,38 @@ class CheckpointManager(SqlMixin):
         Don't filter by MD5 on purpose.
         """
         with session_scope(self.Session) as session:
-            query = session.query(Checkpoint)
+            query = self._filter_query(session.query(Checkpoint))
             if self.query:
                 query = query.filter(Checkpoint.query_file_name == self.query)
-            if self.project:
-                query = query.filter(Checkpoint.project == self.project)
-            if self.commcare:
-                query = query.filter(Checkpoint.commcare == self.commcare)
-            if self.key:
-                query = query.filter(Checkpoint.key == self.key)
-
             return query.order_by(Checkpoint.time_of_run.desc())[:limit]
+
+    def _filter_query(self, query):
+        if self.project:
+            query = query.filter(Checkpoint.project == self.project)
+        if self.commcare:
+            query = query.filter(Checkpoint.commcare == self.commcare)
+        if self.key:
+            query = query.filter(Checkpoint.key == self.key)
+        return query
+
+    def get_latest_checkpoints(self):
+        """Returns the latest checkpoint for each table filtered by the fields set in the manager:
+        * query_md5
+        * project
+        * commcare
+        * key
+        """
+        with session_scope(self.Session) as session:
+            window_func = func.row_number().over(
+                partition_by=Checkpoint.table_name, order_by=Checkpoint.time_of_run.desc()
+            ).label("row_number")
+            inner_query = self._filter_query(session.query(Checkpoint, window_func))
+            inner_query = inner_query.filter(Checkpoint.query_file_md5 == self.query_md5).subquery()
+
+            query = session.query(Checkpoint).select_entity_from(inner_query)\
+                .filter(inner_query.c.row_number == 1)\
+                .order_by(Checkpoint.table_name.asc())
+            return list(query)
 
     def update_checkpoint(self, run):
         with session_scope(self.Session) as session:

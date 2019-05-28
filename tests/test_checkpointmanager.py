@@ -105,3 +105,19 @@ class TestCheckpointManager(object):
         checkpoints = manager.list_checkpoints()
         assert len(checkpoints) == 2
         assert {checkpoints[0].table_name, checkpoints[1].table_name} == {t1, t2}
+
+    def test_get_latest_checkpoints(self, manager):
+        manager.create_checkpoint_table()
+        manager = manager.for_tables(['t1', 't2'])
+        manager.set_checkpoint(datetime.datetime.utcnow())
+
+        manager.query_md5 = '456'
+        manager.set_checkpoint(datetime.datetime.utcnow())
+        latest_time = datetime.datetime.utcnow()
+        manager.set_checkpoint(latest_time)
+
+        checkpoints = manager.get_latest_checkpoints()
+        assert len(checkpoints) == 2
+        assert [c.table_name for c in checkpoints] == ['t1', 't2']
+        assert {c.query_file_md5 for c in checkpoints} == {'456'}
+        assert {c.since_param for c in checkpoints} == {latest_time.isoformat()}

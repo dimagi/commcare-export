@@ -38,7 +38,7 @@ def print_runs(runs):
     for run in runs:
         rows.append([
             run.time_of_run, run.since_param, "True" if run.final else "False",
-            run.project, run.query_file_name, run.query_file_md5, run.key, run.commcare
+            run.project, run.query_file_name, run.query_file_md5, run.key, run.table_name, run.commcare
         ])
 
     rows = [
@@ -49,7 +49,7 @@ def print_runs(runs):
     StreamingMarkdownTableWriter(sys.stdout, compute_widths=True).write_table({
         'headings': [
             "Checkpoint Time", "Batch end date", "Export Complete",
-            "Project", "Query Filename", "Query MD5", "Key", "CommCare HQ"
+            "Project", "Query Filename", "Query MD5", "Key", "Table", "CommCare HQ"
         ],
         'rows': rows
     })
