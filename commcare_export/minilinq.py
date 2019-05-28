@@ -94,6 +94,7 @@ class Reference(MiniLinq):
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.ref)
 
+
 class Literal(MiniLinq):
     """
     An MiniLinq wrapper around a python value. Returns exactly the
@@ -119,6 +120,7 @@ class Literal(MiniLinq):
 
     def to_jvalue(self):
         return {'Lit': self.v}
+
 
 class Bind(MiniLinq):
     """

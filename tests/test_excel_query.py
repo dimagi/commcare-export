@@ -86,7 +86,7 @@ class TestExcelQuery(unittest.TestCase):
 
         test_cases = [
             ('001_JustDataSource.xlsx', SheetParts(
-                name='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form")), body=None),
+                name='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form"), Reference('since')), body=None),
             ),
             #('001a_JustDataSource_LibreOffice.xlsx', Emit(table='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form")))),
             
@@ -97,6 +97,7 @@ class TestExcelQuery(unittest.TestCase):
                  source=Apply(
                      Reference("api_data"),
                      Literal("form"),
+                     Reference("since"),
                      Literal({
                          'app_id': 'foobizzle',
                          'type': 'intake',
@@ -113,7 +114,7 @@ class TestExcelQuery(unittest.TestCase):
                      Literal('Danger 0'), Literal('Danger 1'), Literal('Danger Fever'),
                      Literal('Danger error'), Literal('Danger error'), Literal('special')
                  ],
-                 source=Apply(Reference("api_data"), Literal("form")),
+                 source=Apply(Reference("api_data"), Literal("form"), Reference('since')),
                  body=List([
                      Reference("type"),
                      Apply(Reference("FormatDate"), Reference("date_of_birth")),
@@ -131,7 +132,7 @@ class TestExcelQuery(unittest.TestCase):
              SheetParts(
                  name='Forms',
                  headings = [],
-                 source=Apply(Reference("api_data"), Literal("form")),
+                 source=Apply(Reference("api_data"), Literal("form"), Reference('since')),
                  body=None,
                  root_expr=Reference('form.delivery_information.child_questions.[*]')
              )),
@@ -143,6 +144,7 @@ class TestExcelQuery(unittest.TestCase):
                  source=Apply(
                      Reference("api_data"),
                      Literal("form"),
+                     Reference("since"),
                      Literal(None),
                      Literal(['foo', 'bar', 'bizzle'])
                  ),
@@ -150,7 +152,7 @@ class TestExcelQuery(unittest.TestCase):
              )),
 
             ('010_JustDataSourceTableName.xlsx', SheetParts(
-                name='my_table', headings=[], source=Apply(Reference("api_data"), Literal("form")), body=None),
+                name='my_table', headings=[], source=Apply(Reference("api_data"), Literal("form"), Reference('since')), body=None),
             ),
         ]
 
@@ -171,15 +173,15 @@ class TestExcelQuery(unittest.TestCase):
         test_cases = [
             ('004_TwoDataSources.xlsx', 
              [
-                SheetParts(name='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form")), body=None),
-                SheetParts(name='Cases', headings=[], source=Apply(Reference("api_data"), Literal("case")), body=None)
+                SheetParts(name='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form"), Reference('since')), body=None),
+                SheetParts(name='Cases', headings=[], source=Apply(Reference("api_data"), Literal("case"), Reference('since')), body=None)
              ]),
             ('007_Mappings.xlsx',
              [
                  SheetParts(
                      name='Forms',
                      headings=[Literal('Form Type')],
-                     source=Apply(Reference("api_data"), Literal("form")),
+                     source=Apply(Reference("api_data"), Literal("form"), Reference('since')),
                      body=List([compile_mapped_field(field_mappings, Reference("type"))]),
                  )
              ]),
@@ -207,7 +209,8 @@ class TestExcelQuery(unittest.TestCase):
         assert list(expression.eval(env))[0].value == 'b'
 
     def test_get_queries_from_excel(self):
-        minilinq = Emit(
+        minilinq = Bind('since', Apply(Reference('get_since'), Literal(["Forms"])),
+            Emit(
             table='Forms',
             missing_value='---',
             headings =[
@@ -216,7 +219,7 @@ class TestExcelQuery(unittest.TestCase):
                 Literal('Danger error'), Literal('Danger error'), Literal('special')
             ],
             source = Map(
-                source=Apply(Reference("api_data"), Literal("form")),
+                source=Apply(Reference("api_data"), Literal("form"), Reference('since')),
                 body = List([
                     Reference("type"),
                     Apply(Reference("FormatDate"), Reference("date_of_birth")),
@@ -228,6 +231,7 @@ class TestExcelQuery(unittest.TestCase):
                     Literal('Error: Unable to parse: selected(fever'),
                     Reference('path."#text"')
                 ]))
+            )
         )
 
         self._compare_munilinq_to_compiled(minilinq, '003_DataSourceAndEmitColumns.xlsx')
@@ -235,39 +239,43 @@ class TestExcelQuery(unittest.TestCase):
     def test_alternate_source_fields(self):
         minilinq = List([
             # First sheet uses a CSV column and also tests combining "Map Via"
-            Emit(
-                table='Forms', missing_value='---',
-                headings =[
-                    Literal('dob'),
-                ],
-                source = Map(
-                    source=Apply(Reference("api_data"), Literal("form")),
-                    body = List([
-                        Apply(
-                            Reference("str2date"),
+            Bind('since', Apply(Reference('get_since'), Literal(["Forms"])),
+                Emit(
+                    table='Forms', missing_value='---',
+                    headings =[
+                        Literal('dob'),
+                    ],
+                    source = Map(
+                        source=Apply(Reference("api_data"), Literal("form"), Reference('since')),
+                        body = List([
                             Apply(
-                                Reference("or"),
-                                Reference("dob"), Reference("date_of_birth"), Reference("d_o_b")
-                            )
-                        ),
-                    ]))
+                                Reference("str2date"),
+                                Apply(
+                                    Reference("or"),
+                                    Reference("dob"), Reference("date_of_birth"), Reference("d_o_b")
+                                )
+                            ),
+                        ]))
+                )
             ),
 
             # Second sheet uses multiple alternate source field columns (listed out of order)
-            Emit(
-                table='Forms1', missing_value='---',
-                headings=[
-                    Literal('dob'), Literal('Sex'),
-                ],
-                source=Map(
-                    source=Apply(Reference("api_data"), Literal("form")),
-                    body=List([
-                        Reference("dob"),
-                        Apply(
-                            Reference("or"),
-                            Reference("gender"), Reference("sex"), Reference("sex0")
-                        )
-                    ]))
+            Bind('since', Apply(Reference('get_since'), Literal(["Forms1"])),
+                Emit(
+                    table='Forms1', missing_value='---',
+                    headings=[
+                        Literal('dob'), Literal('Sex'),
+                    ],
+                    source=Map(
+                        source=Apply(Reference("api_data"), Literal("form"), Reference('since')),
+                        body=List([
+                            Reference("dob"),
+                            Apply(
+                                Reference("or"),
+                                Reference("gender"), Reference("sex"), Reference("sex0")
+                            )
+                        ]))
+                )
             ),
         ])
 
@@ -275,49 +283,55 @@ class TestExcelQuery(unittest.TestCase):
 
     def test_multi_emit(self):
         minilinq = List([
-            Filter(
-                predicate=Apply(
-                    Reference("filter_empty"),
-                    Reference("$")
-                ),
-                source=Map(
-                    source=Apply(Reference("api_data"), Literal("form")),
-                    body=List([
-                        Emit(
-                            table="Forms",
-                            headings=[Literal("id"), Literal("name")],
-                            missing_value='---',
-                            source=Map(
-                                source=Reference("`this`"),
-                                body=List([
-                                    Reference("id"),
-                                    Reference("form.name"),
-                                ]),
+            Bind("since", Apply(Reference('get_since'), Literal(["Forms", "Cases"])),
+                Filter(
+                    predicate=Apply(
+                        Reference("filter_empty"),
+                        Reference("$")
+                    ),
+                    source=Map(
+                        source=Apply(Reference("api_data"), Literal("form"), Reference('since')),
+                        body=List([
+                            Emit(
+                                table="Forms",
+                                headings=[Literal("id"), Literal("name")],
+                                missing_value='---',
+                                source=Map(
+                                    source=Reference("`this`"),
+                                    body=List([
+                                        Reference("id"),
+                                        Reference("form.name"),
+                                    ]),
+                                )
+                            ),
+                            Emit(
+                                table="Cases",
+                                headings=[Literal("case_id")],
+                                missing_value='---',
+                                source=Map(
+                                    source=Reference("form..case"),
+                                    body=List([
+                                        Reference("@case_id"),
+                                    ]),
+                                )
                             )
-                        ),
-                        Emit(
-                            table="Cases",
-                            headings=[Literal("case_id")],
-                            missing_value='---',
-                            source=Map(
-                                source=Reference("form..case"),
-                                body=List([
-                                    Reference("@case_id"),
-                                ]),
-                            )
-                        )
-                    ])
+                        ])
+                    )
                 )
             ),
-            Emit(
-                table="Other cases",
-                headings=[Literal("id")],
-                missing_value='---',
-                source=Map(
-                    source=Apply(Reference("api_data"), Literal("case")),
-                    body=List([
-                        Reference("id")
-                    ])
+            Bind(
+                'since',
+                Apply(Reference('get_since'), Literal(["Other cases"])),
+                Emit(
+                    table="Other cases",
+                    headings=[Literal("id")],
+                    missing_value='---',
+                    source=Map(
+                        source=Apply(Reference("api_data"), Literal("case"), Reference('since')),
+                        body=List([
+                            Reference("id")
+                        ])
+                    )
                 )
             )
         ])
@@ -326,41 +340,47 @@ class TestExcelQuery(unittest.TestCase):
 
     def test_multi_emit_no_combine(self):
         minilinq = List([
-            Emit(
-                table="Forms",
-                headings=[Literal("id"), Literal("name")],
-                missing_value='---',
-                source=Map(
-                    source=Apply(Reference("api_data"), Literal("form")),
-                    body=List([
-                        Reference("id"),
-                        Reference("form.name"),
-                    ]),
+            Bind("since", Apply(Reference('get_since'), Literal(["Forms"])),
+                 Emit(
+                    table="Forms",
+                    headings=[Literal("id"), Literal("name")],
+                    missing_value='---',
+                    source=Map(
+                        source=Apply(Reference("api_data"), Literal("form"), Reference('since')),
+                        body=List([
+                            Reference("id"),
+                            Reference("form.name"),
+                        ]),
+                    )
+                 )
+            ),
+            Bind("since", Apply(Reference('get_since'), Literal(["Cases"])),
+                Emit(
+                    table="Cases",
+                    headings=[Literal("case_id")],
+                    missing_value='---',
+                    source=Map(
+                        source=FlatMap(
+                            body=Reference("form..case"),
+                            source=Apply(Reference("api_data"), Literal("form"), Reference('since'))
+                        ),
+                        body=List([
+                            Reference("@case_id"),
+                        ]),
+                    )
                 )
             ),
-            Emit(
-                table="Cases",
-                headings=[Literal("case_id")],
-                missing_value='---',
-                source=Map(
-                    source=FlatMap(
-                        body=Reference("form..case"),
-                        source=Apply(Reference("api_data"), Literal("form"))
-                    ),
-                    body=List([
-                        Reference("@case_id"),
-                    ]),
-                )
-            ),
-            Emit(
-                table="Other cases",
-                headings=[Literal("id")],
-                missing_value='---',
-                source=Map(
-                    source=Apply(Reference("api_data"), Literal("case")),
-                    body=List([
-                        Reference("id")
-                    ])
+            Bind("since", Apply(Reference('get_since'), Literal(["Other cases"])),
+                Emit(
+                    table="Other cases",
+                    headings=[Literal("id")],
+                    missing_value='---',
+                    source=Map(
+                        source=Apply(Reference("api_data"), Literal("case"), Reference('since')),
+                        body=List([
+                            Reference("id")
+                        ])
+                    )
                 )
             )
         ])
