@@ -90,3 +90,18 @@ class TestCheckpointManager(object):
         manager.key = None
         assert manager.get_time_of_last_checkpoint() is None
 
+    def test_multiple_tables(self, manager):
+        manager.create_checkpoint_table()
+        t1 = uuid.uuid4().hex
+        t2 = uuid.uuid4().hex
+        manager = manager.for_tables([t1, t2])
+        last_run_time = datetime.datetime.utcnow()
+        manager.set_checkpoint(last_run_time)
+
+        assert manager.for_tables([t1]).get_time_of_last_checkpoint() == last_run_time.isoformat()
+        assert manager.for_tables([t2]).get_time_of_last_checkpoint() == last_run_time.isoformat()
+        assert manager.for_tables(['t3']).get_time_of_last_checkpoint() is None
+
+        checkpoints = manager.list_checkpoints()
+        assert len(checkpoints) == 2
+        assert {checkpoints[0].table_name, checkpoints[1].table_name} == {t1, t2}
