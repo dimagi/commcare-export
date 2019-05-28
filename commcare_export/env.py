@@ -279,10 +279,11 @@ def str2date(val):
     except ValueError:
         return
 
-    try:
-        date = date.astimezone(pytz.utc)
-    except ValueError:
-        pass
+    if date.tzinfo is not None:
+        try:
+            date = date.astimezone(pytz.utc)
+        except ValueError:
+            pass
 
     return date.replace(microsecond=0, tzinfo=None)
 
