@@ -95,8 +95,8 @@ class TestWriters(object):
     def _check_Excel2007TableWriter_output(self, filename):
             output_wb = openpyxl.load_workbook(filename)
 
-            assert list(output_wb.get_sheet_names()) == ['foo']
-            foo_sheet = output_wb.get_sheet_by_name('foo')
+            assert output_wb.sheetnames == ['foo']
+            foo_sheet = output_wb['foo']
             assert [ [cell.value for cell in row] for row in foo_sheet['A1:C3']] == [
                 ['a', 'bjørn', 'c'],
                 ['1', '2', '3'], # Note how pyxl does some best-effort parsing to *whatever* type
