@@ -117,7 +117,7 @@ class TestCheckpointManager(object):
         manager.set_checkpoint(datetime.datetime.utcnow(), True)
         assert _get_non_final_rows_count() == 0
 
-    def test_get_time_of_last_checkpoint__with_key(self, manager):
+    def test_get_time_of_last_checkpoint_with_key(self, manager):
         manager.create_checkpoint_table()
         manager = manager.for_tables(['t1'])
         manager.key = 'my key'
@@ -138,7 +138,7 @@ class TestCheckpointManager(object):
 
         assert manager.for_tables([t1]).get_time_of_last_checkpoint() == last_run_time.isoformat()
         assert manager.for_tables([t2]).get_time_of_last_checkpoint() == last_run_time.isoformat()
-        assert manager.for_tables(['t3']).get_time_of_last_checkpoint() is None
+        assert manager.for_tables(['t3']).get_last_checkpoint() is None
 
         checkpoints = manager.list_checkpoints()
         assert len(checkpoints) == 2

@@ -169,14 +169,15 @@ class CheckpointManager(SqlMixin):
         if not table_runs:
             table_runs = self.get_legacy_checkpoints()
 
-        sorted_runs = list(sorted(table_runs, key=attrgetter('time_of_run')))
-        return sorted_runs[0] if sorted_runs else None
+        if table_runs:
+            sorted_runs = list(sorted(table_runs, key=attrgetter('time_of_run')))
+            return sorted_runs[0]
 
     def get_legacy_checkpoints(self):
         with session_scope(self.Session) as session:
             # check without table_name
             table_run = self._get_last_checkpoint(
-                session, query_file_md5=self.query_md5,
+                session, query_file_md5=self.query_md5, table_name=None,
                 project=self.project, commcare=self.commcare, key=self.key
             )
             if table_run:
@@ -184,7 +185,8 @@ class CheckpointManager(SqlMixin):
 
             # Check for run without the args
             table_run = self._get_last_checkpoint(
-                session, query_file_md5=self.query_md5, key=self.key
+                session, query_file_md5=self.query_md5, key=self.key,
+                project=None, commcare=None, table_name=None
             )
             if table_run:
                 return self._set_checkpoint(table_run.since_param, table_run.final, table_run.time_of_run)
