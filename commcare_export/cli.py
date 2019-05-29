@@ -14,7 +14,7 @@ from six.moves import input
 
 from commcare_export import excel_query
 from commcare_export import writers
-from commcare_export.checkpoint import EnvCheckpointManager
+from commcare_export.checkpoint import CheckpointManagerProvider
 from commcare_export.utils import get_checkpoint_manager
 from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION
 from commcare_export.commcare_minilinq import CommCareHqEnv
@@ -257,7 +257,7 @@ def main_with_args(args):
     elif since:
         logger.debug('Starting from %s', args.since)
 
-    cm = EnvCheckpointManager(checkpoint_manager, since, args.start_over)
+    cm = CheckpointManagerProvider(checkpoint_manager, since, args.start_over)
     static_env = {
         'commcarehq_base_url': commcarehq_base_url,
         'get_checkpoint_manager': cm.get_checkpoint_manager,

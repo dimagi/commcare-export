@@ -115,7 +115,7 @@ class CommCareHqEnv(DictEnv):
 
         paginator = get_paginator(resource, self.page_size)
         paginator.init(payload, include_referenced_items, self.until)
-        initial_params = paginator.next_page_params_since(checkpoint_manager.get_since())
+        initial_params = paginator.next_page_params_since(checkpoint_manager.since_param)
         return self.commcare_hq_client.iterate(
             resource, paginator,
             params=initial_params, checkpoint_manager=checkpoint_manager

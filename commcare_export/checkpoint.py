@@ -263,22 +263,31 @@ class CheckpointManager(SqlMixin):
             raise Exception("Not tables set in checkpoint manager")
 
 
-class EnvCheckpointManager(object):
+class CheckpointManagerWithSince(object):
+    def __init__(self, manager, since):
+        self.manager = manager
+        self.since_param = since
+
+    def set_checkpoint(self, checkpoint_time, is_final=False):
+        if self.manager:
+            self.manager.set_checkpoint(checkpoint_time, is_final)
+
+
+class CheckpointManagerProvider(object):
     def __init__(self, base_checkpoint_manager=None, since=None, start_over=None):
         self.start_over = start_over
         self.since = since
         self.base_checkpoint_manager = base_checkpoint_manager
-        self._checkpoint_manager = None
 
-    def get_since(self):
+    def get_since(self, checkpoint_manager):
         if self.start_over:
             return None
 
         if self.since:
             return self.since
 
-        if self._checkpoint_manager:
-            since = self._checkpoint_manager.get_time_of_last_checkpoint()
+        if checkpoint_manager:
+            since = checkpoint_manager.get_time_of_last_checkpoint()
             return dateutil.parser.parse(since)
 
     def get_checkpoint_manager(self, table_names):
@@ -288,10 +297,7 @@ class EnvCheckpointManager(object):
         :param table_names: List of table names being exported to. This is a list since
                             multiple tables can be processed by a since API query.
         """
+        manager = None
         if self.base_checkpoint_manager:
-            self._checkpoint_manager = self.base_checkpoint_manager.for_tables(table_names)
-        return self
-
-    def set_checkpoint(self, checkpoint_time, is_final=False):
-        if self._checkpoint_manager:
-            self._checkpoint_manager.set_checkpoint(checkpoint_time, is_final)
+            manager = self.base_checkpoint_manager.for_tables(table_names)
+        return CheckpointManagerWithSince(manager, self.get_since(manager))
