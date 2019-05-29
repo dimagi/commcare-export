@@ -15,6 +15,13 @@ logging.getLogger().setLevel(logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler())
 
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "dbtest: mark test that requires database access")
+    config.addinivalue_line("markers", "postgres: mark PostgreSQL test")
+    config.addinivalue_line("markers", "mysql: mark MySQL test")
+    config.addinivalue_line("markers", "mssql: mark MSSQL test")
+
+
 def _db_params(request, db_name):
     db_url = request.param['url']
     sudo_engine = sqlalchemy.create_engine(db_url % request.param.get('admin_db', ''), poolclass=sqlalchemy.pool.NullPool)
