@@ -146,7 +146,7 @@ class CommCareHqClient(object):
 
     def checkpoint(self, checkpoint_manager, paginator, batch, is_final):
         from commcare_export.commcare_minilinq import DatePaginator
-        if checkpoint_manager and isinstance(paginator, DatePaginator):
+        if isinstance(paginator, DatePaginator):
             since_date = paginator.get_since_date(batch)
             if since_date:
                 checkpoint_manager.set_checkpoint(since_date, is_final)
