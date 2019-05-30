@@ -317,17 +317,17 @@ def parse_workbook(workbook):
     2. Each other sheet represents one data table to emit
     """
     try:
-        mappings_sheet = workbook.get_sheet_by_name('Mappings')
+        mappings_sheet = workbook['Mappings']
     except KeyError:
         mappings_sheet = None
     mappings = compile_mappings(mappings_sheet) if mappings_sheet else None
 
-    emit_sheets = [sheet_name for sheet_name in workbook.get_sheet_names() if sheet_name != 'Mappings']
+    emit_sheets = [sheet_name for sheet_name in workbook.sheetnames if sheet_name != 'Mappings']
 
     parsed_sheets = []
     for sheet in emit_sheets:
         try:
-            sheet_parts = parse_sheet(workbook.get_sheet_by_name(sheet), mappings)
+            sheet_parts = parse_sheet(workbook[sheet], mappings)
         except Exception as e:
             logger.warning('Ignoring sheet "{}": {}'.format(sheet, str(e)))
             continue

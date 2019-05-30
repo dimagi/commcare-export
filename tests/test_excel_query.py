@@ -73,7 +73,7 @@ class TestExcelQuery(unittest.TestCase):
 
         for filename, mappings in test_cases:
             abs_path = os.path.join(os.path.dirname(__file__), filename)
-            compiled = compile_mappings(openpyxl.load_workbook(abs_path).get_sheet_by_name('Mappings'))
+            compiled = compile_mappings(openpyxl.load_workbook(abs_path)['Mappings'])
             # Print will be suppressed by pytest unless it fails
             if not (flatten(compiled) == mappings):
                 print('In %s:' % filename)
@@ -157,7 +157,7 @@ class TestExcelQuery(unittest.TestCase):
         for filename, minilinq in test_cases:
             print('Compiling sheet %s' % filename) # This output will be captured by pytest and printed in case of failure; helpful to isolate which test case
             abs_path = os.path.join(os.path.dirname(__file__), filename)
-            compiled = parse_sheet(openpyxl.load_workbook(abs_path).get_active_sheet())
+            compiled = parse_sheet(openpyxl.load_workbook(abs_path).active)
             # Print will be suppressed by pytest unless it fails
             if not (compiled == minilinq):
                 print('In %s:' % filename)
