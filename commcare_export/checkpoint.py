@@ -10,7 +10,7 @@ from operator import attrgetter
 
 import dateutil.parser
 import six
-from sqlalchemy import Column, String, Boolean, func
+from sqlalchemy import Column, String, Boolean, func, and_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -244,16 +244,38 @@ class CheckpointManager(SqlMixin):
         * key
         """
         with session_scope(self.Session) as session:
-            window_func = func.row_number().over(
-                partition_by=Checkpoint.table_name, order_by=Checkpoint.time_of_run.desc()
-            ).label("row_number")
-            inner_query = self._filter_query(session.query(Checkpoint, window_func))
-            inner_query = inner_query.filter(Checkpoint.query_file_md5 == self.query_md5)
-            inner_query = inner_query.filter(Checkpoint.table_name.isnot(None)).subquery()
+            cols = [Checkpoint.project, Checkpoint.commcare, Checkpoint.query_file_md5, Checkpoint.table_name]
+            inner_query = self._filter_query(
+                session.query(
+                    *(cols  + [func.max(Checkpoint.time_of_run).label('max_time_of_run')])
+                )
+                .filter(Checkpoint.query_file_md5 == self.query_md5)
+                .filter(Checkpoint.table_name.isnot(None))
+            ).group_by(*cols).subquery()
 
-            query = session.query(Checkpoint).select_entity_from(inner_query)\
-                .filter(inner_query.c.row_number == 1)\
-                .order_by(Checkpoint.table_name.asc())
+            query = session.query(Checkpoint).join(
+                inner_query, and_(
+                    Checkpoint.project == inner_query.c.project,
+                    Checkpoint.commcare == inner_query.c.commcare,
+                    Checkpoint.query_file_md5 == inner_query.c.query_file_md5,
+                    Checkpoint.table_name == inner_query.c.table_name,
+                    Checkpoint.time_of_run == inner_query.c.max_time_of_run
+                )
+            ).order_by(Checkpoint.table_name.asc())
+
+            # Can't use this since MySQL < 8.0 doesn't support window functions
+            # Keeping for future reference
+            #
+            # window_func = func.row_number().over(
+            #     partition_by=Checkpoint.table_name, order_by=Checkpoint.time_of_run.desc()
+            # ).label("row_number")
+            # inner_query = self._filter_query(session.query(Checkpoint, window_func))
+            # inner_query = inner_query.filter(Checkpoint.query_file_md5 == self.query_md5)
+            # inner_query = inner_query.filter(Checkpoint.table_name.isnot(None)).subquery()
+            #
+            # query = session.query(Checkpoint).select_entity_from(inner_query)\
+            #     .filter(inner_query.c.row_number == 1)\
+            #     .order_by(Checkpoint.table_name.asc())
             return list(query)
 
     def update_checkpoint(self, run):
