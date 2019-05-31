@@ -191,10 +191,8 @@ class CheckpointManager(SqlMixin):
             if table_run:
                 return self._set_checkpoint(table_run.since_param, table_run.final, table_run.time_of_run)
 
-    def _get_last_checkpoint(self, session, *criterion_filters, **kwarg_filters):
+    def _get_last_checkpoint(self, session, **kwarg_filters):
         query = session.query(Checkpoint)
-        if criterion_filters:
-            query = query.filter(*criterion_filters)
         if kwarg_filters:
             query = query.filter_by(**kwarg_filters)
         return query.order_by(Checkpoint.time_of_run.desc()).first()
