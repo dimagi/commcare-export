@@ -149,16 +149,16 @@ class TestCLIIntegrationTests(object):
             expected_form_data = list(reader)[1:]
 
         _pull_data('2012-01-01', '2012-08-01')
-        self._check_checkpoints(caplog, ['batch', 'batch', 'final'])
+        self._check_checkpoints(caplog, ['batch', 'final'])
         self._check_data(writer, expected_form_data[:16])
 
         caplog.clear()
-        _pull_data(None, '2012-09-01', batch_size=20)
+        _pull_data(None, '2012-09-01', batch_size=8)
         self._check_data(writer, expected_form_data)
         self._check_checkpoints(caplog, ['batch', 'final'])
 
         runs = list(writer.engine.execute('SELECT * from commcare_export_runs'))
-        assert len(runs) == 2
+        assert len(runs) == 2, runs
 
     def _check_data(self, writer, expected):
         actual = [
