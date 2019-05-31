@@ -44,6 +44,7 @@ class ListHistoryCommand(BaseCommand):
 
     def run(self, args):
         manager = get_checkpoint_manager(args, require_query=False)
+        manager.create_checkpoint_table()
 
         print("Listing checkpoints (most recent {}):".format(args.limit))
         if args.project:
@@ -94,27 +95,29 @@ class SetKeyCommand(BaseCommand):
     def run(self, args):
         key = args.checkpoint_key
         manager = get_checkpoint_manager(args)
-        run_with_key = manager.get_last_checkpoint()
+        manager.create_checkpoint_table()
+        run_with_key = manager.list_checkpoints(limit=1)
 
         if run_with_key:
             print("A checkpoint with that key already exists.")
             return
 
         manager.key = None
-        run_no_key = manager.get_last_checkpoint()
+        runs_no_key = manager.get_latest_checkpoints()
 
-        if not run_no_key:
+        if not runs_no_key:
             print(args)
             print("No checkpoint found with args matching those provided.")
             return
 
-        print_runs([run_no_key])
+        print_runs(runs_no_key)
         if confirm("Do you want to set the key for this checkpoint to '{}'".format(key)):
-            run_no_key.key = key
-            manager.update_checkpoint(run_no_key)
+            for checkpoint in runs_no_key:
+                checkpoint.key = key
+                manager.update_checkpoint(checkpoint)
 
         print("\nUpdated checkpoint:")
-        print_runs([run_no_key])
+        print_runs(runs_no_key)
 
 
 COMMANDS = [

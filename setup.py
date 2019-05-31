@@ -46,6 +46,9 @@ class PyTest(TestCommand):
         errno = pytest.main(['tests/'] + self.test_args)
         sys.exit(errno)
 
+
+test_deps = ['pytest', 'psycopg2', 'mock']
+
 setuptools.setup(   
     name = "commcare-export",
     version = version,
@@ -82,7 +85,7 @@ setuptools.setup(
         'backoff',
         'csv342'
     ],
-    tests_require = ['pytest', 'psycopg2', 'mock'],
+    tests_require = test_deps,
     cmdclass = {'test': PyTest},
     classifiers = [
         'Development Status :: 4 - Beta',
@@ -103,4 +106,5 @@ setuptools.setup(
         'Topic :: System :: Archiving',
         'Topic :: System :: Distributed Computing',
     ],
+    extras_require={'test': test_deps}
 )

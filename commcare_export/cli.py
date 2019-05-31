@@ -14,6 +14,7 @@ from six.moves import input
 
 from commcare_export import excel_query
 from commcare_export import writers
+from commcare_export.checkpoint import CheckpointManagerProvider
 from commcare_export.utils import get_checkpoint_manager
 from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION
 from commcare_export.commcare_minilinq import CommCareHqEnv
@@ -189,32 +190,20 @@ def _get_writer(output_format, output, strict_types):
         raise Exception("Unknown output format: {}".format(output_format))
 
 
-def get_date_params(args, checkpoint_manager):
-    if args.start_over and checkpoint_manager:
-        logger.warning('Ignoring all checkpoints and re-fetching all data from CommCare.')
-
-    if not args.since and not args.start_over and checkpoint_manager:
-        args.since = checkpoint_manager.get_time_of_last_checkpoint()
-
-        if args.since:
-            logger.debug('Last successful checkpoint was %s', args.since)
-        else:
-            logger.warning('No successful runs found, and --since not specified: will import ALL data')
-
+def get_date_params(args):
     since = dateutil.parser.parse(args.since) if args.since else None
     until = dateutil.parser.parse(args.until) if args.until else None
     return since, until
 
 
-def _get_api_client(args, checkpoint_manager, commcarehq_base_url):
+def _get_api_client(args, commcarehq_base_url):
     return CommCareHqClient(
         url=commcarehq_base_url,
         project=args.project,
         username=args.username,
         password=args.password,
         auth_mode=args.auth_mode,
-        version=args.api_version,
-        checkpoint_manager=checkpoint_manager
+        version=args.api_version
     )
 
 
@@ -259,14 +248,23 @@ def main_with_args(args):
         args.password = getpass.getpass()
 
     commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
-    api_client = _get_api_client(args, checkpoint_manager, commcarehq_base_url)
+    api_client = _get_api_client(args, commcarehq_base_url)
 
-    since, until = get_date_params(args, checkpoint_manager)
-    if since:
+    since, until = get_date_params(args)
+    if args.start_over:
+        if checkpoint_manager:
+            logger.warning('Ignoring all checkpoints and re-fetching all data from CommCare.')
+    elif since:
         logger.debug('Starting from %s', args.since)
+
+    cm = CheckpointManagerProvider(checkpoint_manager, since, args.start_over)
+    static_env = {
+        'commcarehq_base_url': commcarehq_base_url,
+        'get_checkpoint_manager': cm.get_checkpoint_manager,
+    }
     env = (
-            BuiltInEnv({'commcarehq_base_url': commcarehq_base_url})
-            | CommCareHqEnv(api_client, since=since, until=until, page_size=args.batch_size)
+            BuiltInEnv(static_env)
+            | CommCareHqEnv(api_client, until=until, page_size=args.batch_size)
             | JsonPathEnv({})
             | EmitterEnv(writer)
     )
@@ -287,10 +285,6 @@ def main_with_args(args):
         except KeyboardInterrupt:
             print('\nExport aborted')
             return
-
-
-    if checkpoint_manager:
-        checkpoint_manager.set_final_checkpoint()
 
     if args.output_format == 'json':
         print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))

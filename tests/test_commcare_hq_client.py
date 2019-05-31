@@ -8,6 +8,7 @@ import simplejson
 
 import requests
 
+from commcare_export.checkpoint import CheckpointManagerWithSince
 from commcare_export.commcare_hq_client import CommCareHqClient
 from commcare_export.commcare_minilinq import SimplePaginator, DatePaginator, resource_since_params, get_paginator
 
@@ -89,7 +90,8 @@ class TestCommCareHqClient(unittest.TestCase):
 
         # Iteration should do two "gets" because the first will have something in the "next" metadata field
         paginator.init()
-        results = list(client.iterate('/fake/uri', paginator))
+        checkpoint_manager = CheckpointManagerWithSince(None, None)
+        results = list(client.iterate('/fake/uri', paginator, checkpoint_manager=checkpoint_manager))
         self.assertEqual(len(results), expected_count)
         self.assertEqual([result['foo'] for result in results], expected_vals)
 
