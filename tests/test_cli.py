@@ -121,49 +121,71 @@ def checkpoint_manager(pg_db_params):
     return cm
 
 
+def _pull_data(writer, checkpoint_manager, query, since, until, batch_size=10):
+    args = make_args(
+        query=query,
+        output_format='sql',
+        output='',
+        username=os.environ['HQ_USERNAME'],
+        password=os.environ['HQ_API_KEY'],
+        auth_mode='apikey',
+        project='corpora',
+        batch_size=batch_size,
+        since=since,
+        until=until,
+    )
+
+    # have to mock these to override the pool class otherwise they hold the db connection open
+    writer_patch = mock.patch('commcare_export.cli._get_writer', return_value=writer)
+    checkpoint_patch = mock.patch('commcare_export.cli._get_checkpoint_manager', return_value=checkpoint_manager)
+    with writer_patch, checkpoint_patch:
+        main_with_args(args)
+
+
 @pytest.mark.dbtest
 class TestCLIIntegrationTests(object):
     def test_write_to_sql_with_checkpoints(self, writer, checkpoint_manager, caplog):
-        def _pull_data(since, until, batch_size=10):
-            args = make_args(
-                query='tests/009_integration.xlsx',
-                output_format='sql',
-                output='',
-                username=os.environ['HQ_USERNAME'],
-                password=os.environ['HQ_API_KEY'],
-                auth_mode='apikey',
-                project='corpora',
-                batch_size=batch_size,
-                since=since,
-                until=until
-            )
-
-            # have to mock these to override the pool class otherwise they hold the db connection open
-            writer_patch = mock.patch('commcare_export.cli._get_writer', return_value=writer)
-            checkpoint_patch = mock.patch('commcare_export.cli._get_checkpoint_manager', return_value=checkpoint_manager)
-            with writer_patch, checkpoint_patch:
-                main_with_args(args)
-
         with open('tests/009_expected_form_data.csv', 'r') as f:
             reader = csv.reader(f)
             expected_form_data = list(reader)[1:]
 
-        _pull_data('2012-01-01', '2012-08-01')
+        _pull_data(writer, checkpoint_manager, 'tests/009_integration.xlsx', '2012-01-01', '2012-08-01')
         self._check_checkpoints(caplog, ['batch', 'final'])
-        self._check_data(writer, expected_form_data[:16])
+        self._check_data(writer, expected_form_data[:16], 'forms')
 
         caplog.clear()
-        _pull_data(None, '2012-09-01', batch_size=8)
-        self._check_data(writer, expected_form_data)
+        _pull_data(writer, checkpoint_manager, 'tests/009_integration.xlsx', None, '2012-09-01', batch_size=8)
+        self._check_data(writer, expected_form_data, 'forms')
         self._check_checkpoints(caplog, ['batch', 'final'])
 
         runs = list(writer.engine.execute('SELECT * from commcare_export_runs'))
         assert len(runs) == 2, runs
 
-    def _check_data(self, writer, expected):
+    def test_write_to_sql_with_checkpoints_multiple_tables(self, writer, checkpoint_manager, caplog):
+        with open('tests/009b_expected_form_1_data.csv', 'r') as f:
+            reader = csv.reader(f)
+            expected_form_1_data = list(reader)[1:]
+
+        with open('tests/009b_expected_form_2_data.csv', 'r') as f:
+            reader = csv.reader(f)
+            expected_form_2_data = list(reader)[1:]
+
+        _pull_data(writer, checkpoint_manager, 'tests/009b_integration_multiple.xlsx', '2012-01-01', '2012-05-01')
+        self._check_checkpoints(caplog, ['final', 'final'])
+        self._check_checkpoints(caplog, ['forms_1', 'forms_2'])
+        self._check_data(writer, expected_form_1_data, 'forms_1')
+        self._check_data(writer, expected_form_2_data, 'forms_2')
+
+        runs = list(writer.engine.execute('SELECT table_name, since_param from commcare_export_runs'))
+        assert {r[0]: r[1] for r in runs} == {
+            'forms_1': '2012-04-27T10:05:55',
+            'forms_2': '2012-04-27T14:23:50'
+        }
+
+    def _check_data(self, writer, expected, table_name):
         actual = [
             list(row) for row in
-            writer.engine.execute("SELECT id, name, received_on, server_modified_on FROM forms")
+            writer.engine.execute("SELECT id, name, received_on, server_modified_on FROM {}".format(table_name))
         ]
 
         message = ''

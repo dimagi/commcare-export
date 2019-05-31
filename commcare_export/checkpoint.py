@@ -93,7 +93,12 @@ class CheckpointManager(SqlMixin):
             self._cleanup()
 
     def _set_checkpoint(self, checkpoint_time, final, time_of_run=None):
-        logger.info('Setting %s checkpoint: %s', 'final' if final else 'batch', checkpoint_time)
+        logger.info(
+            'Setting %s checkpoint for tables %s: %s',
+            'final' if final else 'batch',
+            ', '.join(self.table_names),
+            checkpoint_time
+        )
         if not checkpoint_time:
             raise DataExportException('Tried to set an empty checkpoint. This is not allowed.')
         self._validate_tables()
