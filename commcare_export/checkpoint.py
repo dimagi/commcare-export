@@ -327,4 +327,11 @@ class CheckpointManagerProvider(object):
         manager = None
         if self.base_checkpoint_manager:
             manager = self.base_checkpoint_manager.for_tables(table_names)
-        return CheckpointManagerWithSince(manager, self.get_since(manager))
+
+        since = self.get_since(manager)
+
+        logger.info(
+            "Creating checkpoint manager for tables: %s with 'since' parameter: %s",
+            ', '.join(table_names), since
+        )
+        return CheckpointManagerWithSince(manager, since)
