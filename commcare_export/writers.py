@@ -1,7 +1,6 @@
 import datetime
 import io
 import logging
-import sys
 import zipfile
 
 import alembic
@@ -500,10 +499,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
         # Rather inefficient for now...
         for row in table['rows']:
-            if logger.getEffectiveLevel() == logging.DEBUG: sys.stderr.write('.')
-
             row_dict = dict(zip(headings, row))
             self.make_table_compatible(table_name, row_dict)
             self.upsert(self.table(table_name), row_dict)
-
-        if logger.getEffectiveLevel() == logging.DEBUG: sys.stderr.write('\n')
