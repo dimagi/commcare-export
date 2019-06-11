@@ -33,9 +33,10 @@ class SimpleSinceParams(object):
 
 class FormFilterSinceParams(object):
     def __call__(self, since, until):
-        range_expression = {
-            'gte': since.isoformat()
-        }
+        range_expression = {}
+        if since:
+            range_expression['gte'] = since.isoformat()
+
         if until:
             range_expression['lte'] = until.isoformat()
 
