@@ -315,7 +315,7 @@ class CheckpointManagerProvider(object):
 
         if checkpoint_manager:
             since = checkpoint_manager.get_time_of_last_checkpoint()
-            return dateutil.parser.parse(since)
+            return dateutil.parser.parse(since) if since else None
 
     def get_checkpoint_manager(self, table_names):
         """This get's called before each table is exported and set in the `env`. It is then
