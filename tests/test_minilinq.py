@@ -88,6 +88,9 @@ class TestMiniLinq(unittest.TestCase):
         assert Apply(Reference("default"), Literal(None), Literal('a')).eval(env) == 'a'
         assert Apply(Reference("default"), Literal('b'), Literal('a')).eval(env) == 'b'
         assert Apply(Reference("count-selected"), Literal(u'a bb 日本')).eval(env) == 3
+        assert Apply(Reference("sha1"), Literal(u'a bb 日本')).eval(env) == 'e25a54025417b06d88d40baa8c71f6eee9c07fb1'
+        assert Apply(Reference("sha1"), Literal(b'2015')).eval(env) == 'd8e9fec0038ade95f6fd6cfbd3c3c344897594ba'
+        assert Apply(Reference("sha1"), Literal(2015)).eval(env) == '9cdda67ded3f25811728276cefa76b80913b4c54'
 
     def test_or(self):
         env = BuiltInEnv()
