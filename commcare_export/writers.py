@@ -311,9 +311,25 @@ class SqlMixin(object):
     def get_id_column(self):
         return sqlalchemy.Column(
             'id',
-            sqlalchemy.Unicode(self.MAX_VARCHAR_LEN),
+            self.get_text_col_type(),
             primary_key=True
         )
+
+    def get_text_col_type(self, val=None):
+        if self.is_postgres:
+            return sqlalchemy.UnicodeText(collation=self.collation)
+        elif self.is_mysql:
+            # MySQL cannot build an index on TEXT due to the lack of a field length, so we
+            # try to use VARCHAR when possible.
+            length = max(len(val), self.MIN_VARCHAR_LEN) if val is not None else self.MAX_VARCHAR_LEN
+            if length <= self.MAX_VARCHAR_LEN:  # FIXME: Is 255 an interesting cutoff?
+                return sqlalchemy.Unicode(length, collation=self.collation)
+            else:
+                return sqlalchemy.UnicodeText(collation=self.collation)
+        elif self.is_mssql:
+            return sqlalchemy.NVARCHAR(collation=self.collation)
+        else:
+            raise Exception("Unknown database dialect: {}".format(self.db_url))
 
 
 class SqlTableWriter(SqlMixin, TableWriter):
@@ -339,20 +355,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
         if isinstance(val, int):
             return sqlalchemy.Integer()
         elif isinstance(val, six.string_types):
-            if self.is_postgres:
-                # PostgreSQL is the best; you can use TEXT everywhere and it works like a charm.
-                return sqlalchemy.UnicodeText(collation=self.collation)
-            elif self.is_mysql:
-                # MySQL cannot build an index on TEXT due to the lack of a field length, so we
-                # try to use VARCHAR when possible.
-                if len(val) < self.MAX_VARCHAR_LEN:  # FIXME: Is 255 an interesting cutoff?
-                    return sqlalchemy.Unicode(max(len(val), self.MIN_VARCHAR_LEN), collation=self.collation)
-                else:
-                    return sqlalchemy.UnicodeText(collation=self.collation)
-            elif self.is_mssql:
-                return sqlalchemy.NVARCHAR(collation=self.collation)
-            else:
-                raise Exception("Unknown database dialect: {}".format(self.db_url))
+            return self.get_text_col_type(val)
         else:
             # We do not have a name for "bottom" in SQL aka the type whose least upper bound
             # with any other type is the other type.
