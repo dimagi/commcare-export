@@ -299,9 +299,8 @@ def sha1(val):
     if _not_val(val):
         return None
 
-    if not isinstance(val, six.text_type):
-        val = six.text_type(val)
-    val = val.encode('utf8')
+    if not isinstance(val, bytes):
+        val = six.text_type(val).encode('utf8')
 
     return hashlib.sha1(val).hexdigest()
 
