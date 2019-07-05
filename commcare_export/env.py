@@ -1,4 +1,6 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+
+import hashlib
 from datetime import datetime
 import operator
 import pytz
@@ -293,6 +295,17 @@ def bool2int(val):
 
 
 @unwrap('val')
+def sha1(val):
+    if _not_val(val):
+        return None
+
+    if not isinstance(val, bytes):
+        val = six.text_type(val).encode('utf8')
+
+    return hashlib.sha1(val).hexdigest()
+
+
+@unwrap('val')
 def selected_at(val, index):
     if not val:
         return None
@@ -410,6 +423,7 @@ class BuiltInEnv(DictEnv):
             'attachment_url': attachment_url,
             'filter_empty': _not_val,
             'or': _or,
+            'sha1': sha1,
         })
         return super(BuiltInEnv, self).__init__(d)
 
