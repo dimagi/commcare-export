@@ -47,7 +47,7 @@ def make_args(project='test', username='test', password='test', **kwargs):
 client = MockCommCareHqClient({
     'form': [
         (
-            {'limit': 100, 'order_by': ['server_modified_on', 'received_on']},
+            {'limit': 100, 'order_by': 'indexed_on'},
             [
                 {'id': 1, 'form': {'name': 'f1', 'case': {'@case_id': 'c1'}}},
                 {'id': 2, 'form': {'name': 'f2', 'case': {'@case_id': 'c2'}}},
@@ -56,7 +56,7 @@ client = MockCommCareHqClient({
     ],
     'case': [
         (
-            {'limit': 100, 'order_by': 'server_date_modified'},
+            {'limit': 100, 'order_by': 'indexed_on'},
             [
                 {'id': 'case1'},
                 {'id': 'case2'},

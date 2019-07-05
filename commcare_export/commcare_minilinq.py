@@ -31,52 +31,9 @@ class SimpleSinceParams(object):
         return params
 
 
-class FormFilterSinceParams(object):
-    def __call__(self, since, until):
-        range_expression = {}
-        if since:
-            range_expression['gte'] = since.isoformat()
-
-        if until:
-            range_expression['lte'] = until.isoformat()
-
-        server_modified_missing = {"missing": {
-            "field": "server_modified_on", "null_value": True, "existence": True}
-        }
-        query = json.dumps({
-            'filter': {
-                "or": [
-                    {
-                        "and": [
-                            {
-                                "not": server_modified_missing
-                            },
-                            {
-                                "range": {
-                                    "server_modified_on": range_expression
-                                }
-                            }
-                        ]
-                    },
-                    {
-                        "and": [
-                            server_modified_missing,
-                            {
-                                "range": {
-                                    "received_on": range_expression
-                                }
-                            }
-                        ]
-                    }
-                ]
-            }})
-
-        return {'_search': query}
-
-
 resource_since_params = {
-    'form': FormFilterSinceParams(),
-    'case': SimpleSinceParams('server_date_modified_start', 'server_date_modified_end'),
+    'form': SimpleSinceParams('indexed_on_start', 'indexed_on_end'),
+    'case': SimpleSinceParams('indexed_on_start', 'indexed_on_end'),
     'user': None,
     'application': None,
     'web-user': None,
@@ -85,8 +42,8 @@ resource_since_params = {
 
 def get_paginator(resource, page_size=1000):
     return {
-        'form': DatePaginator('form', ['server_modified_on','received_on'], page_size),
-        'case': DatePaginator('case', 'server_date_modified', page_size),
+        'form': DatePaginator('form', 'indexed_on', page_size),
+        'case': DatePaginator('case', 'indexed_on', page_size),
         'user': SimplePaginator('user', page_size),
         'application': SimplePaginator('application', page_size),
         'web-user': SimplePaginator('web-user', page_size),

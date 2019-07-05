@@ -25,11 +25,11 @@ class TestCommCareMiniLinq(unittest.TestCase):
         client = MockCommCareHqClient({
             'form': [
                 (
-                    {'limit': 1000, 'filter': 'test1', 'order_by': ['server_modified_on', 'received_on']},
+                    {'limit': 1000, 'filter': 'test1', 'order_by': 'indexed_on'},
                     [1, 2, 3],
                 ),
                 (
-                    {'limit': 1000, 'filter': 'test2', 'order_by': ['server_modified_on', 'received_on']},
+                    {'limit': 1000, 'filter': 'test2', 'order_by': 'indexed_on'},
                     [
                         { 'x': [{ 'y': 1 }, {'y': 2}] },
                         { 'x': [{ 'y': 3 }, {'z': 4}] },
@@ -37,18 +37,18 @@ class TestCommCareMiniLinq(unittest.TestCase):
                     ]
                 ),
                 (
-                    {'limit': 1000, 'filter': 'laziness-test', 'order_by': ['server_modified_on', 'received_on']},
+                    {'limit': 1000, 'filter': 'laziness-test', 'order_by': 'indexed_on'},
                     (i if i < 5 else die('Not lazy enough') for i in range(12))
                 ),
                 (
-                    {'limit': 1000, 'cases__full': 'true', 'order_by': ['server_modified_on', 'received_on']},
+                    {'limit': 1000, 'cases__full': 'true', 'order_by': 'indexed_on'},
                     [1, 2, 3, 4, 5]
                 ),
             ],
 
             'case': [
                 (
-                    {'limit': 1000, 'type': 'foo', 'order_by': 'server_date_modified'},
+                    {'limit': 1000, 'type': 'foo', 'order_by': 'indexed_on'},
                     [
                         { 'x': 1 },
                         { 'x': 2 },

@@ -41,7 +41,7 @@ class FakeDateCaseSession(FakeSession):
         if not params:
             return {
                 'meta': {'next': '?offset=1', 'offset': 0, 'limit': 1, 'total_count': 2},
-                'objects': [{'id': 1, 'foo': 1, 'server_date_modified': '2017-01-01T15:36:22Z'}]
+                'objects': [{'id': 1, 'foo': 1, 'indexed_on': '2017-01-01T15:36:22Z'}]
             }
         else:
             since_query_param =resource_since_params['case'].start_param
@@ -60,26 +60,24 @@ class FakeDateFormSession(FakeSession):
         if not params:
             return {
                 'meta': {'next': '?offset=1', 'offset': 0, 'limit': 1, 'total_count': 3},
-                'objects': [{'id': 1, 'foo': 1, 'received_on': '{}Z'.format(since1)}]
+                'objects': [{'id': 1, 'foo': 1, 'indexed_on': '{}Z'.format(since1)}]
             }
         else:
-            search = json.loads(params['_search'])
-            _or = search['filter']['or']
-            received_on = _or[1]['and'][1]['range']['received_on']['gte']
-            modified_on = _or[0]['and'][1]['range']['server_modified_on']['gte']
-            if received_on == modified_on == since1:
+            since_query_param = resource_since_params['form'].start_param
+            indexed_on = params[since_query_param]
+            if indexed_on == since1:
                 # include ID=1 again to make sure it gets filtered out
                 return {
                     'meta': { 'next': '?offset=2', 'offset': 0, 'limit': 1, 'total_count': 3 },
-                    'objects': [{'id': 1, 'foo': 1}, {'id': 2, 'foo': 2, 'server_modified_on': '{}Z'.format(since2)}]
+                    'objects': [{'id': 1, 'foo': 1}, {'id': 2, 'foo': 2, 'indexed_on': '{}Z'.format(since2)}]
                 }
-            elif received_on == modified_on == since2:
+            elif indexed_on == since2:
                 return {
                     'meta': { 'next': None, 'offset': 0, 'limit': 1, 'total_count': 3 },
                     'objects': [{'id': 3, 'foo': 3}]
                 }
             else:
-                raise Exception(modified_on)
+                raise Exception(indexed_on)
 
 
 class TestCommCareHqClient(unittest.TestCase):
