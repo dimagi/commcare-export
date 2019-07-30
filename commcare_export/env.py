@@ -346,7 +346,10 @@ def count_selected(val):
 
 def join(*args):
     args = [unwrap_val(arg)for arg in args]
-    return args[0].join(args[1:])
+    try:
+        return args[0].join(args[1:])
+    except TypeError:
+        return '""'
 
 
 @unwrap('val')

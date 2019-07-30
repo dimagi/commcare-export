@@ -208,6 +208,9 @@ class TestExcelQuery(unittest.TestCase):
         expression = compile_mapped_field({'a': 'mapped from a'}, Reference('foo.baz'))
         assert list(expression.eval(env))[0].value == 'b'
 
+        expression = compile_mapped_field({'a': 'mapped from a'}, Reference('foo.boo'))
+        assert list(expression.eval(env)) == []
+
     def test_get_queries_from_excel(self):
         minilinq = Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal(["Forms"])),
             Emit(
