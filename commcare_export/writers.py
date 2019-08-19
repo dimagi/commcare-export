@@ -392,13 +392,14 @@ class SqlTableWriter(SqlMixin, TableWriter):
             if isinstance(source_type, _type):
                 return isinstance(dest_type, (_type,) + types)
 
-    def strict_types_compatibility_check(self, source_type, dest_type):
+    def strict_types_compatibility_check(self, source_type, dest_type, val):
         if isinstance(source_type, sqlalchemy.String):
             if not isinstance(dest_type, sqlalchemy.String):
                 return  # Can't do anything
             elif dest_type.length is None:
-                # already a TEXT column
-                return
+                return  # already a TEXT column
+            elif dest_type.length >= len(val):
+                return  # no need to upgrade to TEXT column
             elif source_type.length is None:
                 return sqlalchemy.UnicodeText(collation=self.collation)
             elif dest_type.length < source_type.length:
@@ -465,7 +466,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 new_type = None
                 if self.strict_types:
                     # don't bother checking compatibility since we're not going to change anything
-                    new_type = self.strict_types_compatibility_check(ty, current_ty)
+                    new_type = self.strict_types_compatibility_check(ty, current_ty, val)
                 elif not self.compatible(ty, current_ty):
                     new_type = self.least_upper_bound(ty, current_ty)
 
