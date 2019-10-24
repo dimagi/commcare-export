@@ -74,7 +74,7 @@ CLI_ARGS = [
         Argument('strict-types', default=False, action='store_true',
                  help="When saving to a SQL database don't allow changing column types once they are created."),
         Argument('missing-value', default=None, help="Value to use when a field is missing from the form / case."),
-        Argument('batch-size', default=100, help="Number of records to process per batch."),
+        Argument('batch-size', default=100, type=int, help="Number of records to process per batch."),
         Argument('checkpoint-key', help="Use this key for all checkpoints instead of the query file MD5 hash "
                                         "in order to prevent table rebuilds after a query file has been edited."),
     ]
