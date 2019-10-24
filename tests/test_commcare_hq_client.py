@@ -53,6 +53,41 @@ class FakeDateCaseSession(FakeSession):
             }
 
 
+class FakeDateCaseSessionWithImport(FakeSession):
+    """Multiple cases with the same server_date_modified causes a loop if batch size < num cases"""
+    def _get_results(self, params):
+        filter_param_name = resource_since_params['case'].start_param
+        if filter_param_name not in  params:
+            return {
+                'meta': {'next': '?offset=2', 'offset': 0, 'limit': 1, 'total_count': 2},
+                'objects': [
+                    {'id': 1, 'foo': 1, 'server_date_modified': '2017-01-01T15:36:22Z'},
+                    {'id': 2, 'foo': 2, 'server_date_modified': '2017-01-01T15:36:22Z'}
+                ]
+            }
+        else:
+            filter_param = params[filter_param_name]
+            print(params)
+            assert filter_param == '2017-01-01T15:36:22'
+            if params['limit'] == 2:
+                return {
+                    'meta': { 'next': '?offset=2', 'offset': 0, 'limit': 2, 'total_count': 1 },
+                    'objects':  [
+                        {'id': 1, 'foo': 1, 'server_date_modified': '2017-01-01T15:36:22Z'},
+                        {'id': 2, 'foo': 2, 'server_date_modified': '2017-01-01T15:36:22Z'}
+                    ]
+                }
+            if params['limit'] == 3:
+                return {
+                    'meta': { 'next': None, 'offset': 0, 'limit': 4, 'total_count': 2 },
+                    'objects': [
+                        {'id': 1, 'foo': 1, 'server_date_modified': '2017-01-01T15:36:22Z'},
+                        {'id': 2, 'foo': 2, 'server_date_modified': '2017-01-01T15:36:22Z'},
+                        {'id': 3, 'foo': 3, 'server_date_modified': '2017-01-01T16:36:22Z'},
+                    ]
+                }
+
+
 class FakeDateFormSession(FakeSession):
     def _get_results(self, params):
         since1 = '2017-01-01T15:36:22'
@@ -84,14 +119,14 @@ class FakeDateFormSession(FakeSession):
 
 class TestCommCareHqClient(unittest.TestCase):
 
-    def _test_iterate(self, session, paginator, expected_count, expected_vals):
+    def _test_iterate(self, session, paginator, expected_count, expected_vals, params=None):
         client = CommCareHqClient('/fake/commcare-hq/url', 'fake-project', None, None)
         client.session = session
 
         # Iteration should do two "gets" because the first will have something in the "next" metadata field
         paginator.init()
         checkpoint_manager = CheckpointManagerWithSince(None, None)
-        results = list(client.iterate('/fake/uri', paginator, checkpoint_manager=checkpoint_manager))
+        results = list(client.iterate('/fake/uri', paginator, params=params, checkpoint_manager=checkpoint_manager))
         self.assertEqual(len(results), expected_count)
         self.assertEqual([result['foo'] for result in results], expected_vals)
 
@@ -101,6 +136,10 @@ class TestCommCareHqClient(unittest.TestCase):
     def test_iterate_date(self):
         self._test_iterate(FakeDateFormSession(), get_paginator('form'), 3, [1, 2, 3])
         self._test_iterate(FakeDateCaseSession(), get_paginator('case'), 2, [1, 2])
+
+    def test_iterate_date_break_import_loop(self):
+        self._test_iterate(FakeDateCaseSessionWithImport(), get_paginator('case'), 3, [1, 2, 3], params={'limit': 2})
+
 
 
 class TestDatePaginator(unittest.TestCase):

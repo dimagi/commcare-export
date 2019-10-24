@@ -83,13 +83,13 @@ resource_since_params = {
 }
 
 
-def get_paginator(resource, page_size=1000):
+def get_paginator(resource):
     return {
-        'form': DatePaginator('form', ['server_modified_on','received_on'], page_size),
-        'case': DatePaginator('case', 'server_date_modified', page_size),
-        'user': SimplePaginator('user', page_size),
-        'application': SimplePaginator('application', page_size),
-        'web-user': SimplePaginator('web-user', page_size),
+        'form': DatePaginator('form', ['server_modified_on','received_on']),
+        'case': DatePaginator('case', 'server_date_modified'),
+        'user': SimplePaginator('user'),
+        'application': SimplePaginator('application'),
+        'web-user': SimplePaginator('web-user'),
     }[resource]
 
 
@@ -112,9 +112,10 @@ class CommCareHqEnv(DictEnv):
         if resource not in resource_since_params:
             raise ValueError('I do not know how to access the API resource "%s"' % resource)
 
-        paginator = get_paginator(resource, self.page_size)
+        paginator = get_paginator(resource)
         paginator.init(payload, include_referenced_items, self.until)
         initial_params = paginator.next_page_params_since(checkpoint_manager.since_param)
+        initial_params['limit'] = self.page_size
         return self.commcare_hq_client.iterate(
             resource, paginator,
             params=initial_params, checkpoint_manager=checkpoint_manager
@@ -131,9 +132,8 @@ class SimplePaginator(object):
     """
     Paginate based on the 'next' URL provided in the API response.
     """
-    def __init__(self, resource, page_size=1000):
+    def __init__(self, resource):
         self.resource = resource
-        self.page_size = page_size
 
     def init(self, payload=None, include_referenced_items=None, until=None):
         self.payload = dict(payload or {})  # Do not mutate passed-in dicts
@@ -142,7 +142,6 @@ class SimplePaginator(object):
 
     def next_page_params_since(self, since=None):
         params = self.payload
-        params['limit'] = self.page_size
 
         resource_date_params = resource_since_params[self.resource]
         if (since or self.until) and resource_date_params:
@@ -173,8 +172,8 @@ class DatePaginator(SimplePaginator):
     :param resource: The name of the resource being fetched: ``form`` or ``case``.
     :param since_field: The name of the date field to use for pagination.
     """
-    def __init__(self, resource, since_field, page_size=1000):
-        super(DatePaginator, self).__init__(resource, page_size)
+    def __init__(self, resource, since_field):
+        super(DatePaginator, self).__init__(resource)
         self.since_field = since_field
 
     def next_page_params_since(self, since=None):

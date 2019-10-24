@@ -8,6 +8,8 @@ import requests
 from requests.auth import AuthBase
 from requests.auth import HTTPDigestAuth
 
+from commcare_export.exceptions import DataExportException
+
 AUTH_MODE_PASSWORD = 'password'
 AUTH_MODE_APIKEY = 'apikey'
 
@@ -23,8 +25,8 @@ from commcare_export.repeatable_iterator import RepeatableIterator
 
 logger = logging.getLogger(__name__)
 
-LATEST_KNOWN_VERSION='0.5'
-
+LATEST_KNOWN_VERSION = '0.5'
+MAX_BATCH_SIZE = 1000
 
 def on_backoff(details):
     _log_backoff(details, 'Waiting for retry.')
@@ -52,7 +54,7 @@ class CommCareHqClient(object):
     """
 
     def __init__(self, url, project, username, password,
-                 auth_mode=AUTH_MODE_PASSWORD, version=LATEST_KNOWN_VERSION, checkpoint_manager=None):
+                 auth_mode=AUTH_MODE_PASSWORD, version=LATEST_KNOWN_VERSION):
         self.version = version
         self.url = url
         self.project = project
@@ -117,23 +119,38 @@ class CommCareHqClient(object):
             fetched = 0
 
             while more_to_fetch:
+                current_limit = params.get('limit')
                 batch = self.get(resource, params)
                 if not total_count or total_count == 'unknown' or fetched >= total_count:
                     total_count = int(batch['meta']['total_count']) if batch['meta']['total_count'] else 'unknown'
                     fetched = 0
 
-                fetched += len(batch['objects'])
+                new_in_batch = [obj for obj in batch['objects'] if obj['id'] not in last_batch_ids]
+                last_batch_ids = {obj['id'] for obj in batch['objects']}
+
+                if not new_in_batch:
+                    # this can happen if we're paginating on date all rows in a batch have the same date
+                    # to break the cycle increase the batch size until we're free or reach max batch size
+                    if not current_limit or current_limit >= MAX_BATCH_SIZE:
+                        raise DataExportException('No new data returned and batch size exceeded maximum of %s' % MAX_BATCH_SIZE)
+
+                    params['limit'] = int(current_limit * 1.5)
+                    logger.warning(
+                        'No new objects in batch. Increasing batch size to %s',
+                        params['limit'],
+                    )
+                    continue
+
+                fetched += len(new_in_batch)
                 logger.debug('Received %s of %s', fetched, total_count)
                 
                 if not batch['objects']:
                     more_to_fetch = False
                 else:
-                    for obj in batch['objects']:
-                        if obj['id'] not in last_batch_ids:
-                            yield obj
+                    for obj in new_in_batch:
+                        yield obj
 
                     if batch['meta']['next']:
-                        last_batch_ids = {obj['id'] for obj in batch['objects']}
                         params = paginator.next_page_params_from_batch(batch)
                         if not params:
                             more_to_fetch = False
@@ -141,7 +158,9 @@ class CommCareHqClient(object):
                         more_to_fetch = False
 
                     self.checkpoint(checkpoint_manager, paginator, batch, not more_to_fetch)
-                
+
+                params['limit'] = current_limit
+
         return RepeatableIterator(iterate_resource)
 
     def checkpoint(self, checkpoint_manager, paginator, batch, is_final):
