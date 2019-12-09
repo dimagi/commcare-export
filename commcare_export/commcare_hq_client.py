@@ -42,6 +42,9 @@ def _log_backoff(details, action_message):
 def is_client_error(ex):
     logger.info(str(ex))
     if hasattr(ex, 'response') and ex.response is not None:
+        if ex.response.status_code == 429:
+            # "Too Many Requests": HQ wants us to back off
+            return False
         return 400 <= ex.response.status_code < 500
     return False
 
