@@ -52,7 +52,7 @@ class Argument(object):
 CLI_ARGS = [
         Argument('version', default=False, action='store_true',
                  help='Print the current version of the commcare-export tool.'),
-        Argument('query', help='JSON or Excel query file. If omitted, JSON string is read from stdin.'),
+        Argument('query', required=True, help='JSON or Excel query file. If omitted, JSON string is read from stdin.'),
         Argument('dump-query', default=False, action='store_true'),
         Argument('commcare-hq', default='prod',
                  help='Base url for the CommCare HQ instance e.g. https://www.commcarehq.org'),
@@ -134,24 +134,13 @@ def main(argv):
 
 
 def _get_query(args, writer):
-    # Reads as excel if it is a file name that looks like excel, otherwise reads as JSON,
-    # falling back to parsing arg directly as JSON, and finally parsing stdin as JSON
-    if args.query:
-        return _get_query_from_file(
-            args.query,
-            args.missing_value,
-            writer.supports_multi_table_write,
-            writer.max_column_length,
-            writer.required_columns
-        )
-    else:
-        try:
-            return MiniLinq.from_jvalue(json.loads(sys.stdin.read()))
-        except Exception as e:
-            raise Exception(
-                "Failure reading query from console input. "
-                "Try using the '--query' parameter to pass your query as an Excel file", e
-            )
+    return _get_query_from_file(
+        args.query,
+        args.missing_value,
+        writer.supports_multi_table_write,
+        writer.max_column_length,
+        writer.required_columns
+    )
 
 def _get_query_from_file(query_arg, missing_value, combine_emits, max_column_length, required_columns):
     if os.path.exists(query_arg):
