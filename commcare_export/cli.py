@@ -52,7 +52,7 @@ class Argument(object):
 CLI_ARGS = [
         Argument('version', default=False, action='store_true',
                  help='Print the current version of the commcare-export tool.'),
-        Argument('query', required=True, help='JSON or Excel query file. If omitted, JSON string is read from stdin.'),
+        Argument('query', required=True, help='JSON or Excel query file'),
         Argument('dump-query', default=False, action='store_true'),
         Argument('commcare-hq', default='prod',
                  help='Base url for the CommCare HQ instance e.g. https://www.commcarehq.org'),
