@@ -332,7 +332,7 @@ Contributing
 $ mkvirtualenv commcare-export
 $ git clone git@github.com:dimagi/commcare-export.git
 $ cd commcare-export
-$ pip install -e ".[testing]"
+$ pip install -e ".[test]"
 $ git checkout -b my-super-duper-feature
 ```
 
