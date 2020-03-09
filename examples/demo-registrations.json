@@ -1,34 +1,92 @@
 {
-    "Emit": {
-        "table": "Registrations",
-        "headings": [
-            {"Lit": "id"},
-            {"Lit": "Received On"},
-            {"Lit": "Mother's Name"},
-            {"Lit": "Age"},
-            {"Lit": "Pregnant?"},
-            {"Lit": "Estimated Delivery Date"}
-        ],
-        "source": {"Map": {
-            "body": {
-                "List": [
-                    {"Ref": "id"},
-                    {"Ref": "received_on"},
-                    {"Ref": "form.name"},
-                    {"Ref": "form.age"},
-                    {"Ref": "form.ispregnant"},
-                    {"Ref": "form.edd"}
-                ]
-            },
-            "source": {"Apply": {
-                "fn": {"Ref": "api_data"}, 
+    "Bind": {
+        "name": "checkpoint_manager",
+        "value": {
+            "Apply": {
+                "fn": {
+                    "Ref": "get_checkpoint_manager"
+                },
                 "args": [
-                    {"Lit": "form"}, 
-                    {"Lit": {"filter": {"and":[
-                        {"term": {"xmlns.exact": "http://openrosa.org/formdesigner/dd3190c7dd7e9e7d469a9705709f2f6b4e27f1d8"}}
-                    ]}}}
+                    {
+                        "Lit": [
+                            "Registrations"
+                        ]
+                    }
                 ]
-            }}
-        }}
+            }
+        },
+        "body": {
+            "Emit": {
+                "table": "Registrations",
+                "headings": [
+                    {
+                        "Lit": "id"
+                    },
+                    {
+                        "Lit": "Received On"
+                    },
+                    {
+                        "Lit": "Mother's Name"
+                    },
+                    {
+                        "Lit": "Age"
+                    },
+                    {
+                        "Lit": "Pregnant?"
+                    },
+                    {
+                        "Lit": "Estimated Delivery Date"
+                    }
+                ],
+                "source": {
+                    "Map": {
+                        "body": {
+                            "List": [
+                                {
+                                    "Ref": "id"
+                                },
+                                {
+                                    "Ref": "received_on"
+                                },
+                                {
+                                    "Ref": "form.name"
+                                },
+                                {
+                                    "Ref": "form.age"
+                                },
+                                {
+                                    "Ref": "form.ispregnant"
+                                },
+                                {
+                                    "Ref": "form.edd"
+                                }
+                            ]
+                        },
+                        "source": {
+                            "Apply": {
+                                "fn": {
+                                    "Ref": "api_data"
+                                },
+                                "args": [
+                                    {
+                                        "Lit": "form"
+                                    },
+                                    {
+                                        "Ref": "checkpoint_manager"
+                                    },
+                                    {
+                                        "Lit": {
+                                            "xmlns.exact": "http://openrosa.org/formdesigner/dd3190c7dd7e9e7d469a9705709f2f6b4e27f1d8"
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        "name": null
+                    }
+                },
+                "missing_value": null
+            }
+        }
     }
 }

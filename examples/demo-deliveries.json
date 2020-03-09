@@ -1,75 +1,160 @@
 {
-    "List": [
-        { "Emit": {
-            "table": "Deliveries", 
-            "headings": [
-                { "Lit": "id" }, 
-                { "Lit": "Did the mother deliver?" }, 
-                { "Lit": "Delivery Date" }, 
-                { "Lit": "Delivery Type" }, 
-                { "Lit": "Number of children born" }
-            ], 
-            "source": {
-                "Map": {
-                    "body": {
-                        "List": [
-                            { "Ref": "id" }, 
-                            { "Ref": "form.mother_deliver" }, 
-                            { "Ref": "form.delivery_information.delivery_date" }, 
-                            { "Ref": "form.delivery_information.delivery_type" }, 
-                            { "Ref": "form.delivery_information.num_children" }
+    "Bind": {
+        "name": "checkpoint_manager",
+        "value": {
+            "Apply": {
+                "fn": {
+                    "Ref": "get_checkpoint_manager"
+                },
+                "args": [
+                    {
+                        "Lit": [
+                            "Deliveries",
+                            "Children"
                         ]
-                    }, 
-                    "source": {
-                        "Apply": {
-                            "fn": { "Ref": "api_data" },
-                            "args": [
-                                { "Lit": "form" }, 
-                                { "Lit": {
-                                    "filter": { "term": { "xmlns.exact": "http://openrosa.org/formdesigner/74CCF2B2-AB85-4F1D-9CD7-5203056BB213" } }
-                                }}
-                            ]
-                        }
                     }
-                }
+                ]
             }
-        }},
-        { "Emit": {
-            "table": "Children", 
-            "headings": [
-                { "Lit": "Form ID" }, 
-                    { "Lit": "id" }, 
-                    { "Lit": "Gender" }, 
-                { "Lit": "Birth Weight" }
-            ], 
-            "source": {
-                "Map": {
-                    "body": {
-                        "List": [
-                            { "Ref": "$.id" }, 
-                            { "Ref": "id" }, 
-                            { "Ref": "gender" }, 
-                            { "Ref": "birth_weight" }
-                        ]
-                    }, 
-                    "source": {
-                        "FlatMap": {
-                            "body": { "Ref": "form.delivery_information.child_questions.[*]" }, 
-                            "source": {
-                                "Apply": {
-                                    "fn": { "Ref": "api_data" },
-                                    "args": [
-                                        { "Lit": "form" }, 
-                                        { "Lit": {
-                                            "filter": { "term": { "xmlns.exact": "http://openrosa.org/formdesigner/74CCF2B2-AB85-4F1D-9CD7-5203056BB213" } }
-                                        }}
-                                    ]
-                                } 
+        },
+        "body": {
+            "Filter": {
+                "predicate": {
+                    "Apply": {
+                        "fn": {
+                            "Ref": "filter_empty"
+                        },
+                        "args": [
+                            {
+                                "Ref": "$"
                             }
-                        }
+                        ]
                     }
-                }
+                },
+                "source": {
+                    "Map": {
+                        "body": {
+                            "List": [
+                                {
+                                    "Emit": {
+                                        "table": "Deliveries",
+                                        "headings": [
+                                            {
+                                                "Lit": "id"
+                                            },
+                                            {
+                                                "Lit": "Did the mother deliver?"
+                                            },
+                                            {
+                                                "Lit": "Delivery Date"
+                                            },
+                                            {
+                                                "Lit": "Delivery Type"
+                                            },
+                                            {
+                                                "Lit": "Number of children born"
+                                            }
+                                        ],
+                                        "source": {
+                                            "Map": {
+                                                "body": {
+                                                    "List": [
+                                                        {
+                                                            "Ref": "id"
+                                                        },
+                                                        {
+                                                            "Ref": "form.mother_deliver"
+                                                        },
+                                                        {
+                                                            "Ref": "form.delivery_information.delivery_date"
+                                                        },
+                                                        {
+                                                            "Ref": "form.delivery_information.delivery_type"
+                                                        },
+                                                        {
+                                                            "Ref": "form.delivery_information.num_children"
+                                                        }
+                                                    ]
+                                                },
+                                                "source": {
+                                                    "Ref": "`this`"
+                                                },
+                                                "name": null
+                                            }
+                                        },
+                                        "missing_value": null
+                                    }
+                                },
+                                {
+                                    "Emit": {
+                                        "table": "Children",
+                                        "headings": [
+                                            {
+                                                "Lit": "Form ID"
+                                            },
+                                            {
+                                                "Lit": "id"
+                                            },
+                                            {
+                                                "Lit": "Gender"
+                                            },
+                                            {
+                                                "Lit": "Birth Weight"
+                                            }
+                                        ],
+                                        "source": {
+                                            "Map": {
+                                                "body": {
+                                                    "List": [
+                                                        {
+                                                            "Ref": "$.id"
+                                                        },
+                                                        {
+                                                            "Ref": "id"
+                                                        },
+                                                        {
+                                                            "Ref": "gender"
+                                                        },
+                                                        {
+                                                            "Ref": "birth_weight"
+                                                        }
+                                                    ]
+                                                },
+                                                "source": {
+                                                    "Ref": "form.delivery_information.child_questions.[*]"
+                                                },
+                                                "name": null
+                                            }
+                                        },
+                                        "missing_value": null
+                                    }
+                                }
+                            ]
+                        },
+                        "source": {
+                            "Apply": {
+                                "fn": {
+                                    "Ref": "api_data"
+                                },
+                                "args": [
+                                    {
+                                        "Lit": "form"
+                                    },
+                                    {
+                                        "Ref": "checkpoint_manager"
+                                    },
+                                    {
+                                        "Lit": {
+                                            "xmlns.exact": "http://openrosa.org/formdesigner/74CCF2B2-AB85-4F1D-9CD7-5203056BB213"
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        "name": null
+                    }
+                },
+                "name": null
             }
-        }}
-    ]
+        }
+    }
 }
