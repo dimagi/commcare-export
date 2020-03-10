@@ -1,0 +1,189 @@
+{
+    "List": [
+        {
+            "Bind": {
+                "name": "checkpoint_manager",
+                "value": {
+                    "Apply": {
+                        "fn": {
+                            "Ref": "get_checkpoint_manager"
+                        },
+                        "args": [
+                            {
+                                "Lit": [
+                                    "Pregnant Mother Cases"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "body": {
+                    "Emit": {
+                        "table": "Pregnant Mother Cases",
+                        "headings": [
+                            {
+                                "Lit": "id"
+                            },
+                            {
+                                "Lit": "Case Opened On"
+                            },
+                            {
+                                "Lit": "Mother's Name"
+                            },
+                            {
+                                "Lit": "Age"
+                            },
+                            {
+                                "Lit": "Estimated Delivery Date"
+                            },
+                            {
+                                "Lit": "Actual Delivery Date"
+                            },
+                            {
+                                "Lit": "Submission Dates"
+                            }
+                        ],
+                        "source": {
+                            "Map": {
+                                "body": {
+                                    "List": [
+                                        {
+                                            "Ref": "case_id"
+                                        },
+                                        {
+                                            "Ref": "properties.date_opened"
+                                        },
+                                        {
+                                            "Ref": "properties.case_name"
+                                        },
+                                        {
+                                            "Ref": "properties.age"
+                                        },
+                                        {
+                                            "Ref": "properties.edd"
+                                        },
+                                        {
+                                            "Ref": "properties.delivery_date"
+                                        },
+                                        {
+                                            "Ref": "xforms[*].received_on"
+                                        }
+                                    ]
+                                },
+                                "source": {
+                                    "Apply": {
+                                        "fn": {
+                                            "Ref": "api_data"
+                                        },
+                                        "args": [
+                                            {
+                                                "Lit": "case"
+                                            },
+                                            {
+                                                "Ref": "checkpoint_manager"
+                                            },
+                                            {
+                                                "Lit": {
+                                                    "type": "pregnant_mother"
+                                                }
+                                            },
+                                            {
+                                                "Lit": [
+                                                    "xforms"
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                },
+                                "name": null
+                            }
+                        },
+                        "missing_value": null
+                    }
+                }
+            }
+        },
+        {
+            "Bind": {
+                "name": "checkpoint_manager",
+                "value": {
+                    "Apply": {
+                        "fn": {
+                            "Ref": "get_checkpoint_manager"
+                        },
+                        "args": [
+                            {
+                                "Lit": [
+                                    "CaseToForm"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "body": {
+                    "Emit": {
+                        "table": "CaseToForm",
+                        "headings": [
+                            {
+                                "Lit": "Case ID"
+                            },
+                            {
+                                "Lit": "Form ID"
+                            },
+                            {
+                                "Lit": "id"
+                            }
+                        ],
+                        "source": {
+                            "Map": {
+                                "body": {
+                                    "List": [
+                                        {
+                                            "Ref": "$.id"
+                                        },
+                                        {
+                                            "Ref": "`this`"
+                                        },
+                                        {
+                                            "Ref": "`this`"
+                                        }
+                                    ]
+                                },
+                                "source": {
+                                    "FlatMap": {
+                                        "body": {
+                                            "Ref": "xform_ids.[*]"
+                                        },
+                                        "source": {
+                                            "Apply": {
+                                                "fn": {
+                                                    "Ref": "api_data"
+                                                },
+                                                "args": [
+                                                    {
+                                                        "Lit": "case"
+                                                    },
+                                                    {
+                                                        "Ref": "checkpoint_manager"
+                                                    },
+                                                    {
+                                                        "Lit": {
+                                                            "type": "pregnant_mother"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        "name": null
+                                    }
+                                },
+                                "name": null
+                            }
+                        },
+                        "missing_value": null
+                    }
+                }
+            }
+        }
+    ]
+}

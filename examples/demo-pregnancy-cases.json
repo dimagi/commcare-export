@@ -1,132 +1,160 @@
 {
-    "List": [
-        {
-            "Emit": {
-                "table": "Pregnant Mother Cases", 
-                "headings": [
+    "Bind": {
+        "name": "checkpoint_manager",
+        "value": {
+            "Apply": {
+                "fn": {
+                    "Ref": "get_checkpoint_manager"
+                },
+                "args": [
                     {
-                        "Lit": "id"
-                    }, 
-                    {
-                        "Lit": "Case Opened On"
-                    }, 
-                    {
-                        "Lit": "Mother's Name"
-                    }, 
-                    {
-                        "Lit": "Age"
-                    }, 
-                    {
-                        "Lit": "Estimated Delivery Date"
-                    }, 
-                    {
-                        "Lit": "Actual Delivery Date"
+                        "Lit": [
+                            "Pregnant Mother Cases",
+                            "CaseToForm"
+                        ]
                     }
-                ], 
+                ]
+            }
+        },
+        "body": {
+            "Filter": {
+                "predicate": {
+                    "Apply": {
+                        "fn": {
+                            "Ref": "filter_empty"
+                        },
+                        "args": [
+                            {
+                                "Ref": "$"
+                            }
+                        ]
+                    }
+                },
                 "source": {
                     "Map": {
                         "body": {
                             "List": [
                                 {
-                                    "Ref": "case_id"
-                                }, 
+                                    "Emit": {
+                                        "table": "Pregnant Mother Cases",
+                                        "headings": [
+                                            {
+                                                "Lit": "id"
+                                            },
+                                            {
+                                                "Lit": "Case Opened On"
+                                            },
+                                            {
+                                                "Lit": "Mother's Name"
+                                            },
+                                            {
+                                                "Lit": "Age"
+                                            },
+                                            {
+                                                "Lit": "Estimated Delivery Date"
+                                            },
+                                            {
+                                                "Lit": "Actual Delivery Date"
+                                            }
+                                        ],
+                                        "source": {
+                                            "Map": {
+                                                "body": {
+                                                    "List": [
+                                                        {
+                                                            "Ref": "case_id"
+                                                        },
+                                                        {
+                                                            "Ref": "properties.date_opened"
+                                                        },
+                                                        {
+                                                            "Ref": "properties.case_name"
+                                                        },
+                                                        {
+                                                            "Ref": "properties.age"
+                                                        },
+                                                        {
+                                                            "Ref": "properties.edd"
+                                                        },
+                                                        {
+                                                            "Ref": "properties.delivery_date"
+                                                        }
+                                                    ]
+                                                },
+                                                "source": {
+                                                    "Ref": "`this`"
+                                                },
+                                                "name": null
+                                            }
+                                        },
+                                        "missing_value": null
+                                    }
+                                },
                                 {
-                                    "Ref": "properties.date_opened"
-                                }, 
-                                {
-                                    "Ref": "properties.case_name"
-                                }, 
-                                {
-                                    "Ref": "properties.age"
-                                }, 
-                                {
-                                    "Ref": "properties.edd"
-                                }, 
-                                {
-                                    "Ref": "properties.delivery_date"
+                                    "Emit": {
+                                        "table": "CaseToForm",
+                                        "headings": [
+                                            {
+                                                "Lit": "Case ID"
+                                            },
+                                            {
+                                                "Lit": "Form ID"
+                                            },
+                                            {
+                                                "Lit": "id"
+                                            }
+                                        ],
+                                        "source": {
+                                            "Map": {
+                                                "body": {
+                                                    "List": [
+                                                        {
+                                                            "Ref": "$.id"
+                                                        },
+                                                        {
+                                                            "Ref": "`this`"
+                                                        },
+                                                        {
+                                                            "Ref": "`this`"
+                                                        }
+                                                    ]
+                                                },
+                                                "source": {
+                                                    "Ref": "xform_ids.[*]"
+                                                },
+                                                "name": null
+                                            }
+                                        },
+                                        "missing_value": null
+                                    }
                                 }
                             ]
-                        }, 
+                        },
                         "source": {
                             "Apply": {
+                                "fn": {
+                                    "Ref": "api_data"
+                                },
                                 "args": [
                                     {
                                         "Lit": "case"
-                                    }, 
+                                    },
+                                    {
+                                        "Ref": "checkpoint_manager"
+                                    },
                                     {
                                         "Lit": {
                                             "type": "pregnant_mother"
                                         }
                                     }
-                                ], 
-                                "fn": {
-                                    "Ref": "api_data"
-                                }
+                                ]
                             }
-                        }, 
+                        },
                         "name": null
                     }
-                }
-            }
-        }, 
-        {
-            "Emit": {
-                "table": "CaseToForm", 
-                "headings": [
-                    {
-                        "Lit": "Case ID"
-                    }, 
-                    {
-                        "Lit": "Form ID"
-                    },
-                    {
-                        "Lit": "id"
-                    }
-                ], 
-                "source": {
-                    "Map": {
-                        "body": {
-                            "List": [
-                                {
-                                    "Ref": "$.id"
-                                }, 
-                                {
-                                    "Ref": "`this`"
-                                },
-                                {
-                                    "Ref": "`this`"
-                                }
-                            ]
-                        }, 
-                        "source": {
-                            "FlatMap": {
-                                "body": {
-                                    "Ref": "xform_ids.[*]"
-                                }, 
-                                "source": {
-                                    "Apply": {
-                                        "args": [
-                                            {
-                                                "Lit": "case"
-                                            }, 
-                                            {
-                                                "Lit": {
-                                                    "type": "pregnant_mother"
-                                                }
-                                            }
-                                        ], 
-                                        "fn": {
-                                            "Ref": "api_data"
-                                        }
-                                    }
-                                }, 
-                                "name": null
-                            }
-                        }, 
-                        "name": null
-                    }
-                }
+                },
+                "name": null
             }
         }
-    ]
+    }
 }

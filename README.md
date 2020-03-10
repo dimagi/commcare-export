@@ -17,7 +17,7 @@ Installation & Quick Start
 
 0a\. Install Python and `pip`. This tool is [tested with Python 2.7, 3.6 and 3.7](https://travis-ci.org/dimagi/commcare-export).
 
-0b\. Sign up for CommCareHQ at https://www.commcarehq.org/register/user if you have not already.
+0b\. Sign up for [CommCareHQ](https://www.commcarehq.org/) if you have not already.
 
 1\. Install CommCare Export via `pip`
 
@@ -25,13 +25,16 @@ Installation & Quick Start
 $ pip install commcare-export
 ```
 
-2\. Visit the CommCareHQ Exchange and add the [Simple CommCare Demo/Tutorial"](https://www.commcarehq.org/exchange/611422532c7ab89d22cca54d57ae89aa/info/) app to a new project space.
+2\. Create a project space and application.
 
 3\. Visit the Release Manager, make a build, click the star to release it.
 
-4\. Visit CloudCare and fill out a bunch of forms.
+4\. Use Web Apps and fill out some forms.
 
-5\. Try out the example queries in the `examples/` directory, providing your project name on the command line:
+5\. Modify one of example queries in the `examples/` directory, modifying the "Filter Value" column
+    to match your form XMLNS / case type. 
+    See [this page](https://confluence.dimagi.com/display/commcarepublic/Finding+a+Form%27s+XMLNS) to 
+    determine the XMLNS for your form.
 
 ```
 $ commcare-export \
@@ -58,7 +61,8 @@ $ commcare-export \
 You'll see the tables printed out. Change to `--output-format sql --output URL_TO_YOUR_DB --since DATE` to
 sync all forms submitted since that date.
 
-All examples are present in Excel and also equivalent JSON.
+All examples are present in Excel and also equivalent JSON, however it is recommended
+to use the Excel format as the JSON format may change upon future library releases.
 
 Command-line Usage
 ------------------
@@ -332,7 +336,7 @@ Contributing
 $ mkvirtualenv commcare-export
 $ git clone git@github.com:dimagi/commcare-export.git
 $ cd commcare-export
-$ pip install -e ".[testing]"
+$ pip install -e ".[test]"
 $ git checkout -b my-super-duper-feature
 ```
 
