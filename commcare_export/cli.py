@@ -291,7 +291,7 @@ def main_with_args(args):
     if args.users:
         if builtin_users_query.TABLE_NAME in query_tables:
             print('--users flag should not be used with a query that writes '
-                  'to the table "commcare_users"')
+                  'to the table', builtin_users_query.TABLE_NAME)
             return EXIT_STATUS_ERROR
         # Add user data to query
         user_query = MiniLinq.from_jvalue(builtin_users_query.jvalue)
@@ -301,7 +301,8 @@ def main_with_args(args):
     if args.locations:
         if builtin_locations_query.TABLE_NAME in query_tables:
             print('--locations flag should not be used with a query that '
-                  'writes to the table "commcare_locations"')
+                  'writes to the table',
+                  builtin_locations_query.TABLE_NAME)
             return EXIT_STATUS_ERROR
         # Add location data to query
         location_query = MiniLinq.from_jvalue(builtin_locations_query.jvalue)
