@@ -73,10 +73,13 @@ The basic usage of the command-line tool is with a saved Excel or JSON query (se
 $ commcare-export --commcare-hq <URL or alias like "local" or "prod"> \
                   --username <username> \
                   --project <project> \
-                  --version <api version, defaults to latest known> \
+                  --api-version <api version, defaults to latest known> \
+                  --version <print current version> \
                   --query <excel file, json file, or raw json> \
                   --output-format <csv, xls, xlsx, json, markdown, sql> \
-                  --output <file name or SQL database URL>
+                  --output <file name or SQL database URL> \
+                  --users <export data about project's mobile workers> \
+                  --locations <export data about project's location hierarchy>
 ```
 
 See `commcare-export --help` for the full list of options.

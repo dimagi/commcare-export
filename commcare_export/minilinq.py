@@ -65,6 +65,29 @@ class MiniLinq(object):
 
             return cls._node_classes[slug].from_jvalue(jvalue)
 
+    @classmethod
+    def combine(cls, minilinq1, minilinq2):
+        # Return one minilinq query equivalent to running minilinq1 and then
+        # minilinq2. Either argument may be None, a List of queries or a
+        # single non-List query.
+        if minilinq1 is None:
+            return minilinq2
+
+        if minilinq2 is None:
+            return minilinq1
+
+        if not isinstance(minilinq1, List):
+            minilinq1 = List([minilinq1])
+
+        if not isinstance(minilinq2, List):
+            minilinq2 = List([minilinq2])
+
+        return List.concatenate(minilinq1, minilinq2)
+
+    def emitted_tables(self):
+        raise NotImplementedError()
+
+
 class Reference(MiniLinq):
     """
     An MiniLinq referencing a datum or data. It is flexible
@@ -94,6 +117,9 @@ class Reference(MiniLinq):
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.ref)
 
+    def emitted_tables(self):
+        return set()
+
 
 class Literal(MiniLinq):
     """
@@ -120,6 +146,9 @@ class Literal(MiniLinq):
 
     def to_jvalue(self):
         return {'Lit': self.v}
+
+    def emitted_tables(self):
+        return set()
 
 
 class Bind(MiniLinq):
@@ -160,6 +189,9 @@ class Bind(MiniLinq):
 
     def __repr__(self):
         return '%s(name=%r, value=%r, body=%r)' % (self.__class__.__name__, self.name, self.value, self.body)
+
+    def emitted_tables(self):
+        return self.body.emitted_tables()
 
 
 class Filter(MiniLinq):
@@ -208,6 +240,9 @@ class Filter(MiniLinq):
     def __repr__(self):
         return '%s(source=%r, name=%r, predicate=%r)' % (self.__class__.__name__, self.source, self.name, self.predicate)
 
+    def emitted_tables(self):
+        return set()
+
 
 class List(MiniLinq):
     """
@@ -227,11 +262,22 @@ class List(MiniLinq):
         return '%s(%s)' % (self.__class__.__name__, self.items)
 
     @classmethod
+    def concatenate(cls, list1, list2):
+        return List(list1.items + list2.items)
+
+    @classmethod
     def from_jvalue(cls, jvalue):
         return cls([MiniLinq.from_jvalue(item) for item in jvalue['List']])
 
     def to_jvalue(self):
         return {'List': [item.to_jvalue() for item in self.items]}
+
+    def emitted_tables(self):
+        all_tables = set()
+        for item in self.items:
+            all_tables |= item.emitted_tables()
+        return all_tables
+
 
 class Map(MiniLinq):
     """
@@ -280,6 +326,10 @@ class Map(MiniLinq):
         return {'Map': {'body': self.body.to_jvalue(),
                         'source': self.source.to_jvalue(),
                         'name': self.name}}
+
+    def emitted_tables(self):
+        return set()
+
 
 class FlatMap(MiniLinq):
     """
@@ -333,6 +383,10 @@ class FlatMap(MiniLinq):
                             'source': self.source.to_jvalue(),
                             'name': self.name}}
 
+    def emitted_tables(self):
+        return set()
+
+
 class Apply(MiniLinq):
     """
     Abstract syntax for function or operator application.
@@ -383,6 +437,9 @@ class Apply(MiniLinq):
 
     def __repr__(self):
         return '%s(%r, *%r)' % (self.__class__.__name__, self.fn, self.args)
+
+    def emitted_tables(self):
+        return set()
 
 
 class Emit(MiniLinq):
@@ -455,6 +512,10 @@ class Emit(MiniLinq):
         return '%s(table=%r, headings=%r, source=%r, missing_value=%r)' % (
             self.__class__.__name__, self.table, self.headings, self.source, self.missing_value
         )
+
+    def emitted_tables(self):
+        return {self.table}
+
 
 ### Register everything with the root parser ###
 
