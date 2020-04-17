@@ -84,7 +84,7 @@ client = MockCommCareHqClient({
     ],
     'location_type': [
         (
-            {'limit': 100},
+            {'get': True},
             [
                 {'administrative': True, 'code': 'hq', 'domain': 'd1', 'id': 1,
                  'name': 'HQ', 'parent': None, 'resource_uri': 'lt1',
@@ -210,18 +210,22 @@ EXPECTED_LOCATIONS_RESULTS = [
 
 class TestCli(unittest.TestCase):
 
+    def _test_cli(self, args, expected):
+        writer = JValueTableWriter()
+        with mock.patch('commcare_export.cli._get_writer', return_value=writer):
+            main_with_args(args)
+
+        for table in expected:
+            assert writer.tables[table['name']] == table
+
+
     @mock.patch('commcare_export.cli._get_api_client', return_value=client)
     def test_cli(self, mock_client):
         args = make_args(
             query='tests/008_multiple-tables.xlsx',
             output_format='json'
         )
-        writer = JValueTableWriter()
-        with mock.patch('commcare_export.cli._get_writer', return_value=writer):
-            main_with_args(args)
-
-        for table in EXPECTED_MULTIPLE_TABLES_RESULTS:
-            assert writer.tables[table['name']] == table
+        self._test_cli(args, EXPECTED_MULTIPLE_TABLES_RESULTS)
 
     @mock.patch('commcare_export.cli._get_api_client', return_value=client)
     def test_cli_just_users(self, mock_client):
@@ -229,12 +233,7 @@ class TestCli(unittest.TestCase):
             output_format='json',
             users=True
         )
-        writer = JValueTableWriter()
-        with mock.patch('commcare_export.cli._get_writer', return_value=writer):
-            main_with_args(args)
-
-        for table in EXPECTED_USERS_RESULTS:
-            assert writer.tables[table['name']] == table
+        self._test_cli(args, EXPECTED_USERS_RESULTS)
 
     @mock.patch('commcare_export.cli._get_api_client', return_value=client)
     def test_cli_table_plus_users(self, mock_client):
@@ -243,12 +242,8 @@ class TestCli(unittest.TestCase):
             output_format='json',
             users=True
         )
-        writer = JValueTableWriter()
-        with mock.patch('commcare_export.cli._get_writer', return_value=writer):
-            main_with_args(args)
-
-        for table in EXPECTED_MULTIPLE_TABLES_RESULTS + EXPECTED_USERS_RESULTS:
-            assert writer.tables[table['name']] == table
+        self._test_cli(args, EXPECTED_MULTIPLE_TABLES_RESULTS +
+                       EXPECTED_USERS_RESULTS)
 
     @mock.patch('commcare_export.cli._get_api_client', return_value=client)
     def test_cli_just_locations(self, mock_client):
@@ -256,12 +251,7 @@ class TestCli(unittest.TestCase):
             output_format='json',
             locations=True
         )
-        writer = JValueTableWriter()
-        with mock.patch('commcare_export.cli._get_writer', return_value=writer):
-            main_with_args(args)
-
-        for table in EXPECTED_LOCATIONS_RESULTS:
-            assert writer.tables[table['name']] == table
+        self._test_cli(args, EXPECTED_LOCATIONS_RESULTS)
 
     @mock.patch('commcare_export.cli._get_api_client', return_value=client)
     def test_cli_table_plus_locations(self, mock_client):
@@ -270,13 +260,8 @@ class TestCli(unittest.TestCase):
             output_format='json',
             locations=True
         )
-        writer = JValueTableWriter()
-        with mock.patch('commcare_export.cli._get_writer', return_value=writer):
-            main_with_args(args)
-
-        expected = EXPECTED_MULTIPLE_TABLES_RESULTS + EXPECTED_LOCATIONS_RESULTS
-        for table in expected:
-            assert writer.tables[table['name']] == table
+        self._test_cli(args, EXPECTED_MULTIPLE_TABLES_RESULTS +
+                       EXPECTED_LOCATIONS_RESULTS)
 
 
 @pytest.fixture(scope='class')

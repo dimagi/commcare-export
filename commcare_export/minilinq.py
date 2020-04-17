@@ -65,6 +65,7 @@ class MiniLinq(object):
 
             return cls._node_classes[slug].from_jvalue(jvalue)
 
+
     @classmethod
     def combine(cls, minilinq1, minilinq2):
         # Return one minilinq query equivalent to running minilinq1 and then
@@ -83,9 +84,6 @@ class MiniLinq(object):
             minilinq2 = List([minilinq2])
 
         return List.concatenate(minilinq1, minilinq2)
-
-    def emitted_tables(self):
-        raise NotImplementedError()
 
 
 class Reference(MiniLinq):
@@ -117,9 +115,6 @@ class Reference(MiniLinq):
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.ref)
 
-    def emitted_tables(self):
-        return set()
-
 
 class Literal(MiniLinq):
     """
@@ -146,9 +141,6 @@ class Literal(MiniLinq):
 
     def to_jvalue(self):
         return {'Lit': self.v}
-
-    def emitted_tables(self):
-        return set()
 
 
 class Bind(MiniLinq):
@@ -189,9 +181,6 @@ class Bind(MiniLinq):
 
     def __repr__(self):
         return '%s(name=%r, value=%r, body=%r)' % (self.__class__.__name__, self.name, self.value, self.body)
-
-    def emitted_tables(self):
-        return self.body.emitted_tables()
 
 
 class Filter(MiniLinq):
@@ -240,9 +229,6 @@ class Filter(MiniLinq):
     def __repr__(self):
         return '%s(source=%r, name=%r, predicate=%r)' % (self.__class__.__name__, self.source, self.name, self.predicate)
 
-    def emitted_tables(self):
-        return set()
-
 
 class List(MiniLinq):
     """
@@ -271,12 +257,6 @@ class List(MiniLinq):
 
     def to_jvalue(self):
         return {'List': [item.to_jvalue() for item in self.items]}
-
-    def emitted_tables(self):
-        all_tables = set()
-        for item in self.items:
-            all_tables |= item.emitted_tables()
-        return all_tables
 
 
 class Map(MiniLinq):
@@ -326,9 +306,6 @@ class Map(MiniLinq):
         return {'Map': {'body': self.body.to_jvalue(),
                         'source': self.source.to_jvalue(),
                         'name': self.name}}
-
-    def emitted_tables(self):
-        return set()
 
 
 class FlatMap(MiniLinq):
@@ -383,9 +360,6 @@ class FlatMap(MiniLinq):
                             'source': self.source.to_jvalue(),
                             'name': self.name}}
 
-    def emitted_tables(self):
-        return set()
-
 
 class Apply(MiniLinq):
     """
@@ -437,9 +411,6 @@ class Apply(MiniLinq):
 
     def __repr__(self):
         return '%s(%r, *%r)' % (self.__class__.__name__, self.fn, self.args)
-
-    def emitted_tables(self):
-        return set()
 
 
 class Emit(MiniLinq):
@@ -512,9 +483,6 @@ class Emit(MiniLinq):
         return '%s(table=%r, headings=%r, source=%r, missing_value=%r)' % (
             self.__class__.__name__, self.table, self.headings, self.source, self.missing_value
         )
-
-    def emitted_tables(self):
-        return {self.table}
 
 
 ### Register everything with the root parser ###

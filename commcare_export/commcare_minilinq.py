@@ -79,7 +79,6 @@ resource_since_params = {
     'case': SimpleSinceParams('server_date_modified_start', 'server_date_modified_end'),
     'user': None,
     'location': None,
-    'location_type': None,
     'application': None,
     'web-user': None,
 }
@@ -91,7 +90,6 @@ def get_paginator(resource, page_size=1000):
         'case': DatePaginator('case', 'server_date_modified', page_size),
         'user': SimplePaginator('user', page_size),
         'location': SimplePaginator('location', page_size),
-        'location_type': SimplePaginator('location_type', page_size),
         'application': SimplePaginator('application', page_size),
         'web-user': SimplePaginator('web-user', page_size),
     }[resource]

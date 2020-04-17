@@ -185,6 +185,17 @@ class MockCommCareHqClient(object):
         logger.debug('Mock client call to resource "%s" with params "%s"', resource, params)
         return self.mock_data[resource][urlencode(OrderedDict(sorted(params.items())))]
 
+    def get(self, resource):
+        logger.debug('Mock client call to get resource "%s"', resource)
+        objects = self.mock_data[resource][urlencode(OrderedDict([('get', True)]))]
+        if objects:
+            return {'meta': {'limit': len(objects), 'next': None,
+                             'offset': 0, 'previous': None,
+                             'total_count': len(objects)},
+                    'objects': objects}
+        else:
+            return None
+
 
 class ApiKeyAuth(AuthBase):
     def __init__(self, username, apikey):

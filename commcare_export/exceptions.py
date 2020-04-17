@@ -34,3 +34,21 @@ class MissingColumnException(DataExportException):
             ) for sheet, missing_cols in self.errors_by_sheet.items()
         ]
         return '\n'.join(lines)
+
+
+class MissingQueryFileException(DataExportException):
+    def __init__(self, query_file):
+        self.query_file = query_file
+
+    @property
+    def message(self):
+        return 'Query file not found: {}'.format(self.query_file)
+
+
+class ReservedTableNameException(DataExportException):
+    def __init__(self, conflicting_name):
+        self.conflicting_name = conflicting_name
+
+    @property
+    def message(self):
+        return 'Table name "{}" conflicts with an internal table name. Please export to a different table.'.format(self.conflicting_name)

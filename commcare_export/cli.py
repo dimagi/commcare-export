@@ -19,14 +19,12 @@ from commcare_export.utils import get_checkpoint_manager
 from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION
 from commcare_export.commcare_minilinq import CommCareHqEnv
 from commcare_export.env import BuiltInEnv, JsonPathEnv, EmitterEnv
-from commcare_export.exceptions import LongFieldsException, DataExportException
-from commcare_export.minilinq import MiniLinq
+from commcare_export.exceptions import LongFieldsException, DataExportException, MissingQueryFileException
+from commcare_export.minilinq import MiniLinq, List
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.version import __version__
-from commcare_export import builtin_users_query
-from commcare_export import builtin_locations_query
-from commcare_export import builtin_location_types_query
-from commcare_export.builtin_location_types_query import LocationInfoProvider
+from commcare_export import builtin_queries
+from commcare_export.location_info_provider import LocationInfoProvider
 
 EXIT_STATUS_ERROR = 1
 
@@ -166,6 +164,28 @@ def _get_query_from_file(query_arg, missing_value, combine_emits, max_column_len
                 return MiniLinq.from_jvalue(json.loads(fh.read()))
 
 
+def get_queries(args, writer):
+    query = None
+    query_list = []
+    if args.query is not None:
+        query = _get_query(args, writer)
+
+        if not query:
+            raise MissingQueryFileException(args.query)
+        else:
+            query_list.append(query)
+
+    if args.users:
+        # Add user data to query
+        query = MiniLinq.combine(query, builtin_queries.users_query)
+
+    if args.locations:
+        # Add location data to query
+        query = MiniLinq.combine(query, builtin_queries.locations_query)
+
+    return query
+
+
 def _get_writer(output_format, output, strict_types):
     if output_format == 'xlsx':
         return writers.Excel2007TableWriter(output)
@@ -237,33 +257,6 @@ def evaluate_query(env, query):
             return None
 
 
-def location_type_map(args):
-    location_type_query = MiniLinq.from_jvalue(builtin_location_types_query.jvalue)
-
-    writer = writers.JValueTableWriter()
-    checkpoint_manager = None
-
-    commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq,
-                                                  args.commcare_hq)
-    api_client = _get_api_client(args, commcarehq_base_url)
-
-    cm = CheckpointManagerProvider(checkpoint_manager, None, args.start_over)
-    static_env = {
-        'commcarehq_base_url': commcarehq_base_url,
-        'get_checkpoint_manager': cm.get_checkpoint_manager,
-    }
-    env = (
-            BuiltInEnv(static_env)
-            | CommCareHqEnv(api_client, until=None, page_size=args.batch_size)
-            | JsonPathEnv({})
-            | EmitterEnv(writer)
-    )
-
-    evaluate_query(env, location_type_query)
-
-    return builtin_location_types_query.build_dictionary(writer.tables)
-
-
 def main_with_args(args):
     logger.info("CommCare Export Version {}".format(__version__))
     writer = _get_writer(args.output_format, args.output, args.strict_types)
@@ -273,44 +266,11 @@ def main_with_args(args):
               '--query, --users, --locations')
         return EXIT_STATUS_ERROR
 
-    query = None
-    query_tables = []
-    if args.query is not None:
-        try:
-            query = _get_query(args, writer)
-        except DataExportException as e:
-            print(e.message)
-            return EXIT_STATUS_ERROR
-
-        if not query:
-            print('Query file not found: %s' % args.query)
-            return EXIT_STATUS_ERROR
-        else:
-            query_tables = query.emitted_tables()
-
-    if args.users:
-        if builtin_users_query.TABLE_NAME in query_tables:
-            print('--users flag should not be used with a query that writes '
-                  'to the table', builtin_users_query.TABLE_NAME)
-            return EXIT_STATUS_ERROR
-        # Add user data to query
-        user_query = MiniLinq.from_jvalue(builtin_users_query.jvalue)
-        query = MiniLinq.combine(query, user_query)
-
-    location_types = None
-    if args.locations:
-        if builtin_locations_query.TABLE_NAME in query_tables:
-            print('--locations flag should not be used with a query that '
-                  'writes to the table',
-                  builtin_locations_query.TABLE_NAME)
-            return EXIT_STATUS_ERROR
-        # Add location data to query
-        location_query = MiniLinq.from_jvalue(builtin_locations_query.jvalue)
-        query = MiniLinq.combine(query, location_query)
-
-        # Fetch the location_type data to create a table to be stored
-        # in the environment.
-        location_types = location_type_map(args)
+    try:
+        query = get_queries(args, writer)
+    except DataExportException as e:
+        print(e.message)
+        return EXIT_STATUS_ERROR
 
     if args.dump_query:
         print(json.dumps(query.to_jvalue(), indent=4))
@@ -338,7 +298,7 @@ def main_with_args(args):
         logger.debug('Starting from %s', args.since)
 
     cm = CheckpointManagerProvider(checkpoint_manager, since, args.start_over)
-    lp = LocationInfoProvider(location_types)
+    lp = LocationInfoProvider(api_client)
     static_env = {
         'commcarehq_base_url': commcarehq_base_url,
         'get_checkpoint_manager': cm.get_checkpoint_manager,
