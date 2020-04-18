@@ -165,25 +165,23 @@ def _get_query_from_file(query_arg, missing_value, combine_emits, max_column_len
 
 
 def get_queries(args, writer):
-    query = None
     query_list = []
     if args.query is not None:
         query = _get_query(args, writer)
 
         if not query:
             raise MissingQueryFileException(args.query)
-        else:
-            query_list.append(query)
+        query_list.append(query)
 
     if args.users:
         # Add user data to query
-        query = MiniLinq.combine(query, builtin_queries.users_query)
+        query_list.append(builtin_queries.users_query)
 
     if args.locations:
         # Add location data to query
-        query = MiniLinq.combine(query, builtin_queries.locations_query)
+        query_list.append(builtin_queries.locations_query)
 
-    return query
+    return List(query_list) if len(query_list) > 1 else query_list[0]
 
 
 def _get_writer(output_format, output, strict_types):

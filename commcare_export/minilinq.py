@@ -66,26 +66,6 @@ class MiniLinq(object):
             return cls._node_classes[slug].from_jvalue(jvalue)
 
 
-    @classmethod
-    def combine(cls, minilinq1, minilinq2):
-        # Return one minilinq query equivalent to running minilinq1 and then
-        # minilinq2. Either argument may be None, a List of queries or a
-        # single non-List query.
-        if minilinq1 is None:
-            return minilinq2
-
-        if minilinq2 is None:
-            return minilinq1
-
-        if not isinstance(minilinq1, List):
-            minilinq1 = List([minilinq1])
-
-        if not isinstance(minilinq2, List):
-            minilinq2 = List([minilinq2])
-
-        return List.concatenate(minilinq1, minilinq2)
-
-
 class Reference(MiniLinq):
     """
     An MiniLinq referencing a datum or data. It is flexible
@@ -246,10 +226,6 @@ class List(MiniLinq):
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self.items)
-
-    @classmethod
-    def concatenate(cls, list1, list2):
-        return List(list1.items + list2.items)
 
     @classmethod
     def from_jvalue(cls, jvalue):
