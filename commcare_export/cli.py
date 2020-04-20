@@ -236,14 +236,20 @@ def _get_checkpoint_manager(args):
         return checkpoint_manager
 
 
+def force_lazy_result(lazy_result):
+    if lazy_result is not None:
+        if isinstance(lazy_result, RepeatableIterator):
+            list(lazy_result) if lazy_result else lazy_result
+        else:
+            for nested_result in lazy_result:
+                force_lazy_result(nested_result)
+
+
 def evaluate_query(env, query):
     with env:
         try:
             lazy_result = query.eval(env)
-            if lazy_result is not None:
-                # evaluate lazy results
-                for r in lazy_result:
-                    list(r) if r else r
+            force_lazy_result(lazy_result)
         except requests.exceptions.RequestException as e:
             if e.response.status_code == 401:
                 print("\nAuthentication failed. Please check your credentials.")
