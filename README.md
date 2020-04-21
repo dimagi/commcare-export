@@ -123,6 +123,64 @@ A good way to get started is to work from the examples, or you could make an exc
 with `--dump-query` to see the resulting JSON query.
 
 
+User and Location Data
+----------------------
+
+The --users and --locations options export data from a CommCare project that
+can be joined with form and case data. Specifiying the --users option will
+export an additional table named 'commcare_users' containing the following
+columns:
+
+Column                           | Type | Note
+------                           | ---- | ----
+id                               | Text | Primary key
+default_phone_number             | Text |
+email                            | Text |
+first_name                       | Text |
+groups                           | Text |
+last_name                        | Text |
+phone_numbers                    | Text |
+resource_uri                     | Text |
+commcare_location_id             | Text | Foreign key into the commcare_locations table
+commcare_location_ids            | Text |
+commcare_primary_case_sharing_id | Text |
+commcare_project                 | Text |
+username                         | Text |
+
+The data in the 'commcare_users' table comes from the [List Mobile Workers
+API endpoint](https://confluence.dimagi.com/display/commcarepublic/List+Mobile+Workers).
+
+Specifying the --locations option will export an additional table named
+'commcare_locations' containing the following columns:
+
+Column                       | Type | Note
+------                       | ---- | ----
+id                           | Text |
+created_at                   | Date |
+domain                       | Text |
+external_id                  | Text |
+last_modified                | Date |
+latitude                     | Text |
+location_data                | Text |
+location_id                  | Text | Primary key
+location_type                | Text |
+longitude                    | Text |
+name                         | Text |
+resource_uri                 | Text |
+site_code                    | Text |
+location_type_administrative | Text |
+location_type_code           | Text |
+location_type_name           | Text |
+location_type_parent         | Text |
+
+The data in the 'commcare_locations' table comes from the Location API
+endpoint along with some additional columns from the Location Type API
+endpoint.
+
+Note that the table names 'commcare_users' and 'commcare_locations' are
+treated as reserved names and the export tool will produce an error if
+given a query specification that writes to either of them.
+
 Python Library Usage
 --------------------
 
