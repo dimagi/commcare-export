@@ -451,8 +451,40 @@ blacklisted_tables = []
 def blacklist(table_name):
     blacklisted_tables.append(table_name)
 
+def add_column_to_sheets(parsed_sheets, column):
+    final_sheets = []
+    for sheet in parsed_sheets:
+        if sheet.body is None:
+            continue
+
+        found_column = False
+        source_fields = sheet.body.to_jvalue()['List']
+        for i in range(len(sheet.headings)):
+            if sheet.headings[i].v == column.name.v:
+                if source_fields[i] == {'Ref': column.source}:
+                    found_column = True
+                    break
+                else:
+                    raise ReservedColumnNameException(sheet.name, column.name.v)
+
+        if found_column:
+            final_sheets.append(sheet)
+        else:
+            source_fields.append(
+                compile_field(field=column.name,
+                              source_field=column.source).to_jvalue())
+            final_sheets.append(SheetParts(sheet.name,
+                                           sheet.headings + [column.name],
+                                           sheet.source,
+                                           MiniLinq.from_jvalue({'List':
+                                                                 source_fields}),
+                                           sheet.root_expr))
+
+    return final_sheets
+
 def get_queries_from_excel(workbook, missing_value=None, combine_emits=False,
-                           max_column_length=None, required_columns=None):
+                           max_column_length=None, required_columns=None,
+                           column_to_add=None):
     parsed_sheets = parse_workbook(workbook)
     for sheet in parsed_sheets:
         if sheet.name in blacklisted_tables:
@@ -461,5 +493,7 @@ def get_queries_from_excel(workbook, missing_value=None, combine_emits=False,
         check_field_length(parsed_sheets, max_column_length)
     if required_columns:
         check_columns(parsed_sheets, required_columns)
+    if column_to_add is not None:
+        parsed_sheets = add_column_to_sheets(parsed_sheets, column_to_add)
     queries = compile_queries(parsed_sheets, missing_value, combine_emits)
     return List(queries) if len(queries) > 1 else queries[0]

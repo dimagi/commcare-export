@@ -24,6 +24,8 @@ class Column:
             return Apply(Reference(self.map_function), Reference(self.source),
                          *self.extra_args)
 
+def commcare_user_column():
+    return Column('commcare_userid', 'metadata.userID')
 
 def compile_query(columns, data_source, table_name):
     source = Apply(Reference('api_data'), Literal(data_source),

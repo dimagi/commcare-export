@@ -85,6 +85,10 @@ CLI_ARGS = [
         Argument('locations', default=False, action='store_true',
                  help="Export a table containing data about this project's "
                       "locations"),
+        Argument('with-organization', default=False, action='store_true',
+                 help="Export tables containing mobile worker data and "
+                      "location data and create views joining form data "
+                      "to location data"),
     ]
 
 
@@ -141,43 +145,52 @@ def main(argv):
             stats.print_stats(100)
 
 
-def _get_query(args, writer):
+def _get_query(args, writer, column_to_add=None):
     return _get_query_from_file(
         args.query,
         args.missing_value,
         writer.supports_multi_table_write,
         writer.max_column_length,
-        writer.required_columns
+        writer.required_columns,
+        column_to_add
     )
 
-def _get_query_from_file(query_arg, missing_value, combine_emits, max_column_length, required_columns):
+def _get_query_from_file(query_arg, missing_value, combine_emits,
+                         max_column_length, required_columns, column_to_add):
     if os.path.exists(query_arg):
         if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
             import openpyxl
             workbook = openpyxl.load_workbook(query_arg)
             return excel_query.get_queries_from_excel(
                 workbook, missing_value, combine_emits,
-                max_column_length, required_columns
+                max_column_length, required_columns, column_to_add
             )
         else:
             with io.open(query_arg, encoding='utf-8') as fh:
-                return MiniLinq.from_jvalue(json.loads(fh.read()))
+                query_jvalue = json.loads(fh.read())
+                # Maybe add column to add
+                return MiniLinq.from_jvalue(query_jvalue)
 
 
 def get_queries(args, writer):
     query_list = []
+
+    column_to_add = None
+    if args.with_organization:
+        column_to_add = builtin_queries.commcare_user_column()
+        
     if args.query is not None:
-        query = _get_query(args, writer)
+        query = _get_query(args, writer, column_to_add=column_to_add)
 
         if not query:
             raise MissingQueryFileException(args.query)
         query_list.append(query)
 
-    if args.users:
+    if args.users or args.with_organization:
         # Add user data to query
         query_list.append(builtin_queries.users_query)
 
-    if args.locations:
+    if args.locations or args.with_organization:
         # Add location data to query
         query_list.append(builtin_queries.locations_query)
 
