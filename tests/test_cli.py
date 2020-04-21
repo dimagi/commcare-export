@@ -62,51 +62,206 @@ client = MockCommCareHqClient({
                 {'id': 'case2'},
             ]
         )
-    ]
+    ],
+    'user': [
+        (
+            {'limit': 100},
+            [
+                {'id': 'id1', 'email': 'em1', 'first_name': 'fn1',
+                 'last_name': 'ln1',
+                 'user_data': {'commcare_location_id': 'loc1',
+                               'commcare_location_ids': ['loc1', 'loc2'],
+                               'commcare_project': 'p1'},
+                 'username': 'u1'},
+                {'id': 'id2', 'default_phone_number': 'pn2', 'email': 'em2',
+                 'first_name': 'fn2', 'last_name': 'ln2',
+                 'resource_uri': 'ru2',
+                 'user_data': {'commcare_location_id': 'loc2',
+                               'commcare_project': 'p2'},
+                 'username': 'u2'}
+            ]
+        )
+    ],
+    'location_type': [
+        (
+            {'get': True},
+            [
+                {'administrative': True, 'code': 'hq', 'domain': 'd1', 'id': 1,
+                 'name': 'HQ', 'parent': None, 'resource_uri': 'lt1',
+                 'shares_cases': False, 'view_descendants': True},
+                {'administrative': False, 'code': 'local', 'domain': 'd1',
+                 'id': 2, 'name': 'Local',
+                 'parent': 'lt1', 'resource_uri': 'lt2',
+                 'shares_cases': True, 'view_descendants': True}
+            ]
+        )
+    ],
+    'location': [
+        (
+            {'limit': 100},
+            [
+                {'id': 'id1', 'created_at': '2020-04-01T21:57:26.403053',
+                 'domain': 'd1', 'external_id': 'eid1',
+                 'last_modified': '2020-04-01T21:58:23.88343',
+                 'latitude': '11.2', 'location_data': 'ld1',
+                 'location_id': 'lid1', 'location_type': 'lt1',
+                 'longitude': '-20.5', 'name': 'n1',
+                 'resource_uri': 'ru1', 'site_code': 'sc1'},
+                {'id': 'id2', 'created_at': '2020-04-01T21:58:47.627371',
+                 'domain': 'd2', 'last_modified': '2020-04-01T21:59:16.018411',
+                 'latitude': '-56.3',
+                 'location_data': 'ld2', 'location_id': 'lid2',
+                 'location_type': 'lt2', 'longitude': '18.7',
+                 'name': 'n2', 'parent': 'ru1',
+                 'resource_uri': 'ru2', 'site_code': 'sc2'}
+            ]
+        )
+    ],
 })
+
+EXPECTED_MULTIPLE_TABLES_RESULTS = [
+    {
+        "name": "Forms",
+        "headings": ["id", "name"],
+        "rows": [
+            ["1", "f1"],
+            ["2", "f2"]
+        ],
+    },
+    {
+        "name": "Other cases",
+        "headings": ["id"],
+        "rows": [
+            ["case1"],
+            ["case2"]
+        ],
+    },
+    {
+        "name": "Cases",
+        "headings": ["case_id"],
+        "rows": [
+            ["c1"],
+            ["c2"]
+        ],
+    }
+]
+
+EXPECTED_USERS_RESULTS = [
+    {
+        "name": "commcare_users",
+        "headings": [
+            "id",
+            "default_phone_number",
+            "email",
+            "first_name",
+            "groups",
+            "last_name",
+            "phone_numbers",
+            "resource_uri",
+            "commcare_location_id",
+            "commcare_location_ids",
+            "commcare_primary_case_sharing_id",
+            "commcare_project",
+            "username"
+        ],
+        "rows": [
+            ["id1", None, "em1", "fn1", None, "ln1", None, None, "loc1",
+             "loc1,loc2", None, "p1", "u1"],
+            ["id2", "pn2", "em2", "fn2", None, "ln2", None, "ru2", "loc2",
+             None, None, "p2", "u2"]
+        ]
+    }
+]
+
+EXPECTED_LOCATIONS_RESULTS = [
+    {
+        "name": "commcare_locations",
+        "headings": [
+            "id",
+            "created_at",
+            "domain",
+            "external_id",
+            "last_modified",
+            "latitude",
+            "location_data",
+            "location_id",
+            "location_type",
+            "longitude",
+            "name",
+            "parent",
+            "resource_uri",
+            "site_code",
+            "location_type_administrative",
+            "location_type_code",
+            "location_type_name",
+            "location_type_parent",
+        ],
+        "rows": [
+            ["id1", "2020-04-01 21:57:26", "d1", "eid1",
+             "2020-04-01 21:58:23", '11.2', "ld1", "lid1", "lt1",
+             '-20.5', "n1", None, "ru1", "sc1", True, "hq", "HQ", None],
+            ["id2", "2020-04-01 21:58:47", "d2", None,
+             "2020-04-01 21:59:16", '-56.3', "ld2", "lid2", "lt2",
+             '18.7', "n2", "ru1", "ru2", "sc2", False, 'local', 'Local', 'lt1']
+        ]
+    }
+]
 
 
 class TestCli(unittest.TestCase):
+
+    def _test_cli(self, args, expected):
+        writer = JValueTableWriter()
+        with mock.patch('commcare_export.cli._get_writer', return_value=writer):
+            main_with_args(args)
+
+        for table in expected:
+            assert writer.tables[table['name']] == table
+
 
     @mock.patch('commcare_export.cli._get_api_client', return_value=client)
     def test_cli(self, mock_client):
         args = make_args(
             query='tests/008_multiple-tables.xlsx',
-            output_format='json',
+            output_format='json'
         )
-        writer = JValueTableWriter()
-        with mock.patch('commcare_export.cli._get_writer', return_value=writer):
-            main_with_args(args)
+        self._test_cli(args, EXPECTED_MULTIPLE_TABLES_RESULTS)
 
-        expected = [
-            {
-                "name": "Forms",
-                "headings": ["id", "name"],
-                "rows": [
-                    ["1", "f1"],
-                    ["2", "f2"]
-                ],
-            },
-            {
-                "name": "Other cases",
-                "headings": ["id"],
-                "rows": [
-                    ["case1"],
-                    ["case2"]
-                ],
-            },
-            {
-                "name": "Cases",
-                "headings": ["case_id"],
-                "rows": [
-                    ["c1"],
-                    ["c2"]
-                ],
-            }
-        ]
+    @mock.patch('commcare_export.cli._get_api_client', return_value=client)
+    def test_cli_just_users(self, mock_client):
+        args = make_args(
+            output_format='json',
+            users=True
+        )
+        self._test_cli(args, EXPECTED_USERS_RESULTS)
 
-        for table in expected:
-            assert writer.tables[table['name']] == table
+    @mock.patch('commcare_export.cli._get_api_client', return_value=client)
+    def test_cli_table_plus_users(self, mock_client):
+        args = make_args(
+            query='tests/008_multiple-tables.xlsx',
+            output_format='json',
+            users=True
+        )
+        self._test_cli(args, EXPECTED_MULTIPLE_TABLES_RESULTS +
+                       EXPECTED_USERS_RESULTS)
+
+    @mock.patch('commcare_export.cli._get_api_client', return_value=client)
+    def test_cli_just_locations(self, mock_client):
+        args = make_args(
+            output_format='json',
+            locations=True
+        )
+        self._test_cli(args, EXPECTED_LOCATIONS_RESULTS)
+
+    @mock.patch('commcare_export.cli._get_api_client', return_value=client)
+    def test_cli_table_plus_locations(self, mock_client):
+        args = make_args(
+            query='tests/008_multiple-tables.xlsx',
+            output_format='json',
+            locations=True
+        )
+        self._test_cli(args, EXPECTED_MULTIPLE_TABLES_RESULTS +
+                       EXPECTED_LOCATIONS_RESULTS)
 
 
 @pytest.fixture(scope='class')

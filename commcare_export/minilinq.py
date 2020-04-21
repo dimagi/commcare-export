@@ -65,6 +65,7 @@ class MiniLinq(object):
 
             return cls._node_classes[slug].from_jvalue(jvalue)
 
+
 class Reference(MiniLinq):
     """
     An MiniLinq referencing a datum or data. It is flexible
@@ -233,6 +234,7 @@ class List(MiniLinq):
     def to_jvalue(self):
         return {'List': [item.to_jvalue() for item in self.items]}
 
+
 class Map(MiniLinq):
     """
     Like the `FROM` clause of a SQL `SELECT` or jQuery's map,
@@ -280,6 +282,7 @@ class Map(MiniLinq):
         return {'Map': {'body': self.body.to_jvalue(),
                         'source': self.source.to_jvalue(),
                         'name': self.name}}
+
 
 class FlatMap(MiniLinq):
     """
@@ -332,6 +335,7 @@ class FlatMap(MiniLinq):
         return {'FlatMap': {'body': self.body.to_jvalue(),
                             'source': self.source.to_jvalue(),
                             'name': self.name}}
+
 
 class Apply(MiniLinq):
     """
@@ -455,6 +459,7 @@ class Emit(MiniLinq):
         return '%s(table=%r, headings=%r, source=%r, missing_value=%r)' % (
             self.__class__.__name__, self.table, self.headings, self.source, self.missing_value
         )
+
 
 ### Register everything with the root parser ###
 

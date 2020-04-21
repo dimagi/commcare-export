@@ -73,10 +73,13 @@ The basic usage of the command-line tool is with a saved Excel or JSON query (se
 $ commcare-export --commcare-hq <URL or alias like "local" or "prod"> \
                   --username <username> \
                   --project <project> \
-                  --version <api version, defaults to latest known> \
+                  --api-version <api version, defaults to latest known> \
+                  --version <print current version> \
                   --query <excel file, json file, or raw json> \
                   --output-format <csv, xls, xlsx, json, markdown, sql> \
-                  --output <file name or SQL database URL>
+                  --output <file name or SQL database URL> \
+                  --users <export data about project's mobile workers> \
+                  --locations <export data about project's location hierarchy>
 ```
 
 See `commcare-export --help` for the full list of options.
@@ -434,7 +437,7 @@ MSSQL_URL=mssql+pyodbc://user:password@host/
 Postgresql
 ==========
 ```
-$ docker pull postgres 9.6
+$ docker pull postgres:9.6
 $ docker run --name ccexport-postgres -p 5432:5432 -d postgres:9.6
 ```
 
@@ -463,6 +466,27 @@ $ echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/$(lsb_release -rs
 $ sudo apt-get update
 $ sudo ACCEPT_EULA=Y apt-get install msodbcsql17
 $ odbcinst -q -d
+```
+
+MSSQL for Mac OS
+==========
+```
+$ docker pull microsoft/mssql-server-linux:2017-latest
+$ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=Password@123" -p 1433:1433 --name mssql1 -d microsoft/mssql-server-linux:2017-latest
+
+# Install driver
+$ brew install unixodbc freetds
+
+# Add the following 5 lines to /usr/local/etc/odbcinst.ini
+[ODBC Driver 17 for SQL Server]
+Description=FreeTDS Driver for Linux & MSSQL
+Driver=/usr/local/lib/libtdsodbc.so
+Setup=/usr/local/lib/libtdsodbc.so
+UsageCount=1
+
+# Create a soft link from /etc/odbcinst.ini to actual file
+sudo ln -s /usr/local/etc/odbcinst.ini /etc/odbcinst.ini
+
 ```
 
 Integration Tests

@@ -19,10 +19,12 @@ from commcare_export.utils import get_checkpoint_manager
 from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION
 from commcare_export.commcare_minilinq import CommCareHqEnv
 from commcare_export.env import BuiltInEnv, JsonPathEnv, EmitterEnv
-from commcare_export.exceptions import LongFieldsException, DataExportException
-from commcare_export.minilinq import MiniLinq
+from commcare_export.exceptions import LongFieldsException, DataExportException, MissingQueryFileException
+from commcare_export.minilinq import MiniLinq, List
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.version import __version__
+from commcare_export import builtin_queries
+from commcare_export.location_info_provider import LocationInfoProvider
 
 EXIT_STATUS_ERROR = 1
 
@@ -52,7 +54,7 @@ class Argument(object):
 CLI_ARGS = [
         Argument('version', default=False, action='store_true',
                  help='Print the current version of the commcare-export tool.'),
-        Argument('query', required=True, help='JSON or Excel query file'),
+        Argument('query', required=False, help='JSON or Excel query file'),
         Argument('dump-query', default=False, action='store_true'),
         Argument('commcare-hq', default='prod',
                  help='Base url for the CommCare HQ instance e.g. https://www.commcarehq.org'),
@@ -77,6 +79,12 @@ CLI_ARGS = [
         Argument('batch-size', default=100, help="Number of records to process per batch."),
         Argument('checkpoint-key', help="Use this key for all checkpoints instead of the query file MD5 hash "
                                         "in order to prevent table rebuilds after a query file has been edited."),
+        Argument('users', default=False, action='store_true',
+                 help="Export a table containing data about this project's "
+                      "mobile workers"),
+        Argument('locations', default=False, action='store_true',
+                 help="Export a table containing data about this project's "
+                      "locations"),
     ]
 
 
@@ -97,7 +105,7 @@ def main(argv):
         sys.exit(1)
 
     if args.verbose:
-        logging.basicConfig(level=logging.DEBUG, 
+        logging.basicConfig(level=logging.DEBUG,
                             format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
     else:
         logging.basicConfig(level=logging.WARN,
@@ -156,6 +164,26 @@ def _get_query_from_file(query_arg, missing_value, combine_emits, max_column_len
                 return MiniLinq.from_jvalue(json.loads(fh.read()))
 
 
+def get_queries(args, writer):
+    query_list = []
+    if args.query is not None:
+        query = _get_query(args, writer)
+
+        if not query:
+            raise MissingQueryFileException(args.query)
+        query_list.append(query)
+
+    if args.users:
+        # Add user data to query
+        query_list.append(builtin_queries.users_query)
+
+    if args.locations:
+        # Add location data to query
+        query_list.append(builtin_queries.locations_query)
+
+    return List(query_list) if len(query_list) > 1 else query_list[0]
+
+
 def _get_writer(output_format, output, strict_types):
     if output_format == 'xlsx':
         return writers.Excel2007TableWriter(output)
@@ -197,8 +225,9 @@ def _get_api_client(args, commcarehq_base_url):
 
 
 def _get_checkpoint_manager(args):
-    if not os.path.exists(args.query):
-        logger.warning("Checkpointing disabled for non file-based query")
+    if not args.users and not args.locations and not os.path.exists(args.query):
+        logger.warning("Checkpointing disabled for non builtin, "
+                       "non file-based query")
     elif args.since or args.until:
         logger.warning("Checkpointing disabled when using '--since' or '--until'")
     else:
@@ -207,18 +236,44 @@ def _get_checkpoint_manager(args):
         return checkpoint_manager
 
 
+def force_lazy_result(lazy_result):
+    if lazy_result is not None:
+        if isinstance(lazy_result, RepeatableIterator):
+            list(lazy_result) if lazy_result else lazy_result
+        else:
+            for nested_result in lazy_result:
+                force_lazy_result(nested_result)
+
+
+def evaluate_query(env, query):
+    with env:
+        try:
+            lazy_result = query.eval(env)
+            force_lazy_result(lazy_result)
+        except requests.exceptions.RequestException as e:
+            if e.response.status_code == 401:
+                print("\nAuthentication failed. Please check your credentials.")
+                return None
+            else:
+                raise
+        except KeyboardInterrupt:
+            print('\nExport aborted')
+            return None
+
+
 def main_with_args(args):
     logger.info("CommCare Export Version {}".format(__version__))
     writer = _get_writer(args.output_format, args.output, args.strict_types)
 
-    try:
-        query = _get_query(args, writer)
-    except DataExportException as e:
-        print(e.message)
+    if args.query is None and args.users is False and args.locations is False:
+        print('At least one the following arguments is required: '
+              '--query, --users, --locations')
         return EXIT_STATUS_ERROR
 
-    if not query:
-        print('Query file not found: %s' % args.query)
+    try:
+        query = get_queries(args, writer)
+    except DataExportException as e:
+        print(e.message)
         return EXIT_STATUS_ERROR
 
     if args.dump_query:
@@ -247,9 +302,11 @@ def main_with_args(args):
         logger.debug('Starting from %s', args.since)
 
     cm = CheckpointManagerProvider(checkpoint_manager, since, args.start_over)
+    lp = LocationInfoProvider(api_client)
     static_env = {
         'commcarehq_base_url': commcarehq_base_url,
         'get_checkpoint_manager': cm.get_checkpoint_manager,
+        'get_location_info': lp.get_location_info
     }
     env = (
             BuiltInEnv(static_env)
@@ -258,22 +315,7 @@ def main_with_args(args):
             | EmitterEnv(writer)
     )
 
-    with env:
-        try:
-            lazy_result = query.eval(env)
-            if lazy_result is not None:
-                # evaluate lazy results
-                for r in lazy_result:
-                    list(r) if r else r
-        except requests.exceptions.RequestException as e:
-            if e.response.status_code == 401:
-                print("\nAuthentication failed. Please check your credentials.")
-                return
-            else:
-                raise
-        except KeyboardInterrupt:
-            print('\nExport aborted')
-            return
+    evaluate_query(env, query)
 
     if args.output_format == 'json':
         print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))

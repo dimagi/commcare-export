@@ -29,7 +29,8 @@ def _db_params(request, db_name):
 
     def tear_down():
         with sudo_engine.connect() as conn:
-            conn.execute('rollback')
+            if 'postgres' in db_url:
+                conn.execute('rollback')
             if 'mssql' in db_url:
                 conn.connection.connection.autocommit = True
             conn.execute('drop database if exists %s' % db_name)
@@ -39,7 +40,8 @@ def _db_params(request, db_name):
             pass
     except (sqlalchemy.exc.OperationalError, sqlalchemy.exc.InternalError, DBAPIError):
         with sudo_engine.connect() as conn:
-            conn.execute('rollback')
+            if 'postgres' in db_url:
+                conn.execute('rollback')
             if 'mssql' in db_url:
                 conn.connection.connection.autocommit = True
             conn.execute('create database %s' % db_name)

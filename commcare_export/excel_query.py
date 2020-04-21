@@ -8,7 +8,7 @@ from six.moves import xrange
 from jsonpath_rw import jsonpath
 from jsonpath_rw.parser import parse as parse_jsonpath
 
-from commcare_export.exceptions import LongFieldsException, MissingColumnException
+from commcare_export.exceptions import LongFieldsException, MissingColumnException, ReservedTableNameException
 from commcare_export.map_format import compile_map_format_via
 from commcare_export.minilinq import *
 
@@ -447,10 +447,16 @@ def check_columns(parsed_sheets, columns):
     if errors_by_sheet:
         raise MissingColumnException(errors_by_sheet)
 
+blacklisted_tables = []
+def blacklist(table_name):
+    blacklisted_tables.append(table_name)
 
 def get_queries_from_excel(workbook, missing_value=None, combine_emits=False,
                            max_column_length=None, required_columns=None):
     parsed_sheets = parse_workbook(workbook)
+    for sheet in parsed_sheets:
+        if sheet.name in blacklisted_tables:
+            raise ReservedTableNameException(sheet.name)
     if max_column_length:
         check_field_length(parsed_sheets, max_column_length)
     if required_columns:
