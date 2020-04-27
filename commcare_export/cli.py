@@ -145,42 +145,37 @@ def main(argv):
             stats.print_stats(100)
 
 
-def _get_query(args, writer, column_to_add=None):
+def _get_query(args, writer, column_adder=None):
     return _get_query_from_file(
         args.query,
         args.missing_value,
         writer.supports_multi_table_write,
         writer.max_column_length,
         writer.required_columns,
-        column_to_add
+        column_adder
     )
 
 def _get_query_from_file(query_arg, missing_value, combine_emits,
-                         max_column_length, required_columns, column_to_add):
+                         max_column_length, required_columns, column_adder):
     if os.path.exists(query_arg):
         if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
             import openpyxl
             workbook = openpyxl.load_workbook(query_arg)
             return excel_query.get_queries_from_excel(
                 workbook, missing_value, combine_emits,
-                max_column_length, required_columns, column_to_add
+                max_column_length, required_columns, column_adder
             )
         else:
             with io.open(query_arg, encoding='utf-8') as fh:
                 query_jvalue = json.loads(fh.read())
-                # Maybe add column to add
                 return MiniLinq.from_jvalue(query_jvalue)
 
 
-def get_queries(args, writer):
+def get_queries(args, writer, column_adder=None):
     query_list = []
 
-    column_to_add = None
-    if args.with_organization:
-        column_to_add = builtin_queries.commcare_user_column()
-        
     if args.query is not None:
-        query = _get_query(args, writer, column_to_add=column_to_add)
+        query = _get_query(args, writer, column_adder=column_adder)
 
         if not query:
             raise MissingQueryFileException(args.query)
@@ -283,8 +278,12 @@ def main_with_args(args):
               '--query, --users, --locations')
         return EXIT_STATUS_ERROR
 
+    column_adder = None
+    if args.with_organization:
+        column_adder = builtin_queries.ColumnAdder()
+
     try:
-        query = get_queries(args, writer)
+        query = get_queries(args, writer, column_adder)
     except DataExportException as e:
         print(e.message)
         return EXIT_STATUS_ERROR
@@ -332,6 +331,12 @@ def main_with_args(args):
 
     if args.output_format == 'json':
         print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))
+
+    if args.output_format == 'sql' and args.with_organization:
+        # TODO(Charlie): Will need a view manager or similar to encapsulate
+        # view creation.
+        builtin_queries.create_wide_locations_view(args.output)
+        builtin_queries.create_views_over_tables(args.output, column_adder)
 
 
 def entry_point():

@@ -262,8 +262,34 @@ def compile_source(worksheet):
     else:
         return api_query, Reference(str(data_source_jsonpath))
 
+def add_column_to_sheet(sheet_name, table_name, output_headings, output_fields,
+                        column_adder):
+    # Check for conflicting use of column name.
+    column = column_adder.column_to_add()
+    found_column = False
+    for i in range(len(output_headings)):
+        if output_headings[i].value == column.name.v:
+            if isinstance(output_fields[i], Reference) and \
+               output_fields[i].ref == column.source:
+                found_column = True
+                continue
+            else:
+                raise ReservedColumnNameException(sheet_name, column.name.v)
 
-def parse_sheet(worksheet, mappings=None):
+    if found_column:
+        headings = [Literal(output_heading.value)
+                    for output_heading in output_headings]
+        body = List(output_fields)
+    else:
+        headings = [Literal(output_heading.value)
+                    for output_heading in output_headings] + [column.name]
+        body = List(output_fields +
+                    [compile_field(field=column.name,
+                                   source_field=column.source)])
+    column_adder.record_table(table_name)
+    return (headings, body)
+
+def parse_sheet(worksheet, mappings=None, column_adder=None):
     mappings = mappings or {}
     source_expr, root_doc_expr = compile_source(worksheet)
 
@@ -280,9 +306,18 @@ def parse_sheet(worksheet, mappings=None):
         source = source_expr
         body = None
     else:
-        headings = [Literal(output_heading.value) for output_heading in output_headings]
-        source = source_expr
-        body = List(output_fields)
+        if column_adder is not None:
+            (headings, body) = add_column_to_sheet(worksheet.title,
+                                                   output_table_name,
+                                                   output_headings,
+                                                   output_fields,
+                                                   column_adder)
+            source = source_expr
+        else:
+            headings = [Literal(output_heading.value)
+                        for output_heading in output_headings]
+            source = source_expr
+            body = List(output_fields)
 
     return SheetParts(
         output_table_name,
@@ -304,7 +339,7 @@ class SheetParts(namedtuple('SheetParts', 'name headings source body root_expr')
         ]
 
 
-def parse_workbook(workbook):
+def parse_workbook(workbook, column_adder=None):
     """
     Returns a MiniLinq corresponding to the Excel configuration, which
     consists of the following sheets:
@@ -327,7 +362,7 @@ def parse_workbook(workbook):
     parsed_sheets = []
     for sheet in emit_sheets:
         try:
-            sheet_parts = parse_sheet(workbook[sheet], mappings)
+            sheet_parts = parse_sheet(workbook[sheet], mappings, column_adder)
         except Exception as e:
             logger.warning('Ignoring sheet "{}": {}'.format(sheet, str(e)))
             continue
@@ -451,41 +486,10 @@ blacklisted_tables = []
 def blacklist(table_name):
     blacklisted_tables.append(table_name)
 
-def add_column_to_sheets(parsed_sheets, column):
-    final_sheets = []
-    for sheet in parsed_sheets:
-        if sheet.body is None:
-            continue
-
-        found_column = False
-        source_fields = sheet.body.to_jvalue()['List']
-        for i in range(len(sheet.headings)):
-            if sheet.headings[i].v == column.name.v:
-                if source_fields[i] == {'Ref': column.source}:
-                    found_column = True
-                    break
-                else:
-                    raise ReservedColumnNameException(sheet.name, column.name.v)
-
-        if found_column:
-            final_sheets.append(sheet)
-        else:
-            source_fields.append(
-                compile_field(field=column.name,
-                              source_field=column.source).to_jvalue())
-            final_sheets.append(SheetParts(sheet.name,
-                                           sheet.headings + [column.name],
-                                           sheet.source,
-                                           MiniLinq.from_jvalue({'List':
-                                                                 source_fields}),
-                                           sheet.root_expr))
-
-    return final_sheets
-
 def get_queries_from_excel(workbook, missing_value=None, combine_emits=False,
                            max_column_length=None, required_columns=None,
-                           column_to_add=None):
-    parsed_sheets = parse_workbook(workbook)
+                           column_adder=None):
+    parsed_sheets = parse_workbook(workbook, column_adder)
     for sheet in parsed_sheets:
         if sheet.name in blacklisted_tables:
             raise ReservedTableNameException(sheet.name)
@@ -493,7 +497,5 @@ def get_queries_from_excel(workbook, missing_value=None, combine_emits=False,
         check_field_length(parsed_sheets, max_column_length)
     if required_columns:
         check_columns(parsed_sheets, required_columns)
-    if column_to_add is not None:
-        parsed_sheets = add_column_to_sheets(parsed_sheets, column_to_add)
     queries = compile_queries(parsed_sheets, missing_value, combine_emits)
     return List(queries) if len(queries) > 1 else queries[0]
