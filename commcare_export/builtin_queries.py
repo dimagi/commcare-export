@@ -1,12 +1,15 @@
+import logging
 
 from sqlalchemy import *
 from sqlalchemy import event, sql, orm
 from sqlalchemy.schema import DDLElement
-from sqlalchemy.sql import table
 from sqlalchemy.ext import compiler
 
 from commcare_export import excel_query
 from commcare_export.minilinq import Apply, List, Literal, Reference
+from commcare_export.writers import SqlMixin
+
+logger = logging.getLogger(__name__)
 
 USERS_TABLE_NAME = 'commcare_users'
 LOCATIONS_TABLE_NAME = 'commcare_locations'
@@ -29,9 +32,6 @@ class Column:
         else:
             return Apply(Reference(self.map_function), Reference(self.source),
                          *self.extra_args)
-
-def commcare_user_column():
-    return Column('commcare_userid', 'metadata.userID')
 
 def compile_query(columns, data_source, table_name):
     source = Apply(Reference('api_data'), Literal(data_source),
@@ -100,16 +100,19 @@ locations_query = compile_query(location_columns, 'location',
                                 LOCATIONS_TABLE_NAME)
 
 
-# Add columns to emitted tables and record the table names.
-class ColumnAdder():
+# Require specified columns in emitted tables and record the table names.
+class ColumnEnforcer():
+    columns_to_require = {'form': Column('commcare_userid', 'metadata.userID'),
+                          'case': Column('commcare_userid', 'user_id')}
+
     def __init__(self):
-        # TODO(Charlie): Need to use one field for Forms (metadata.userID)
-        # and a different one for Cases (properties.user_id).
-        self._column_to_add = commcare_user_column()
         self._emitted_tables = set([])
 
-    def column_to_add(self):
-        return self._column_to_add
+    def column_to_require(self, data_source):
+        if data_source in ColumnEnforcer.columns_to_require:
+            return ColumnEnforcer.columns_to_require[data_source]
+        else:
+            return None
 
     def record_table(self, table):
         self._emitted_tables.add(table)
@@ -127,13 +130,12 @@ class CreateOrReplaceView(DDLElement):
 
 @compiler.compiles(CreateOrReplaceView)
 def compile_createorreplaceview(element, compiler, **kw):
-    print("Compile CreateOrReplaceView")
     return "CREATE OR REPLACE VIEW %s AS %s" % (
         element.name, 
         compiler.sql_compiler.process(element.selectable, literal_binds=True)) 
 
 def view(name, metadata, selectable):
-    t = table(name)
+    t = sql.table(name)
 
     # T becomes a proxy for every column in selectable.
     for c in selectable.c:
@@ -147,185 +149,198 @@ def view(name, metadata, selectable):
     return t
 
 
-# Define a view over the commcare_locations table that adds columns for
-# the whole location hierarchy.
-# loc_level1, loc_name_level1 = the location itself and it's type name
-# loc_level2, loc_name_level2 = the location's parent and the parent's type name
-# loc_level3, loc_name_level3 = the location's grandparent and the grandparent's
-#                               type name
-# and so on up to level8. The definition of the view is a recursive query.
-def create_wide_locations_view(db_url):
-    engine = create_engine(db_url)
-    metadata = MetaData(engine)
-    metadata.reflect(views=True)
+class ViewCreator(SqlMixin):
+    view_suffix = '_with_organization'
 
-    commcare_locations = metadata.tables['commcare_locations']
+    def __init__(self, db_url, poolclass=None, engine=None):
+        super(ViewCreator, self).__init__(db_url, poolclass=poolclass, engine=engine)
+        self._column_enforcer = ColumnEnforcer()
 
-    base_select = select([commcare_locations.c.location_id,
-                          commcare_locations.c.location_type,
-                          commcare_locations.c.location_type_name,
-                          commcare_locations.c.resource_uri.label('location_resource_uri'),
-                          commcare_locations.c.parent,
-                          commcare_locations.c.location_id.label('loc_level1'),
-                          commcare_locations.c.location_type_name.label('loc_name_level1'),
-                          sql.expression.null().label('loc_level2'),
-                          sql.expression.null().label('loc_name_level2'),
-                          sql.expression.null().label('loc_level3'),
-                          sql.expression.null().label('loc_name_level3'),
-                          sql.expression.null().label('loc_level4'),
-                          sql.expression.null().label('loc_name_level4'),
-                          sql.expression.null().label('loc_level5'),
-                          sql.expression.null().label('loc_name_level5'),
-                          sql.expression.null().label('loc_level6'),
-                          sql.expression.null().label('loc_name_level6'),
-                          sql.expression.null().label('loc_level7'),
-                          sql.expression.null().label('loc_name_level7'),
-                          sql.expression.null().label('loc_level8'),
-                          sql.expression.null().label('loc_name_level8')]).\
-                          select_from(commcare_locations).\
-                          where(commcare_locations.c.parent == None)
+    @property
+    def column_enforcer(self):
+        return self._column_enforcer
 
+        
+    # Define a view over the commcare_locations table that adds columns for
+    # the whole location hierarchy.
+    # loc_level1, loc_name_level1 = the location itself and it's type name
+    # loc_level2, loc_name_level2 = the location's parent and the parent's type name
+    # loc_level3, loc_name_level3 = the location's grandparent and the grandparent's
+    #                               type name
+    # and so on up to level8. The definition of the view is a recursive query.
+    def create_wide_locations_view(self):
+        self.metadata.reflect(views=True)
 
-    base_subquery = select([
-        commcare_locations.c.location_id,
-        commcare_locations.c.location_type,
-        commcare_locations.c.location_type_name,
-        commcare_locations.c.resource_uri.label('location_resource_uri'),
-        commcare_locations.c.parent,
-        commcare_locations.c.location_id.label('loc_level1'),
-        commcare_locations.c.location_type_name.label('loc_name_level1'),
-        sql.expression.null().label('loc_level2'),
-        sql.expression.null().label('loc_name_level2'),
-        sql.expression.null().label('loc_level3'),
-        sql.expression.null().label('loc_name_level3'),
-        sql.expression.null().label('loc_level4'),
-        sql.expression.null().label('loc_name_level4'),
-        sql.expression.null().label('loc_level5'),
-        sql.expression.null().label('loc_name_level5'),
-        sql.expression.null().label('loc_level6'),
-        sql.expression.null().label('loc_name_level6'),
-        sql.expression.null().label('loc_level7'),
-        sql.expression.null().label('loc_name_level7'),
-        sql.expression.null().label('loc_level8'),
-        sql.expression.null().label('loc_name_level8')]).\
-        select_from(commcare_locations).\
-        where(commcare_locations.c.parent == None).\
-        cte(recursive=True, name='location_inlined')
+        commcare_locations = self.metadata.tables['commcare_locations']
 
-    parent_alias = orm.aliased(base_subquery, name='parent')
-    child_alias = orm.aliased(commcare_locations, name='child')
-    joined_input = sql.expression.join(child_alias,
-                                       parent_alias,
-                                       parent_alias.c.location_resource_uri == \
-                                       child_alias.c.parent)
+        base_select = select([commcare_locations.c.location_id,
+                              commcare_locations.c.location_type,
+                              commcare_locations.c.location_type_name,
+                              commcare_locations.c.resource_uri.label('location_resource_uri'),
+                              commcare_locations.c.parent,
+                              commcare_locations.c.location_id.label('loc_level1'),
+                              commcare_locations.c.location_type_name.label('loc_name_level1'),
+                              sql.expression.null().label('loc_level2'),
+                              sql.expression.null().label('loc_name_level2'),
+                              sql.expression.null().label('loc_level3'),
+                              sql.expression.null().label('loc_name_level3'),
+                              sql.expression.null().label('loc_level4'),
+                              sql.expression.null().label('loc_name_level4'),
+                              sql.expression.null().label('loc_level5'),
+                              sql.expression.null().label('loc_name_level5'),
+                              sql.expression.null().label('loc_level6'),
+                              sql.expression.null().label('loc_name_level6'),
+                              sql.expression.null().label('loc_level7'),
+                              sql.expression.null().label('loc_name_level7'),
+                              sql.expression.null().label('loc_level8'),
+                              sql.expression.null().label('loc_name_level8')]).\
+                              select_from(commcare_locations).\
+                              where(commcare_locations.c.parent == None)
 
-    recursive_query = base_subquery.union_all(
-        select([child_alias.c.location_id,
-                child_alias.c.location_type,
-                child_alias.c.location_type_name,
-                child_alias.c.resource_uri.label('location_resource_uri'),
-                child_alias.c.parent,
-                child_alias.c.location_id.label('loc_level1'),
-                child_alias.c.location_type_name.label('loc_name_level1'),
-                parent_alias.c.loc_level1.label('loc_level2'),
-                parent_alias.c.loc_name_level1.label('loc_name_level2'),
-                parent_alias.c.loc_level2.label('loc_level3'),
-                parent_alias.c.loc_name_level2.label('loc_name_level3'),
-                parent_alias.c.loc_level3.label('loc_level4'),
-                parent_alias.c.loc_name_level3.label('loc_name_level4'),
-                parent_alias.c.loc_level4.label('loc_level5'),
-                parent_alias.c.loc_name_level4.label('loc_name_level5'),
-                parent_alias.c.loc_level5.label('loc_level6'),
-                parent_alias.c.loc_name_level5.label('loc_name_level6'),
-                parent_alias.c.loc_level6.label('loc_level7'),
-                parent_alias.c.loc_name_level6.label('loc_name_level7'),
-                parent_alias.c.loc_level7.label('loc_level8'),
-                parent_alias.c.loc_name_level7.label('loc_name_level8')]).\
-        select_from(joined_input))
+        base_subquery = select([
+            commcare_locations.c.location_id,
+            commcare_locations.c.location_type,
+            commcare_locations.c.location_type_name,
+            commcare_locations.c.resource_uri.label('location_resource_uri'),
+            commcare_locations.c.parent,
+            commcare_locations.c.location_id.label('loc_level1'),
+            commcare_locations.c.location_type_name.label('loc_name_level1'),
+            sql.expression.null().label('loc_level2'),
+            sql.expression.null().label('loc_name_level2'),
+            sql.expression.null().label('loc_level3'),
+            sql.expression.null().label('loc_name_level3'),
+            sql.expression.null().label('loc_level4'),
+            sql.expression.null().label('loc_name_level4'),
+            sql.expression.null().label('loc_level5'),
+            sql.expression.null().label('loc_name_level5'),
+            sql.expression.null().label('loc_level6'),
+            sql.expression.null().label('loc_name_level6'),
+            sql.expression.null().label('loc_level7'),
+            sql.expression.null().label('loc_name_level7'),
+            sql.expression.null().label('loc_level8'),
+            sql.expression.null().label('loc_name_level8')]).\
+            select_from(commcare_locations).\
+            where(commcare_locations.c.parent == None).\
+            cte(recursive=True, name='location_inlined')
 
-    statement = select(['*']).select_from(recursive_query)
-    print('statement: ', statement)
+        parent_alias = orm.aliased(base_subquery, name='parent')
+        child_alias = orm.aliased(commcare_locations, name='child')
+        joined_input = sql.expression.join(child_alias,
+                                           parent_alias,
+                                           parent_alias.c.location_resource_uri == \
+                                           child_alias.c.parent)
 
-    generated_view = view('commcare_locations_generated_view', metadata, statement)
+        recursive_query = base_subquery.union_all(
+            select([child_alias.c.location_id,
+                    child_alias.c.location_type,
+                    child_alias.c.location_type_name,
+                    child_alias.c.resource_uri.label('location_resource_uri'),
+                    child_alias.c.parent,
+                    child_alias.c.location_id.label('loc_level1'),
+                    child_alias.c.location_type_name.label('loc_name_level1'),
+                    parent_alias.c.loc_level1.label('loc_level2'),
+                    parent_alias.c.loc_name_level1.label('loc_name_level2'),
+                    parent_alias.c.loc_level2.label('loc_level3'),
+                    parent_alias.c.loc_name_level2.label('loc_name_level3'),
+                    parent_alias.c.loc_level3.label('loc_level4'),
+                    parent_alias.c.loc_name_level3.label('loc_name_level4'),
+                    parent_alias.c.loc_level4.label('loc_level5'),
+                    parent_alias.c.loc_name_level4.label('loc_name_level5'),
+                    parent_alias.c.loc_level5.label('loc_level6'),
+                    parent_alias.c.loc_name_level5.label('loc_name_level6'),
+                    parent_alias.c.loc_level6.label('loc_level7'),
+                    parent_alias.c.loc_name_level6.label('loc_name_level7'),
+                    parent_alias.c.loc_level7.label('loc_level8'),
+                    parent_alias.c.loc_name_level7.label('loc_name_level8')]).\
+            select_from(joined_input))
 
-    print(str(generated_view))
+        statement = select(['*']).select_from(recursive_query)
 
-    metadata.create_all()
+        generated_view = view('commcare_locations_generated_view', self.metadata, statement)
 
+        # TODO(Charlie): Maybe use individual table.create method.
+        self.metadata.create_all()
 
-def create_views_over_tables(db_url, column_adder):
-    engine = create_engine(db_url)
-    metadata = MetaData(engine)
-    metadata.reflect(views=True)
+    def create_views_over_tables(self):
+        self.metadata.reflect(views=True)
 
-    print('Tables in database', metadata.tables.keys())
+        if 'commcare_users' not in self.metadata.tables:
+            logger.warning('Required table commcare_users not found in database')
+            return
 
-    if 'commcare_users' not in metadata.tables:
-        print('Required table commcare_users not found in database')
-        return
+        if 'commcare_locations' not in self.metadata.tables:
+            logger.warning('Required table commcare_locations not found in database')
+            return
 
-    if 'commcare_locations' not in metadata.tables:
-        print('Required table commcare_locations not found in database')
-        return
+        if 'commcare_locations_generated_view' not in self.metadata.tables:
+            logger.warning('Required view commcare_locations_generated_view not found'
+                           'in database')
+            return
 
-    if 'commcare_locations_generated_view' not in metadata.tables:
-        print('Required view commcare_locations_generated_view not found'
-              'in database')
-        return
+        commcare_users = self.metadata.tables['commcare_users']
+        commcare_locations_generated_view = self.metadata.tables['commcare_locations_generated_view']
 
-    commcare_users = metadata.tables['commcare_users']
-    commcare_locations_generated_view = metadata.tables['commcare_locations_generated_view']
+        for table_name in self.column_enforcer.emitted_tables():
+            if table_name not in self.metadata.tables:
+                logger.warning('Table {table_name} not found in database, unable to create view.'.format(
+                table_name=table_name))
+                continue
 
-    for table_name in column_adder.emitted_tables():
-        print('Add view over', table_name)
-        if table_name not in metadata.tables:
-            print('Table not found in database:', table_name)
-            continue
+            # table = metadata.tables[table_name]
+            table = self.table(table_name)
 
-        table = metadata.tables[table_name]
-        users_alias = orm.aliased(commcare_users, name='u')
-        locations_alias = orm.aliased(commcare_locations_generated_view, name='l')
-        table_alias = orm.aliased(table, name='t')
+            if 'commcare_userid' not in table.c:
+                logger.warning('No commcare_userid column found in table {table_name}, not creating view.'.\
+                               format(table_name=table_name))
+                continue
 
-        joined_input = sql.expression.join(
-            sql.expression.join(table_alias, users_alias,
-                                table_alias.c.commcare_userid == users_alias.c.id),
-            locations_alias, users_alias.c.commcare_location_id == locations_alias.c.location_id)
+            view_name = table_name + self.view_suffix
+            if view_name in self.metadata.tables:
+                logger.info('View {view_name} already exists, not replacing it.'.format(view_name=view_name))
+                continue
 
-        view_select = select([text('t.*'),
-                              users_alias.c.email.label('commcare_user_email'),
-                              users_alias.c.first_name.label('commcare_user_first_name'),
-                              users_alias.c.last_name.label('commcare_user_last_name'),
-                              users_alias.c.resource_uri.label('commcare_user_resource_uri'),
-                              users_alias.c.commcare_location_ids,
-                              users_alias.c.commcare_primary_case_sharing_id,
-                              users_alias.c.commcare_project,
-                              users_alias.c.username.label('commcare_username'),
-                              locations_alias.c.location_id.label('commcare_location_id'),
-                              locations_alias.c.location_type.label('commcare_location_type'),
-                              locations_alias.c.location_type_name.label('commcare_location_type_name'),
-                              locations_alias.c.location_resource_uri.label('commcare_location_resource_uri'),
-                              locations_alias.c.parent.label('commcare_location_parent'),
-                              locations_alias.c.loc_level1.label('commcare_loc_level1'),
-                              locations_alias.c.loc_name_level1.label('commcare_loc_name_level1'),
-                              locations_alias.c.loc_level2.label('commcare_loc_level2'),
-                              locations_alias.c.loc_name_level2.label('commcare_loc_name_level2'),
-                              locations_alias.c.loc_level3.label('commcare_loc_level3'),
-                              locations_alias.c.loc_name_level3.label('commcare_loc_name_level3'),
-                              locations_alias.c.loc_level4.label('commcare_loc_level4'),
-                              locations_alias.c.loc_name_level4.label('commcare_loc_name_level4'),
-                              locations_alias.c.loc_level5.label('commcare_loc_level5'),
-                              locations_alias.c.loc_name_level5.label('commcare_loc_name_level5'),
-                              locations_alias.c.loc_level6.label('commcare_loc_level6'),
-                              locations_alias.c.loc_name_level6.label('commcare_loc_name_level6'),
-                              locations_alias.c.loc_level7.label('commcare_loc_level7'),
-                              locations_alias.c.loc_name_level7.label('commcare_loc_name_level7'),
-                              locations_alias.c.loc_level8.label('commcare_loc_level8'),
-                              locations_alias.c.loc_name_level8.label('commcare_loc_name_level8')]).\
-                              select_from(joined_input)
+            users_alias = orm.aliased(commcare_users, name='u')
+            locations_alias = orm.aliased(commcare_locations_generated_view, name='l')
+            table_alias = orm.aliased(table, name='t')
 
-        print('View select:', view_select)
+            joined_input = sql.expression.outerjoin(
+                sql.expression.outerjoin(table_alias, users_alias,
+                                         table_alias.c.commcare_userid == users_alias.c.id),
+                locations_alias, users_alias.c.commcare_location_id == locations_alias.c.location_id)
 
-        table_view = view(table_name + '_with_organization', metadata, view_select)
+            view_select = select([text('t.*'),
+                                  users_alias.c.email.label('commcare_user_email'),
+                                  users_alias.c.first_name.label('commcare_user_first_name'),
+                                  users_alias.c.last_name.label('commcare_user_last_name'),
+                                  users_alias.c.resource_uri.label('commcare_user_resource_uri'),
+                                  users_alias.c.commcare_location_ids,
+                                  users_alias.c.commcare_primary_case_sharing_id,
+                                  users_alias.c.commcare_project,
+                                  users_alias.c.username.label('commcare_username'),
+                                  locations_alias.c.location_id.label('commcare_location_id'),
+                                  locations_alias.c.location_type.label('commcare_location_type'),
+                                  locations_alias.c.location_type_name.label('commcare_location_type_name'),
+                                  locations_alias.c.location_resource_uri.label('commcare_location_resource_uri'),
+                                  locations_alias.c.parent.label('commcare_location_parent'),
+                                  locations_alias.c.loc_level1.label('commcare_loc_level1'),
+                                  locations_alias.c.loc_name_level1.label('commcare_loc_name_level1'),
+                                  locations_alias.c.loc_level2.label('commcare_loc_level2'),
+                                  locations_alias.c.loc_name_level2.label('commcare_loc_name_level2'),
+                                  locations_alias.c.loc_level3.label('commcare_loc_level3'),
+                                  locations_alias.c.loc_name_level3.label('commcare_loc_name_level3'),
+                                  locations_alias.c.loc_level4.label('commcare_loc_level4'),
+                                  locations_alias.c.loc_name_level4.label('commcare_loc_name_level4'),
+                                  locations_alias.c.loc_level5.label('commcare_loc_level5'),
+                                  locations_alias.c.loc_name_level5.label('commcare_loc_name_level5'),
+                                  locations_alias.c.loc_level6.label('commcare_loc_level6'),
+                                  locations_alias.c.loc_name_level6.label('commcare_loc_name_level6'),
+                                  locations_alias.c.loc_level7.label('commcare_loc_level7'),
+                                  locations_alias.c.loc_name_level7.label('commcare_loc_name_level7'),
+                                  locations_alias.c.loc_level8.label('commcare_loc_level8'),
+                                  locations_alias.c.loc_name_level8.label('commcare_loc_name_level8')]).\
+                                  select_from(joined_input)
 
-        metadata.create_all()
+            table_view = view(view_name, self.metadata, view_select)
+
+        self.metadata.create_all()
+

@@ -258,40 +258,45 @@ def compile_source(worksheet):
     api_query = Apply(*api_query_args)
 
     if data_source_jsonpath is None or isinstance(data_source_jsonpath, jsonpath.This) or isinstance(data_source_jsonpath, jsonpath.Root):
-        return api_query, None
+        return data_source, api_query, None
     else:
-        return api_query, Reference(str(data_source_jsonpath))
+        return data_source, api_query, Reference(str(data_source_jsonpath))
 
-def add_column_to_sheet(sheet_name, table_name, output_headings, output_fields,
-                        column_adder):
+def require_column_in_sheet(sheet_name, data_source, table_name, output_headings,
+                            output_fields, column_enforcer):
     # Check for conflicting use of column name.
-    column = column_adder.column_to_add()
-    found_column = False
-    for i in range(len(output_headings)):
-        if output_headings[i].value == column.name.v:
-            if isinstance(output_fields[i], Reference) and \
-               output_fields[i].ref == column.source:
-                found_column = True
-                continue
-            else:
-                raise ReservedColumnNameException(sheet_name, column.name.v)
+    requirement_satisfied = False
 
-    if found_column:
+    required_column = column_enforcer.column_to_require(data_source)
+    if required_column is not None:
+        for i in range(len(output_headings)):
+            if output_headings[i].value == required_column.name.v:
+                if isinstance(output_fields[i], Reference) and \
+                   output_fields[i].ref == required_column.source:
+                    requirement_satisfied = True
+                    continue
+                else:
+                    raise ReservedColumnNameException(sheet_name,
+                                                      required_column.name.v)
+    else:
+        requirement_satisfied = True
+
+    if requirement_satisfied:
         headings = [Literal(output_heading.value)
                     for output_heading in output_headings]
         body = List(output_fields)
     else:
         headings = [Literal(output_heading.value)
-                    for output_heading in output_headings] + [column.name]
+                    for output_heading in output_headings] + [required_column.name]
         body = List(output_fields +
-                    [compile_field(field=column.name,
-                                   source_field=column.source)])
-    column_adder.record_table(table_name)
+                    [compile_field(field=required_column.name,
+                                   source_field=required_column.source)])
+    column_enforcer.record_table(table_name)
     return (headings, body)
 
-def parse_sheet(worksheet, mappings=None, column_adder=None):
+def parse_sheet(worksheet, mappings=None, column_enforcer=None):
     mappings = mappings or {}
-    source_expr, root_doc_expr = compile_source(worksheet)
+    data_source, source_expr, root_doc_expr = compile_source(worksheet)
 
     table_name_column = get_column_by_name(worksheet, 'table name')
     if table_name_column:
@@ -306,12 +311,13 @@ def parse_sheet(worksheet, mappings=None, column_adder=None):
         source = source_expr
         body = None
     else:
-        if column_adder is not None:
-            (headings, body) = add_column_to_sheet(worksheet.title,
-                                                   output_table_name,
-                                                   output_headings,
-                                                   output_fields,
-                                                   column_adder)
+        if column_enforcer is not None:
+            (headings, body) = require_column_in_sheet(worksheet.title,
+                                                       data_source,
+                                                       output_table_name,
+                                                       output_headings,
+                                                       output_fields,
+                                                       column_enforcer)
             source = source_expr
         else:
             headings = [Literal(output_heading.value)
@@ -339,7 +345,7 @@ class SheetParts(namedtuple('SheetParts', 'name headings source body root_expr')
         ]
 
 
-def parse_workbook(workbook, column_adder=None):
+def parse_workbook(workbook, column_enforcer=None):
     """
     Returns a MiniLinq corresponding to the Excel configuration, which
     consists of the following sheets:
@@ -362,7 +368,7 @@ def parse_workbook(workbook, column_adder=None):
     parsed_sheets = []
     for sheet in emit_sheets:
         try:
-            sheet_parts = parse_sheet(workbook[sheet], mappings, column_adder)
+            sheet_parts = parse_sheet(workbook[sheet], mappings, column_enforcer)
         except Exception as e:
             logger.warning('Ignoring sheet "{}": {}'.format(sheet, str(e)))
             continue
@@ -488,8 +494,8 @@ def blacklist(table_name):
 
 def get_queries_from_excel(workbook, missing_value=None, combine_emits=False,
                            max_column_length=None, required_columns=None,
-                           column_adder=None):
-    parsed_sheets = parse_workbook(workbook, column_adder)
+                           column_enforcer=None):
+    parsed_sheets = parse_workbook(workbook, column_enforcer)
     for sheet in parsed_sheets:
         if sheet.name in blacklisted_tables:
             raise ReservedTableNameException(sheet.name)

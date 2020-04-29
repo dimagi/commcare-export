@@ -145,25 +145,25 @@ def main(argv):
             stats.print_stats(100)
 
 
-def _get_query(args, writer, column_adder=None):
+def _get_query(args, writer, column_enforcer=None):
     return _get_query_from_file(
         args.query,
         args.missing_value,
         writer.supports_multi_table_write,
         writer.max_column_length,
         writer.required_columns,
-        column_adder
+        column_enforcer
     )
 
 def _get_query_from_file(query_arg, missing_value, combine_emits,
-                         max_column_length, required_columns, column_adder):
+                         max_column_length, required_columns, column_enforcer):
     if os.path.exists(query_arg):
         if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
             import openpyxl
             workbook = openpyxl.load_workbook(query_arg)
             return excel_query.get_queries_from_excel(
                 workbook, missing_value, combine_emits,
-                max_column_length, required_columns, column_adder
+                max_column_length, required_columns, column_enforcer
             )
         else:
             with io.open(query_arg, encoding='utf-8') as fh:
@@ -171,11 +171,11 @@ def _get_query_from_file(query_arg, missing_value, combine_emits,
                 return MiniLinq.from_jvalue(query_jvalue)
 
 
-def get_queries(args, writer, column_adder=None):
+def get_queries(args, writer, column_enforcer=None):
     query_list = []
 
     if args.query is not None:
-        query = _get_query(args, writer, column_adder=column_adder)
+        query = _get_query(args, writer, column_enforcer=column_enforcer)
 
         if not query:
             raise MissingQueryFileException(args.query)
@@ -278,12 +278,18 @@ def main_with_args(args):
               '--query, --users, --locations')
         return EXIT_STATUS_ERROR
 
-    column_adder = None
+    view_creator = None
+    column_enforcer = None
     if args.with_organization:
-        column_adder = builtin_queries.ColumnAdder()
+        if args.output_format != 'sql':
+            print('--with-organization option only works with sql output type')
+            return EXIT_STATUS_ERROR
+
+        view_creator = builtin_queries.ViewCreator(args.output)
+        column_enforcer = view_creator.column_enforcer
 
     try:
-        query = get_queries(args, writer, column_adder)
+        query = get_queries(args, writer, column_enforcer)
     except DataExportException as e:
         print(e.message)
         return EXIT_STATUS_ERROR
@@ -333,10 +339,9 @@ def main_with_args(args):
         print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))
 
     if args.output_format == 'sql' and args.with_organization:
-        # TODO(Charlie): Will need a view manager or similar to encapsulate
-        # view creation.
-        builtin_queries.create_wide_locations_view(args.output)
-        builtin_queries.create_views_over_tables(args.output, column_adder)
+        with view_creator:
+            view_creator.create_wide_locations_view()
+            view_creator.create_views_over_tables()
 
 
 def entry_point():
