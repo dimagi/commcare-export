@@ -340,8 +340,7 @@ def main_with_args(args):
 
     if args.output_format == 'sql' and args.with_organization:
         with view_creator:
-            view_creator.create_wide_locations_view()
-            view_creator.create_views_over_tables()
+            view_creator.create_views()
 
 
 def entry_point():

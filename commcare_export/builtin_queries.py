@@ -122,19 +122,39 @@ class ColumnEnforcer():
 
 # Create views over the location and user tables.
 
-# Define a DDLElement to represent view creation.
-class CreateOrReplaceView(DDLElement):
+# Implement view creation as described in the SQLAlchemy wiki:
+# (https://github.com/sqlalchemy/sqlalchemy/wiki/Views)
+#
+# Note two issues that occur when using this implementation
+# to define views that depend on other views.
+#
+# 1) Creating the view through the following event listener does
+#    not cause the view to be added to the metadata such that it
+#    can be used in dependent view definitions.
+#
+# We work around that by creating the first view and refreshing
+# the connection's metadata to get a view definition that can be
+# used to define the dependent views.
+#
+# 2) Handling the event once doesn't disable the handler, so
+#    calling metadata.create_all twice would execute the handler
+#    twice, even if duplicate table checking is on.
+#
+# We work around that by removing the handler after creating a
+# view.
+
+class CreateView(DDLElement):
     def __init__(self, name, selectable):
         self.name = name
         self.selectable = selectable
 
-@compiler.compiles(CreateOrReplaceView)
-def compile_createorreplaceview(element, compiler, **kw):
-    return "CREATE OR REPLACE VIEW %s AS %s" % (
+@compiler.compiles(CreateView)
+def compile_createview(element, compiler, **kw):
+    return "CREATE VIEW %s AS %s" % (
         element.name, 
         compiler.sql_compiler.process(element.selectable, literal_binds=True)) 
 
-def view(name, metadata, selectable):
+def install_view_creator(name, metadata, selectable):
     t = sql.table(name)
 
     # T becomes a proxy for every column in selectable.
@@ -143,24 +163,35 @@ def view(name, metadata, selectable):
 
     # The view is created in the database on the after_create event of
     # its metadata.
-    event.listen(metadata,
-                 'after_create',
-                 CreateOrReplaceView(name, selectable))
-    return t
+    creator = CreateView(name, selectable)
+    event.listen(metadata, 'after_create', creator)
+    return creator
 
+def remove_view_creator(name, metadata, creator):
+    event.remove(metadata, 'after_create', creator)
 
 class ViewCreator(SqlMixin):
+    hierarchy_view_name = 'commcare_location_hierarchy_view'
     view_suffix = '_with_organization'
 
     def __init__(self, db_url, poolclass=None, engine=None):
         super(ViewCreator, self).__init__(db_url, poolclass=poolclass, engine=engine)
         self._column_enforcer = ColumnEnforcer()
+        self._installed_view_creators = []
 
     @property
     def column_enforcer(self):
         return self._column_enforcer
 
-        
+    def install_view_creator(self, name, metadata, selectable):
+        creator = install_view_creator(name, metadata, selectable)
+        self._installed_view_creators.append((name, metadata, creator))
+
+    def remove_all_view_creators(self):
+        for (name, metadata, creator) in self._installed_view_creators:
+            remove_view_creator(name, metadata, creator)
+        self._installed_view_creators = []
+
     # Define a view over the commcare_locations table that adds columns for
     # the whole location hierarchy.
     # loc_level1, loc_name_level1 = the location itself and it's type name
@@ -168,35 +199,18 @@ class ViewCreator(SqlMixin):
     # loc_level3, loc_name_level3 = the location's grandparent and the grandparent's
     #                               type name
     # and so on up to level8. The definition of the view is a recursive query.
-    def create_wide_locations_view(self):
+    def add_wide_locations_view(self):
         self.metadata.reflect(views=True)
+
+        if self.hierarchy_view_name in self.metadata.tables:
+            logger.info('View {view_name} already exists, not replacing it.'.\
+                        format(view_name=self.hierarchy_view_name))
+            return
 
         commcare_locations = self.metadata.tables['commcare_locations']
 
-        base_select = select([commcare_locations.c.location_id,
-                              commcare_locations.c.location_type,
-                              commcare_locations.c.location_type_name,
-                              commcare_locations.c.resource_uri.label('location_resource_uri'),
-                              commcare_locations.c.parent,
-                              commcare_locations.c.location_id.label('loc_level1'),
-                              commcare_locations.c.location_type_name.label('loc_name_level1'),
-                              sql.expression.null().label('loc_level2'),
-                              sql.expression.null().label('loc_name_level2'),
-                              sql.expression.null().label('loc_level3'),
-                              sql.expression.null().label('loc_name_level3'),
-                              sql.expression.null().label('loc_level4'),
-                              sql.expression.null().label('loc_name_level4'),
-                              sql.expression.null().label('loc_level5'),
-                              sql.expression.null().label('loc_name_level5'),
-                              sql.expression.null().label('loc_level6'),
-                              sql.expression.null().label('loc_name_level6'),
-                              sql.expression.null().label('loc_level7'),
-                              sql.expression.null().label('loc_name_level7'),
-                              sql.expression.null().label('loc_level8'),
-                              sql.expression.null().label('loc_name_level8')]).\
-                              select_from(commcare_locations).\
-                              where(commcare_locations.c.parent == None)
-
+        # The base subquery determines the location columns to keep and the first
+        # level of the location hierarchy.
         base_subquery = select([
             commcare_locations.c.location_id,
             commcare_locations.c.location_type,
@@ -230,6 +244,8 @@ class ViewCreator(SqlMixin):
                                            parent_alias.c.location_resource_uri == \
                                            child_alias.c.parent)
 
+        # The recursive query adds parent location and location type name
+        # to the hierarchy.
         recursive_query = base_subquery.union_all(
             select([child_alias.c.location_id,
                     child_alias.c.location_type,
@@ -256,12 +272,12 @@ class ViewCreator(SqlMixin):
 
         statement = select(['*']).select_from(recursive_query)
 
-        generated_view = view('commcare_locations_generated_view', self.metadata, statement)
-
-        # TODO(Charlie): Maybe use individual table.create method.
+        self.install_view_creator(self.hierarchy_view_name, self.metadata, statement)
         self.metadata.create_all()
+        self.remove_all_view_creators()
 
-    def create_views_over_tables(self):
+
+    def add_views_over_tables(self):
         self.metadata.reflect(views=True)
 
         if 'commcare_users' not in self.metadata.tables:
@@ -272,13 +288,13 @@ class ViewCreator(SqlMixin):
             logger.warning('Required table commcare_locations not found in database')
             return
 
-        if 'commcare_locations_generated_view' not in self.metadata.tables:
-            logger.warning('Required view commcare_locations_generated_view not found'
-                           'in database')
+        if self.hierarchy_view_name not in self.metadata.tables:
+            logger.warning('Required view {view_name} not found in database'.\
+                           format(view_name=self.hierarchy_view_name))
             return
 
         commcare_users = self.metadata.tables['commcare_users']
-        commcare_locations_generated_view = self.metadata.tables['commcare_locations_generated_view']
+        commcare_location_hierarchy_view = self.metadata.tables[self.hierarchy_view_name]
 
         for table_name in self.column_enforcer.emitted_tables():
             if table_name not in self.metadata.tables:
@@ -286,7 +302,6 @@ class ViewCreator(SqlMixin):
                 table_name=table_name))
                 continue
 
-            # table = metadata.tables[table_name]
             table = self.table(table_name)
 
             if 'commcare_userid' not in table.c:
@@ -300,7 +315,7 @@ class ViewCreator(SqlMixin):
                 continue
 
             users_alias = orm.aliased(commcare_users, name='u')
-            locations_alias = orm.aliased(commcare_locations_generated_view, name='l')
+            locations_alias = orm.aliased(commcare_location_hierarchy_view, name='l')
             table_alias = orm.aliased(table, name='t')
 
             joined_input = sql.expression.outerjoin(
@@ -308,6 +323,9 @@ class ViewCreator(SqlMixin):
                                          table_alias.c.commcare_userid == users_alias.c.id),
                 locations_alias, users_alias.c.commcare_location_id == locations_alias.c.location_id)
 
+            # To every row in the emitted table, if it has a commcare_userid, add some of
+            # the columns of the commcare_users table and all of the columns of location
+            # hierarchy table.
             view_select = select([text('t.*'),
                                   users_alias.c.email.label('commcare_user_email'),
                                   users_alias.c.first_name.label('commcare_user_first_name'),
@@ -340,7 +358,11 @@ class ViewCreator(SqlMixin):
                                   locations_alias.c.loc_name_level8.label('commcare_loc_name_level8')]).\
                                   select_from(joined_input)
 
-            table_view = view(view_name, self.metadata, view_select)
+            self.install_view_creator(view_name, self.metadata, view_select)
 
         self.metadata.create_all()
+        self.remove_all_view_creators()
 
+    def create_views(self):
+        self.add_wide_locations_view()
+        self.add_views_over_tables()
