@@ -265,33 +265,36 @@ def compile_source(worksheet):
 def require_column_in_sheet(sheet_name, data_source, table_name, output_headings,
                             output_fields, column_enforcer):
     # Check for conflicting use of column name.
-    requirement_satisfied = False
+    source_provides_column = True
+    extend_fields = True
 
     required_column = column_enforcer.column_to_require(data_source)
-    if required_column is not None:
+    if required_column is None:
+        source_provides_column = False
+        extend_fields = False
+    else:
         for i in range(len(output_headings)):
             if output_headings[i].value == required_column.name.v:
                 if isinstance(output_fields[i], Reference) and \
                    output_fields[i].ref == required_column.source:
-                    requirement_satisfied = True
+                    extend_fields = False
                     continue
                 else:
-                    raise ReservedColumnNameException(sheet_name,
-                                                      required_column.name.v)
-    else:
-        requirement_satisfied = True
+                    raise Exception('Field name "{}" conflicts with an internal name.'.format(required_column.name.v))
 
-    if requirement_satisfied:
-        headings = [Literal(output_heading.value)
-                    for output_heading in output_headings]
-        body = List(output_fields)
-    else:
+    if extend_fields:
         headings = [Literal(output_heading.value)
                     for output_heading in output_headings] + [required_column.name]
         body = List(output_fields +
                     [compile_field(field=required_column.name,
                                    source_field=required_column.source)])
-    column_enforcer.record_table(table_name)
+    else:
+        headings = [Literal(output_heading.value)
+                    for output_heading in output_headings]
+        body = List(output_fields)
+
+    if source_provides_column:
+        column_enforcer.record_table(table_name)
     return (headings, body)
 
 def parse_sheet(worksheet, mappings=None, column_enforcer=None):

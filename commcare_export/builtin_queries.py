@@ -7,7 +7,7 @@ from sqlalchemy.ext import compiler
 
 from commcare_export import excel_query
 from commcare_export.minilinq import Apply, List, Literal, Reference
-from commcare_export.writers import SqlMixin
+from commcare_export.writers import SqlMixin, SqlTableWriter
 
 logger = logging.getLogger(__name__)
 
@@ -102,8 +102,8 @@ locations_query = compile_query(location_columns, 'location',
 
 # Require specified columns in emitted tables and record the table names.
 class ColumnEnforcer():
-    columns_to_require = {'form': Column('commcare_userid', 'metadata.userID'),
-                          'case': Column('commcare_userid', 'user_id')}
+    columns_to_require = {'form': Column('commcare_userid', '$.metadata.userID'),
+                          'case': Column('commcare_userid', '$.user_id')}
 
     def __init__(self):
         self._emitted_tables = set([])
@@ -151,8 +151,8 @@ class CreateView(DDLElement):
 @compiler.compiles(CreateView)
 def compile_createview(element, compiler, **kw):
     return "CREATE VIEW %s AS %s" % (
-        element.name, 
-        compiler.sql_compiler.process(element.selectable, literal_binds=True)) 
+        element.name,
+        compiler.sql_compiler.process(element.selectable, literal_binds=True))
 
 def install_view_creator(name, metadata, selectable):
     t = sql.table(name)
@@ -178,6 +178,7 @@ class ViewCreator(SqlMixin):
         super(ViewCreator, self).__init__(db_url, poolclass=poolclass, engine=engine)
         self._column_enforcer = ColumnEnforcer()
         self._installed_view_creators = []
+        self._string_type = SqlTableWriter(db_url).best_type_for('a_string')
 
     @property
     def column_enforcer(self):
@@ -211,6 +212,7 @@ class ViewCreator(SqlMixin):
 
         # The base subquery determines the location columns to keep and the first
         # level of the location hierarchy.
+        null_string = sql.expression.cast(sql.expression.null(), self._string_type)
         base_subquery = select([
             commcare_locations.c.location_id,
             commcare_locations.c.location_type,
@@ -219,20 +221,20 @@ class ViewCreator(SqlMixin):
             commcare_locations.c.parent,
             commcare_locations.c.location_id.label('loc_level1'),
             commcare_locations.c.location_type_name.label('loc_name_level1'),
-            sql.expression.null().label('loc_level2'),
-            sql.expression.null().label('loc_name_level2'),
-            sql.expression.null().label('loc_level3'),
-            sql.expression.null().label('loc_name_level3'),
-            sql.expression.null().label('loc_level4'),
-            sql.expression.null().label('loc_name_level4'),
-            sql.expression.null().label('loc_level5'),
-            sql.expression.null().label('loc_name_level5'),
-            sql.expression.null().label('loc_level6'),
-            sql.expression.null().label('loc_name_level6'),
-            sql.expression.null().label('loc_level7'),
-            sql.expression.null().label('loc_name_level7'),
-            sql.expression.null().label('loc_level8'),
-            sql.expression.null().label('loc_name_level8')]).\
+            null_string.label('loc_level2'),
+            null_string.label('loc_name_level2'),
+            null_string.label('loc_level3'),
+            null_string.label('loc_name_level3'),
+            null_string.label('loc_level4'),
+            null_string.label('loc_name_level4'),
+            null_string.label('loc_level5'),
+            null_string.label('loc_name_level5'),
+            null_string.label('loc_level6'),
+            null_string.label('loc_name_level6'),
+            null_string.label('loc_level7'),
+            null_string.label('loc_name_level7'),
+            null_string.label('loc_level8'),
+            null_string.label('loc_name_level8')]).\
             select_from(commcare_locations).\
             where(commcare_locations.c.parent == None).\
             cte(recursive=True, name='location_inlined')
