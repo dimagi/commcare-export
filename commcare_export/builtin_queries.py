@@ -320,10 +320,16 @@ class ViewCreator(SqlMixin):
             locations_alias = orm.aliased(commcare_location_hierarchy_view, name='l')
             table_alias = orm.aliased(table, name='t')
 
-            joined_input = sql.expression.outerjoin(
-                sql.expression.outerjoin(table_alias, users_alias,
-                                         table_alias.c.commcare_userid == users_alias.c.id),
-                locations_alias, users_alias.c.commcare_location_id == locations_alias.c.location_id)
+            # This version causes a segfault in MySQL locally.
+            # joined_input = sql.expression.outerjoin(
+            #     sql.expression.outerjoin(table_alias, users_alias,
+            #                              table_alias.c.commcare_userid == users_alias.c.id),
+            #     locations_alias, users_alias.c.commcare_location_id == locations_alias.c.location_id)
+
+            joined_input = sql.expression.outerjoin(table_alias,
+                sql.expression.outerjoin(users_alias, locations_alias,
+                                         users_alias.c.commcare_location_id == locations_alias.c.location_id),
+                                                    table_alias.c.commcare_userid == users_alias.c.id)
 
             # To every row in the emitted table, if it has a commcare_userid, add some of
             # the columns of the commcare_users table and all of the columns of location
