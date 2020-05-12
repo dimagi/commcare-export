@@ -86,3 +86,16 @@ def db_params(request):
 def pg_db_params(request):
     return _db_params(request, 'test_commcare_export_%s' % uuid.uuid4().hex)
 
+
+@pytest.fixture(scope="class", params=[
+    pytest.param({
+        'url': "{}%s".format(postgres_base),
+        'admin_db': 'postgres'
+    }, marks=pytest.mark.postgres),
+    pytest.param({
+        'url': '{}%s?driver=ODBC+Driver+17+for+SQL+Server'.format(mssql_base),
+        'admin_db': 'master'
+    }, marks=pytest.mark.mssql)
+], ids=['postgres', 'mssql'])
+def pg_and_mssql_db_params(request):
+    return _db_params(request, 'test_commcare_export_%s' % uuid.uuid4().hex)

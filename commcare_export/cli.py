@@ -170,7 +170,6 @@ def _get_query_from_file(query_arg, missing_value, combine_emits,
                 query_jvalue = json.loads(fh.read())
                 return MiniLinq.from_jvalue(query_jvalue)
 
-
 def get_queries(args, writer, column_enforcer=None):
     query_list = []
 
@@ -188,6 +187,11 @@ def get_queries(args, writer, column_enforcer=None):
     if args.locations or args.with_organization:
         # Add location data to query
         query_list.append(builtin_queries.locations_query)
+
+    if args.with_organization:
+        if isinstance(writer, writers.SqlMixin) and writer.is_mysql:
+            # Add location hierarchy data to query
+            query_list.append(builtin_queries.location_hierarchy_query)
 
     return List(query_list) if len(query_list) > 1 else query_list[0]
 
@@ -243,6 +247,8 @@ def _get_checkpoint_manager(args):
         checkpoint_manager.create_checkpoint_table()
         return checkpoint_manager
 
+def _get_view_creator(args):
+    return builtin_queries.ViewCreator(args.output)    
 
 def force_lazy_result(lazy_result):
     if lazy_result is not None:
@@ -285,7 +291,7 @@ def main_with_args(args):
             print('--with-organization option only works with sql output type')
             return EXIT_STATUS_ERROR
 
-        view_creator = builtin_queries.ViewCreator(args.output)
+        view_creator = _get_view_creator(args)
         column_enforcer = view_creator.column_enforcer
 
     try:
@@ -320,7 +326,7 @@ def main_with_args(args):
         logger.debug('Starting from %s', args.since)
 
     cm = CheckpointManagerProvider(checkpoint_manager, since, args.start_over)
-    lp = LocationInfoProvider(api_client)
+    lp = LocationInfoProvider(api_client, page_size=args.batch_size)
     static_env = {
         'commcarehq_base_url': commcarehq_base_url,
         'get_checkpoint_manager': cm.get_checkpoint_manager,
