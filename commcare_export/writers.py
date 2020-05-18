@@ -358,7 +358,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             elif self.is_mssql:
                 return sqlalchemy.NVARCHAR(collation=self.collation)
             if self.is_oracle:
-                return sqlalchemy.UnicodeText(collation=self.collation)
+                return sqlalchemy.Unicode(collation=self.collation)
             else:
                 raise Exception("Unknown database dialect: {}".format(self.db_url))
         else:
