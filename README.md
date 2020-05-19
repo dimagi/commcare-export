@@ -202,9 +202,9 @@ loc_level2                   | Text | Parent's location_id
 loc_name_level2              | Text | Parent's location_type_name
 loc_level3                   | Text | Grandparent's location_id
 loc_name_level3              | Text | Grandparent's location_type_name
-    ...                      | ...  |         ...
-loc_level8                   | Text | 7 x parent's location_id
-loc_name_level8              | Text | 7 x parent's location_type_name
+    4, 5, 6, 7               | Text |
+loc_level8                   | Text | 7 x parent's commcare_location_id
+loc_name_level8              | Text | 7 x parent's commcare_location_type_name
 
 Note that when exporting to a MySQL database, 'commcare_location_hierarchy'
 will be table rather than a view. In addition, each table exported by an
@@ -232,7 +232,7 @@ commcare_loc_level2            | Text | Parent's commcare_location_id
 commcare_loc_name_level2       | Text | Parent's commcare_location_type_name
 commcare_loc_level3            | Text | Grandparent's commcare_location_id
 commcare_loc_name_level3       | Text | Grandparent's commcare_location_type_name
-    ...                        | ...  |         ...
+    4, 5, 6, 7                 | Text |
 commcare_loc_level8            | Text | 7 x parent's commcare_location_id
 commcare_loc_name_level8       | Text | 7 x parent's commcare_location_type_name
 
