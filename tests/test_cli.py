@@ -442,10 +442,11 @@ class TestViewCreatorWithExport(object):
     def test_export_form_with_organization(self, mock_client, view_creator):
         num_empty_columns = 0 if view_creator.is_mysql else 12
         expected = [
-            ('1', 'f1', 'id1', None, 'p1', 'u1', 'lid1', 'lt1', 'HQ', 'ru1',
-             None, 'lid1', 'HQ', None, None) + (None,) * num_empty_columns,
-            ('2', 'f2', 'id2', 'ru0', 'p2', 'u2', 'lid2', 'lt2', 'Local',
-             'ru2', 'ru1', 'lid2', 'Local', 'lid1', 'HQ') + \
+            (u'1', u'f1', u'id1', None, u'p1', u'u1', u'lid1', u'lt1', u'HQ',
+             u'ru1', None, u'lid1', u'HQ', None, None) + \
+            (None,) * num_empty_columns,
+            (u'2', u'f2', u'id2', u'ru0', u'p2', u'u2', u'lid2', u'lt2',
+             u'Local', u'ru2', u'ru1', u'lid2', u'Local', u'lid1', u'HQ') + \
             (None,) * num_empty_columns
         ]
 
@@ -456,10 +457,10 @@ class TestViewCreatorWithExport(object):
                                                       view_creator):
         num_empty_columns = 0 if view_creator.is_mysql else 14
         expected = [
-            ('1', 'f1', 'id1', None, 'p1', 'u1', 'lid1', 'lt1', 'HQ', 'ru1',
-             'lid1', 'HQ') + (None,) * num_empty_columns,
-            ('2', 'f2', 'id2', 'ru0', 'p2', 'u2', 'lid2', 'lt2', 'Local',
-             'ru2', 'lid2', 'Local') + (None,) * num_empty_columns
+            (u'1', u'f1', u'id1', None, u'p1', u'u1', u'lid1', u'lt1', u'HQ',
+             u'ru1', u'lid1', u'HQ') + (None,) * num_empty_columns,
+            (u'2', u'f2', u'id2', u'ru0', u'p2', u'u2', u'lid2', u'lt2',
+             u'Local', u'ru2', u'lid2', u'Local') + (None,) * num_empty_columns
         ]
 
         self.export_with_organization_and_compare(view_creator, expected)
