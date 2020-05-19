@@ -273,6 +273,10 @@ class SqlMixin(object):
         return 'postgres' in self.db_url
 
     @property
+    def is_oracle(self):
+        return 'oracle' in self.db_url
+
+    @property
     def is_mysql(self):
         return 'mysql' in self.db_url
 
@@ -290,6 +294,8 @@ class SqlMixin(object):
             return 64
         if self.is_mssql:
             # https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers?view=sql-server-2017
+            return 128
+        if self.is_oracle:
             return 128
         raise Exception("Unknown database dialect: {}".format(self.db_url))
 
@@ -351,6 +357,8 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     return sqlalchemy.UnicodeText(collation=self.collation)
             elif self.is_mssql:
                 return sqlalchemy.NVARCHAR(collation=self.collation)
+            if self.is_oracle:
+                return sqlalchemy.Unicode(4000, collation=self.collation)
             else:
                 raise Exception("Unknown database dialect: {}".format(self.db_url))
         else:
