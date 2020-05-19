@@ -402,7 +402,7 @@ def view_creator(db_params):
 
 @pytest.mark.dbtest
 class TestViewCreatorWithExport(object):
-    def export_with_organization_and_compare(self, view_creator, expected):
+    def export_with_organization_and_compare(self, view_creator, expected_fields, expected):
         # Export the form and construct a view with organization info.
         args = make_args(
             query='tests/012_SingleForm.xlsx',
@@ -433,13 +433,31 @@ class TestViewCreatorWithExport(object):
             assert example_view in view_creator.metadata.tables
 
             view = view_creator.metadata.tables[example_view]
-            view_contents = list(view_creator.connection.execute(sqlalchemy.select([view])))
+            view_contents = list(view_creator.connection.execute(sqlalchemy.select([view.c[f] for f in expected_fields])))
             view_contents.sort(key=lambda row: row[0])
 
             assert view_contents == expected
 
     @mock.patch('commcare_export.cli._get_api_client', return_value=mock_hq_client(True))
     def test_export_form_with_organization(self, mock_client, view_creator):
+        expected_fields = ['id', 'name', 'commcare_userid',
+                           'commcare_user_resource_uri', 'commcare_project',
+                           'commcare_username', 'commcare_location_id',
+                           'commcare_location_type',
+                           'commcare_location_type_name',
+                           'commcare_location_resource_uri',
+                           'commcare_location_parent',
+                           'commcare_loc_level1', 'commcare_loc_name_level1',
+                           'commcare_loc_level2', 'commcare_loc_name_level2']
+        if not view_creator.is_mysql:
+            expected_fields += [
+                           'commcare_loc_level3', 'commcare_loc_name_level3',
+                           'commcare_loc_level4', 'commcare_loc_name_level4',
+                           'commcare_loc_level5', 'commcare_loc_name_level5',
+                           'commcare_loc_level6', 'commcare_loc_name_level6',
+                           'commcare_loc_level7', 'commcare_loc_name_level7',
+                           'commcare_loc_level8', 'commcare_loc_name_level8']
+
         num_empty_columns = 0 if view_creator.is_mysql else 12
         expected = [
             (u'1', u'f1', u'id1', None, u'p1', u'u1', u'lid1', u'lt1', u'HQ',
@@ -450,11 +468,28 @@ class TestViewCreatorWithExport(object):
             (None,) * num_empty_columns
         ]
 
-        self.export_with_organization_and_compare(view_creator, expected)
+        self.export_with_organization_and_compare(view_creator, expected_fields, expected)
 
     @mock.patch('commcare_export.cli._get_api_client', return_value=mock_hq_client(False))
     def test_export_form_with_organization_no_parents(self, mock_client,
                                                       view_creator):
+        expected_fields = ['id', 'name', 'commcare_userid',
+                           'commcare_user_resource_uri', 'commcare_project',
+                           'commcare_username', 'commcare_location_id',
+                           'commcare_location_type',
+                           'commcare_location_type_name',
+                           'commcare_location_resource_uri',
+                           'commcare_loc_level1', 'commcare_loc_name_level1']
+        if not view_creator.is_mysql:
+            expected_fields += [
+                           'commcare_loc_level2', 'commcare_loc_name_level2',
+                           'commcare_loc_level3', 'commcare_loc_name_level3',
+                           'commcare_loc_level4', 'commcare_loc_name_level4',
+                           'commcare_loc_level5', 'commcare_loc_name_level5',
+                           'commcare_loc_level6', 'commcare_loc_name_level6',
+                           'commcare_loc_level7', 'commcare_loc_name_level7',
+                           'commcare_loc_level8', 'commcare_loc_name_level8']
+
         num_empty_columns = 0 if view_creator.is_mysql else 14
         expected = [
             (u'1', u'f1', u'id1', None, u'p1', u'u1', u'lid1', u'lt1', u'HQ',
@@ -463,4 +498,4 @@ class TestViewCreatorWithExport(object):
              u'Local', u'ru2', u'lid2', u'Local') + (None,) * num_empty_columns
         ]
 
-        self.export_with_organization_and_compare(view_creator, expected)
+        self.export_with_organization_and_compare(view_creator, expected_fields, expected)
