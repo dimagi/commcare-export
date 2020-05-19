@@ -120,7 +120,7 @@ def main(argv):
         exit(0)
 
     if not args.project:
-        print('commcare-export: error: argument --project is required')
+        sys.stderr.write('commcare-export: error: argument --project is required\n')
         exit(1)
 
     if args.profile:
@@ -252,7 +252,7 @@ def evaluate_query(env, query):
             force_lazy_result(lazy_result)
         except requests.exceptions.RequestException as e:
             if e.response.status_code == 401:
-                print("\nAuthentication failed. Please check your credentials.")
+                sys.stderr.write("\nAuthentication failed. Please check your credentials.\n")
                 return None
             else:
                 raise
@@ -266,14 +266,14 @@ def main_with_args(args):
     writer = _get_writer(args.output_format, args.output, args.strict_types)
 
     if args.query is None and args.users is False and args.locations is False:
-        print('At least one the following arguments is required: '
-              '--query, --users, --locations')
+        sys.stderr.write('At least one the following arguments is required: '
+              '--query, --users, --locations\n')
         return EXIT_STATUS_ERROR
 
     try:
         query = get_queries(args, writer)
     except DataExportException as e:
-        print(e.message)
+        sys.stderr.write('{}\n'.format(e.message))
         return EXIT_STATUS_ERROR
 
     if args.dump_query:
