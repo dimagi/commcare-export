@@ -335,5 +335,3 @@ class CheckpointManagerProvider(object):
             ', '.join(table_names), since
         )
         return CheckpointManagerWithSince(manager, since)
-
-

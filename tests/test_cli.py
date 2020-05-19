@@ -283,7 +283,7 @@ def safe_checkpoint_manager(db_url):
     cm = CheckpointManager(db_url, 'query', '123', 'test', 'hq', poolclass=sqlalchemy.pool.NullPool)
     cm.create_checkpoint_table()
     return cm
-    
+
 @pytest.fixture(scope='class')
 def checkpoint_manager(pg_db_params):
     return safe_checkpoint_manager(pg_db_params['url'])
@@ -399,7 +399,7 @@ def view_creator(db_params):
         yield view_creator
     finally:
         cleanup_view_creator(view_creator)
-        
+
 @pytest.mark.dbtest
 class TestViewCreatorWithExport(object):
     def export_with_organization_and_compare(self, view_creator, expected):
@@ -428,7 +428,7 @@ class TestViewCreatorWithExport(object):
             assert (LOCATION_HIERARCHY_TABLE_NAME in view_creator.metadata.tables) == view_creator.is_mysql
             view_creator.metadata.reflect(views=True)
             assert LOCATION_HIERARCHY_TABLE_NAME in view_creator.metadata.tables
-            
+
             example_view = 'forms' + ViewCreator.view_suffix
             assert example_view in view_creator.metadata.tables
 

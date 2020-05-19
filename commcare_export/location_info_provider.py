@@ -29,8 +29,8 @@ class LocationInfoProvider:
             location_hierarchy = self.location_hierarchy[unwrapped_uri]
             if field in location_hierarchy:
                 return location_hierarchy[field]
-        return None             
-    
+        return None
+
     def get_location_types(self):
         paginator = SimplePaginator('location_type', self._page_size)
         paginator.init(None, False, None)

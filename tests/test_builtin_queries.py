@@ -3,7 +3,7 @@ import pytest
 from sqlalchemy import create_engine, Table, MetaData, Column, String, sql, pool, select
 from mock import mock
 
-from commcare_export.builtin_queries import ColumnEnforcer, ViewCreator, USERS_TABLE_NAME, LOCATIONS_TABLE_NAME, LOCATION_HIERARCHY_TABLE_NAME
+from commcare_export.builtin_queries import ColumnEnforcer, ViewCreator,USERS_TABLE_NAME, LOCATIONS_TABLE_NAME, LOCATION_HIERARCHY_TABLE_NAME
 from commcare_export.checkpoint import CheckpointManager
 from commcare_export.cli import main_with_args
 from commcare_export.commcare_hq_client import MockCommCareHqClient
@@ -113,7 +113,7 @@ def cleanup_view_creator(view_creator):
             sql.text('DROP TABLE IF EXISTS {}'.format(LOCATIONS_TABLE_NAME)))
 
         view_creator.metadata.reflect(views=True)
-    
+
 @pytest.fixture()
 def view_creator(pg_and_mssql_db_params):
     view_creator = safe_view_creator(pg_and_mssql_db_params['url'])
@@ -148,7 +148,7 @@ class TestRecursiveViewCreator(object):
                  'loc3', 'headquarters', None, None, None, None, None, None,
                  None, None, None, None, None, None, None, None)
             ]
-            
+
             assert view_contents == expected
 
 
@@ -182,4 +182,3 @@ class TestRecursiveViewCreator(object):
             ]
 
             assert view_contents == expected
-            

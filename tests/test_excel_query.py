@@ -238,7 +238,7 @@ class TestExcelQuery(unittest.TestCase):
             )
         )
 
-        self._compare_munilinq_to_compiled(minilinq, '003_DataSourceAndEmitColumns.xlsx')
+        self._compare_minilinq_to_compiled(minilinq, '003_DataSourceAndEmitColumns.xlsx')
 
     def test_alternate_source_fields(self):
         minilinq = List([
@@ -283,7 +283,7 @@ class TestExcelQuery(unittest.TestCase):
             ),
         ])
 
-        self._compare_munilinq_to_compiled(minilinq, '011_AlternateSourceFields.xlsx')
+        self._compare_minilinq_to_compiled(minilinq, '011_AlternateSourceFields.xlsx')
 
     def test_multi_emit(self):
         minilinq = List([
@@ -340,7 +340,7 @@ class TestExcelQuery(unittest.TestCase):
             )
         ])
 
-        self._compare_munilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=True)
+        self._compare_minilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=True)
 
     def test_multi_emit_no_combine(self):
         minilinq = List([
@@ -389,7 +389,7 @@ class TestExcelQuery(unittest.TestCase):
             )
         ])
 
-        self._compare_munilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=False)
+        self._compare_minilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=False)
 
     def test_multi_emit_with_organization(self):
         minilinq = List([
@@ -450,10 +450,10 @@ class TestExcelQuery(unittest.TestCase):
         ])
 
         column_enforcer = ColumnEnforcer()
-        self._compare_munilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=True,
+        self._compare_minilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=True,
                                            column_enforcer=column_enforcer)
 
-    def _compare_munilinq_to_compiled(self, minilinq, filename, combine=False, column_enforcer=None):
+    def _compare_minilinq_to_compiled(self, minilinq, filename, combine=False, column_enforcer=None):
         print("Parsing {}".format(filename))
         abs_path = os.path.join(os.path.dirname(__file__), filename)
         compiled = get_queries_from_excel(openpyxl.load_workbook(abs_path), missing_value='---', combine_emits=combine, column_enforcer=column_enforcer)

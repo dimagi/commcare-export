@@ -167,12 +167,10 @@ def _get_query_from_file(query_arg, missing_value, combine_emits,
             )
         else:
             with io.open(query_arg, encoding='utf-8') as fh:
-                query_jvalue = json.loads(fh.read())
-                return MiniLinq.from_jvalue(query_jvalue)
+                return MiniLinq.from_jvalue(json.loads(fh.read()))
 
 def get_queries(args, writer, column_enforcer=None):
     query_list = []
-
     if args.query is not None:
         query = _get_query(args, writer, column_enforcer=column_enforcer)
 
@@ -190,7 +188,7 @@ def get_queries(args, writer, column_enforcer=None):
 
     if args.with_organization:
         if isinstance(writer, writers.SqlMixin) and writer.is_mysql:
-            # Add location hierarchy data to query
+            # Add location hierarchy data to query for MySQL writer
             query_list.append(builtin_queries.location_hierarchy_query)
 
     return List(query_list) if len(query_list) > 1 else query_list[0]
@@ -248,7 +246,7 @@ def _get_checkpoint_manager(args):
         return checkpoint_manager
 
 def _get_view_creator(args):
-    return builtin_queries.ViewCreator(args.output)    
+    return builtin_queries.ViewCreator(args.output)
 
 def force_lazy_result(lazy_result):
     if lazy_result is not None:
@@ -344,7 +342,7 @@ def main_with_args(args):
     if args.output_format == 'json':
         print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))
 
-    if args.output_format == 'sql' and args.with_organization:
+    if args.with_organization:
         with view_creator:
             view_creator.create_views()
 

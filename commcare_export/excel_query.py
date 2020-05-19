@@ -262,6 +262,9 @@ def compile_source(worksheet):
     else:
         return data_source, api_query, Reference(str(data_source_jsonpath))
 
+# If the source is expected to provide a column, then require that it is
+# already present or can be added without conflicting with an existing
+# column.
 def require_column_in_sheet(sheet_name, data_source, table_name, output_headings,
                             output_fields, column_enforcer):
     # Check for conflicting use of column name.

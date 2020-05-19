@@ -1,7 +1,6 @@
 import logging
 
-from sqlalchemy import *
-from sqlalchemy import event, sql, orm
+from sqlalchemy import event, orm, select, sql, text
 from sqlalchemy.schema import DDLElement
 from sqlalchemy.ext import compiler
 
@@ -101,7 +100,7 @@ location_columns = [
 locations_query = compile_query(location_columns, 'location',
                                 LOCATIONS_TABLE_NAME)
 
-# Frequently used column names in order
+# Frequently used column names in preferred order
 def loc_level_columns(start, end):
     return [column
             for pair in zip(['loc_level{}'.format(i) for i in range(start, end+1)],
@@ -127,7 +126,7 @@ location_hierarchy_columns = [
 
 location_hierarchy_query = compile_query(location_hierarchy_columns, 'location',
                                          LOCATION_HIERARCHY_TABLE_NAME)
-       
+
 # Require specified columns in emitted tables and record the table names.
 class ColumnEnforcer():
     columns_to_require = {'form': Column('commcare_userid', '$.metadata.userID'),
@@ -226,7 +225,9 @@ class ViewCreator(SqlMixin):
     # loc_level2, loc_name_level2 = the location's parent and the parent's type name
     # loc_level3, loc_name_level3 = the location's grandparent and the grandparent's
     #                               type name
-    # and so on up to level8. The definition of the view is a recursive query.
+    # and so on up to level8. If the underlying table has a 'parent' column,
+    # then the view is defined by a recursive query. If it doesn't have a
+    # 'parent' column, the view is just a non-recursive query.
     def add_wide_locations_view(self):
         self.metadata.reflect(views=True)
 
@@ -290,12 +291,14 @@ class ViewCreator(SqlMixin):
                 commcare_locations.c.location_type_name.label('loc_name_level1')] +\
                 null_columns).\
                 select_from(commcare_locations)
-            
+
         self.install_view_creator(LOCATION_HIERARCHY_TABLE_NAME, self.metadata, statement)
         self.metadata.create_all()
         self.remove_all_view_creators()
 
 
+    # For each emitted table, define a view that joins the table with
+    # the location hierarchy view or table.
     def add_views_over_tables(self):
         self.metadata.reflect(views=True)
 
@@ -359,7 +362,7 @@ class ViewCreator(SqlMixin):
             for hc in loc_level_columns(1, 9):
                 if hc in locations_alias.c:
                     view_columns.append(locations_alias.c[hc].label('commcare_' + hc))
-            
+
             view_select = select(view_columns).select_from(joined_input)
 
             self.install_view_creator(view_name, self.metadata, view_select)

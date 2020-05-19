@@ -79,7 +79,8 @@ $ commcare-export --commcare-hq <URL or alias like "local" or "prod"> \
                   --output-format <csv, xls, xlsx, json, markdown, sql> \
                   --output <file name or SQL database URL> \
                   --users <export data about project's mobile workers> \
-                  --locations <export data about project's location hierarchy>
+                  --locations <export data about project's location hierarchy> \
+                  --with-organization <join location hierarchy with exported tables>
 ```
 
 See `commcare-export --help` for the full list of options.
@@ -127,9 +128,12 @@ User and Location Data
 ----------------------
 
 The --users and --locations options export data from a CommCare project that
-can be joined with form and case data. Specifiying the --users option will
-export an additional table named 'commcare_users' containing the following
-columns:
+can be joined with form and case data. When exporting to a SQL database, the
+--with-organization option does all of that and adds views that perform
+the join of form and case data to location data.
+
+Specifiying the --users option or --with-organization option will export
+an additional table named 'commcare_users' containing the following columns:
 
 Column                           | Type | Note
 ------                           | ---- | ----
@@ -150,8 +154,8 @@ username                         | Text |
 The data in the 'commcare_users' table comes from the [List Mobile Workers
 API endpoint](https://confluence.dimagi.com/display/commcarepublic/List+Mobile+Workers).
 
-Specifying the --locations option will export an additional table named
-'commcare_locations' containing the following columns:
+Specifying the --locations option or --with-organization option will export an
+additional table named 'commcare_locations' containing the following columns:
 
 Column                       | Type | Note
 ------                       | ---- | ----
@@ -166,6 +170,7 @@ location_id                  | Text | Primary key
 location_type                | Text |
 longitude                    | Text |
 name                         | Text |
+parent                       | Text |
 resource_uri                 | Text |
 site_code                    | Text |
 location_type_administrative | Text |
@@ -177,9 +182,68 @@ The data in the 'commcare_locations' table comes from the Location API
 endpoint along with some additional columns from the Location Type API
 endpoint.
 
-Note that the table names 'commcare_users' and 'commcare_locations' are
-treated as reserved names and the export tool will produce an error if
-given a query specification that writes to either of them.
+Specifying the --with-organization option, which only works with SQL database
+output, will create a set of additional tables and views. First, it will create
+a view named 'commcare_location_hierarchy' that contains some of the columns
+of the 'commcare_locations' table and the location and location type names of
+parents named as follows:
+
+Column                       | Type | Note
+------                       | ---- | ----
+id                           | Text |
+location_id                  | Text | Primary key
+location_type                | Text |
+parent                       | Text |
+resource_uri                 | Text |
+location_type_name           | Text |
+loc_level1                   | Text | Same as location_id
+loc_name_level1              | Text | Same as location_type_name
+loc_level2                   | Text | Parent's location_id
+loc_name_level2              | Text | Parent's location_type_name
+loc_level3                   | Text | Grandparent's location_id
+loc_name_level3              | Text | Grandparent's location_type_name
+    ...                      | ...  |         ...
+loc_level8                   | Text | 7 x parent's location_id
+loc_name_level8              | Text | 7 x parent's location_type_name
+
+Note that when exporting to a MySQL database, 'commcare_location_hierarchy'
+will be table rather than a view. In addition, each table exported by an
+Excel query specification will have a 'commcare_userid' column added so
+that it can be joined with user and location tables and a view will be
+created that performs such a join. For example, if the Excel query emits
+a table 'my_form' with columns 'id' and 'date', the created view will be
+named 'my_form_with_organization' and it will have the following columns:
+
+Column                         | Type | Note
+------                         | ---- | ----
+id                             | Text | Primary key
+date                           | Date |
+commcare_user_resource_uri     | Text |
+commcare_project               | Text |
+commcare_username              | Text |
+commcare_location_id           | Text |
+commcare_location_type         | Text |
+commcare_location_type_name    | Text |
+commcare_location_resource_uri | Text |
+commcare_location_parent       | Text |
+commcare_loc_level1            | Text | Same as commcare_location_id
+commcare_loc_name_level1       | Text | Same as commcare_location_type_name
+commcare_loc_level2            | Text | Parent's commcare_location_id
+commcare_loc_name_level2       | Text | Parent's commcare_location_type_name
+commcare_loc_level3            | Text | Grandparent's commcare_location_id
+commcare_loc_name_level3       | Text | Grandparent's commcare_location_type_name
+    ...                        | ...  |         ...
+commcare_loc_level8            | Text | 7 x parent's commcare_location_id
+commcare_loc_name_level8       | Text | 7 x parent's commcare_location_type_name
+
+Note that all of the added columns start with 'commcare_' to avoid conflicts
+with other columns in the query. By querying this view, you can aggregate data
+to different levels or your organization's hierarchy.
+
+Note that the table names 'commcare_users', 'commcare_locations' and
+'commcare_location_hierarchy' are treated as reserved names and the export
+tool will produce an error if given a query specification that writes to
+any of them.
 
 Python Library Usage
 --------------------
