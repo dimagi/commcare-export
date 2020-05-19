@@ -202,7 +202,7 @@ loc_level2                   | Text | Parent's location_id
 loc_name_level2              | Text | Parent's location_type_name
 loc_level3                   | Text | Grandparent's location_id
 loc_name_level3              | Text | Grandparent's location_type_name
-    4, 5, 6, 7               | Text |
+4 ... 7                      | Text |
 loc_level8                   | Text | 7 x parent's commcare_location_id
 loc_name_level8              | Text | 7 x parent's commcare_location_type_name
 
@@ -232,7 +232,7 @@ commcare_loc_level2            | Text | Parent's commcare_location_id
 commcare_loc_name_level2       | Text | Parent's commcare_location_type_name
 commcare_loc_level3            | Text | Grandparent's commcare_location_id
 commcare_loc_name_level3       | Text | Grandparent's commcare_location_type_name
-    4, 5, 6, 7                 | Text |
+4 ... 7                        | Text |
 commcare_loc_level8            | Text | 7 x parent's commcare_location_id
 commcare_loc_name_level8       | Text | 7 x parent's commcare_location_type_name
 
