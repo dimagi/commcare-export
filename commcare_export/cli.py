@@ -100,8 +100,8 @@ def main(argv):
             try:
                 arg.encode('utf-8')
             except UnicodeDecodeError:
-                sys.stderr.write(u"ERROR: Argument '%s' contains unicode characters. "
-                                 u"Only ASCII characters are supported.\n" % unicode(arg, 'utf-8'))
+                print(u"ERROR: Argument '%s' contains unicode characters. "
+                      u"Only ASCII characters are supported.\n" % unicode(arg, 'utf-8'), file=sys.stderr)
         sys.exit(1)
 
     if args.verbose:
@@ -120,7 +120,7 @@ def main(argv):
         exit(0)
 
     if not args.project:
-        sys.stderr.write('commcare-export: error: argument --project is required\n')
+        print('commcare-export: error: argument --project is required', file=sys.stderr)
         exit(1)
 
     if args.profile:
@@ -252,7 +252,7 @@ def evaluate_query(env, query):
             force_lazy_result(lazy_result)
         except requests.exceptions.RequestException as e:
             if e.response.status_code == 401:
-                sys.stderr.write("\nAuthentication failed. Please check your credentials.\n")
+                print("\nAuthentication failed. Please check your credentials.", file=sys.stderr)
                 return None
             else:
                 raise
@@ -266,14 +266,14 @@ def main_with_args(args):
     writer = _get_writer(args.output_format, args.output, args.strict_types)
 
     if args.query is None and args.users is False and args.locations is False:
-        sys.stderr.write('At least one the following arguments is required: '
-              '--query, --users, --locations\n')
+        print('At least one the following arguments is required: '
+              '--query, --users, --locations', file=sys.stderr)
         return EXIT_STATUS_ERROR
 
     try:
         query = get_queries(args, writer)
     except DataExportException as e:
-        sys.stderr.write('{}\n'.format(e.message))
+        print(e.message, file=sys.stderr)
         return EXIT_STATUS_ERROR
 
     if args.dump_query:
