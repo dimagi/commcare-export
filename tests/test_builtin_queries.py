@@ -19,7 +19,7 @@ def create_commcare_locations_table(db_url):
                                Column('location_id', string_type),
                                Column('location_type', string_type),
                                Column('location_type_name', string_type),
-                               Column('parent', string_type),
+                               Column('parent_resource_uri', string_type),
                                Column('resource_uri', string_type))
     commcare_locations.metadata.create_all()
 
@@ -27,13 +27,13 @@ def create_commcare_locations_table(db_url):
         connection.execute(commcare_locations.insert(), [
             {'id': 'id1', 'domain': 'project', 'location_id': 'loc1',
              'location_type': 'type1', 'location_type_name': 'clinic',
-             'parent': 'ru2', 'resource_uri': 'ru1'},
+             'parent_resource_uri': 'ru2', 'resource_uri': 'ru1'},
             {'id': 'id2', 'domain': 'project', 'location_id': 'loc2',
              'location_type': 'type2', 'location_type_name': 'district',
-             'parent': 'ru3', 'resource_uri': 'ru2'},
+             'parent_resource_uri': 'ru3', 'resource_uri': 'ru2'},
             {'id': 'id3', 'domain': 'project', 'location_id': 'loc3',
              'location_type': 'type3', 'location_type_name': 'headquarters',
-             'parent': None, 'resource_uri': 'ru3'},
+             'parent_resource_uri': None, 'resource_uri': 'ru3'},
         ])
 
 

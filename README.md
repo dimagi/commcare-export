@@ -170,7 +170,7 @@ location_id                  | Text | Primary key
 location_type                | Text |
 longitude                    | Text |
 name                         | Text |
-parent                       | Text |
+parent_resource_uri          | Text |
 resource_uri                 | Text |
 site_code                    | Text |
 location_type_administrative | Text |
@@ -225,7 +225,7 @@ commcare_location_id           | Text |
 commcare_location_type         | Text |
 commcare_location_type_name    | Text |
 commcare_location_resource_uri | Text |
-commcare_location_parent       | Text |
+commcare_location_parent_resource_uri       | Text |
 commcare_loc_level1            | Text | Same as commcare_location_id
 commcare_loc_name_level1       | Text | Same as commcare_location_type_name
 commcare_loc_level2            | Text | Parent's commcare_location_id

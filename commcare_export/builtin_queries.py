@@ -84,7 +84,7 @@ location_columns = [
     Column('location_type', 'location_type'),
     Column('longitude', 'longitude'),
     Column('name', 'name'),
-    Column('parent', 'parent'),
+    Column('parent_resource_uri', 'parent'),
     Column('resource_uri', 'resource_uri'),
     Column('site_code', 'site_code'),
     Column('location_type_administrative', 'location_type',
@@ -117,7 +117,7 @@ location_hierarchy_columns = [
     Column('id', 'id'),
     Column('location_id', 'location_id'),
     Column('location_type', 'location_type'),
-    Column('parent', 'parent'),
+    Column('parent_resource_uri', 'parent'),
     Column('resource_uri', 'resource_uri'),
     Column('location_type_name', 'location_type',
            'get_location_info', Literal('name'))] +\
@@ -202,13 +202,9 @@ class ViewCreator(SqlMixin):
 
     def __init__(self, db_url, poolclass=None, engine=None):
         super(ViewCreator, self).__init__(db_url, poolclass=poolclass, engine=engine)
-        self._column_enforcer = ColumnEnforcer()
+        self.column_enforcer = ColumnEnforcer()
         self._installed_view_creators = []
         self._string_type = SqlTableWriter(db_url).best_type_for('a_string')
-
-    @property
-    def column_enforcer(self):
-        return self._column_enforcer
 
     def install_view_creator(self, name, metadata, selectable):
         creator = install_view_creator(name, metadata, selectable)
@@ -227,7 +223,7 @@ class ViewCreator(SqlMixin):
     #                               type name
     # and so on up to level8. If the underlying table has a 'parent' column,
     # then the view is defined by a recursive query. If it doesn't have a
-    # 'parent' column, the view is just a non-recursive query.
+    # 'parent_resource_uri' column, the view is just a non-recursive query.
     def add_wide_locations_view(self):
         self.metadata.reflect(views=True)
 
@@ -243,18 +239,18 @@ class ViewCreator(SqlMixin):
         null_string = sql.expression.cast(sql.expression.null(), self._string_type)
         null_columns = [null_string.label(col) for col in loc_level_columns(2, 8)]
         statement = None
-        if 'parent' in commcare_locations.c:
+        if 'parent_resource_uri' in commcare_locations.c:
             base_subquery = select([
                 commcare_locations.c.location_id,
                 commcare_locations.c.location_type,
                 commcare_locations.c.location_type_name,
                 commcare_locations.c.resource_uri,
-                commcare_locations.c.parent,
+                commcare_locations.c.parent_resource_uri,
                 commcare_locations.c.location_id.label('loc_level1'),
                 commcare_locations.c.location_type_name.label('loc_name_level1')] +\
                 null_columns).\
                 select_from(commcare_locations).\
-                where(commcare_locations.c.parent == None).\
+                where(commcare_locations.c.parent_resource_uri == None).\
                 cte(recursive=True, name='location_inlined')
 
             parent_alias = orm.aliased(base_subquery, name='parent')
@@ -262,7 +258,7 @@ class ViewCreator(SqlMixin):
             joined_input = sql.expression.join(child_alias,
                                                parent_alias,
                                                parent_alias.c.resource_uri == \
-                                               child_alias.c.parent)
+                                               child_alias.c.parent_resource_uri)
 
             # The recursive query adds parent location and location type name
             # to the hierarchy.
@@ -274,7 +270,7 @@ class ViewCreator(SqlMixin):
                         child_alias.c.location_type,
                         child_alias.c.location_type_name,
                         child_alias.c.resource_uri,
-                        child_alias.c.parent,
+                        child_alias.c.parent_resource_uri,
                         child_alias.c.location_id.label('loc_level1'),
                         child_alias.c.location_type_name.label('loc_name_level1')] +\
                        parent_columns).\
@@ -356,8 +352,8 @@ class ViewCreator(SqlMixin):
                             locations_alias.c.location_type.label('commcare_location_type'),
                             locations_alias.c.location_type_name.label('commcare_location_type_name'),
                             locations_alias.c.resource_uri.label('commcare_location_resource_uri')]
-            if 'parent' in locations_alias.c:
-                view_columns.append(locations_alias.c.parent.label('commcare_location_parent'))
+            if 'parent_resource_uri' in locations_alias.c:
+                view_columns.append(locations_alias.c.parent_resource_uri.label('commcare_location_parent_resource_uri'))
 
             for hc in loc_level_columns(1, 9):
                 if hc in locations_alias.c:

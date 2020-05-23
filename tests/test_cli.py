@@ -194,7 +194,7 @@ EXPECTED_LOCATIONS_RESULTS = [
             "location_type",
             "longitude",
             "name",
-            "parent",
+            "parent_resource_uri",
             "resource_uri",
             "site_code",
             "location_type_administrative",
@@ -446,7 +446,7 @@ class TestViewCreatorWithExport(object):
                            'commcare_location_type',
                            'commcare_location_type_name',
                            'commcare_location_resource_uri',
-                           'commcare_location_parent',
+                           'commcare_location_parent_resource_uri',
                            'commcare_loc_level1', 'commcare_loc_name_level1',
                            'commcare_loc_level2', 'commcare_loc_name_level2']
         if not view_creator.is_mysql:
