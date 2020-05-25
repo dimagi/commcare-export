@@ -250,15 +250,16 @@ def evaluate_query(env, query):
         try:
             lazy_result = query.eval(env)
             force_lazy_result(lazy_result)
+            return 0
         except requests.exceptions.RequestException as e:
             if e.response.status_code == 401:
                 print("\nAuthentication failed. Please check your credentials.", file=sys.stderr)
-                return None
+                return EXIT_STATUS_ERROR
             else:
                 raise
         except KeyboardInterrupt:
-            print('\nExport aborted')
-            return None
+            print('\nExport aborted', file=sys.stderr)
+            return EXIT_STATUS_ERROR
 
 
 def main_with_args(args):
@@ -315,10 +316,12 @@ def main_with_args(args):
             | EmitterEnv(writer)
     )
 
-    evaluate_query(env, query)
+    exit_status = evaluate_query(env, query)
 
     if args.output_format == 'json':
         print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))
+
+    sys.exit(exit_status)
 
 
 def entry_point():
