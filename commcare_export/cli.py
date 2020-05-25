@@ -321,7 +321,7 @@ def main_with_args(args):
     if args.output_format == 'json':
         print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))
 
-    sys.exit(exit_status)
+    return exit_status
 
 
 def entry_point():
