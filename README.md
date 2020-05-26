@@ -185,9 +185,8 @@ organization levels for your projects. One column is created for each
 organization level. The column name is derived from the Location Type
 that you specified. The column value is the location_id of the containing
 location at that level of your organization. Consider the example organization
-from the [CommCare help page]
-(https://confluence.dimagi.com/display/commcarepublic/Setting+up+Organization+Levels+and+Structure). A piece of the 'commcare_locations' table could look
-like this:
+from the [CommCare help page](https://confluence.dimagi.com/display/commcarepublic/Setting+up+Organization+Levels+and+Structure).
+A piece of the 'commcare_locations' table could look like this:
 
 location_id | location_type_name | chw    | supervisor | clinic | district
 ----------- | ------------------ | ------ | ---------- | ------ | --------
