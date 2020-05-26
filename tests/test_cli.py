@@ -199,19 +199,19 @@ def get_expected_locations_results(include_parent):
                 "location_type_code",
                 "location_type_name",
                 "location_type_parent",
-                "hq",
-                "local"
+                "local",
+                "hq"
             ],
             "rows": [
                 ["id1", "2020-04-01 21:57:26", "d1", "eid1",
                  "2020-04-01 21:58:23", "11.2", "ld1", "lid1", "lt1",
                  "-20.5", "n1", None, "ru1", "sc1", True, "hq", "HQ", None,
-                 "lid1", None],
+                 None, "lid1"],
                 ["id2", "2020-04-01 21:58:47", "d2", None,
                  "2020-04-01 21:59:16", "-56.3", "ld2", "lid2", "lt2",
                  "18.7", "n2", ("ru1" if include_parent else None), "ru2",
                  "sc2", False, "local", "Local", "lt1",
-                 ("lid1" if include_parent else None), "lid2"]
+                 "lid2", ("lid1" if include_parent else None)]
             ]
         }
        ]

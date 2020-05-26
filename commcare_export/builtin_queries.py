@@ -65,8 +65,26 @@ users_query = compile_query(user_columns, 'user', USERS_TABLE_NAME)
 # before writing the data to a table named "commcare_locations" in a database.
 
 def get_locations_query(lp):
-    location_types = lp.get_location_types()
-    location_codes = [lt['code'] for lt in location_types.values()]
+    location_types = lp.location_types
+
+    # For test stability and clarity, we order location types from deepest
+    # to shallowest.
+    depth = {}
+    def set_depth(lt):
+        if lt not in depth:
+            parent = location_types[lt]['parent']
+            if parent is not None:
+                set_depth(parent)
+                depth[lt] = depth[parent] + 1
+            else:
+                depth[lt] = 0
+
+    for lt in location_types:
+        set_depth(lt)
+
+    ordered_location_types = sorted(location_types.values(),
+                                    key=lambda lt: -depth[lt['resource_uri']])
+    location_codes = [lt['code'] for lt in ordered_location_types]
 
     # The input names are codes produced by Django's slugify utility
     # method. Replace hyphens with underscores to be easier to use in SQL.
