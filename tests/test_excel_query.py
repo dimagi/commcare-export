@@ -10,6 +10,7 @@ from commcare_export.env import BuiltInEnv
 from commcare_export.env import JsonPathEnv
 from commcare_export.excel_query import *
 from commcare_export.excel_query import _get_safe_source_field
+from commcare_export.builtin_queries import ColumnEnforcer
 
 
 class TestExcelQuery(unittest.TestCase):
@@ -237,7 +238,7 @@ class TestExcelQuery(unittest.TestCase):
             )
         )
 
-        self._compare_munilinq_to_compiled(minilinq, '003_DataSourceAndEmitColumns.xlsx')
+        self._compare_minilinq_to_compiled(minilinq, '003_DataSourceAndEmitColumns.xlsx')
 
     def test_alternate_source_fields(self):
         minilinq = List([
@@ -282,7 +283,7 @@ class TestExcelQuery(unittest.TestCase):
             ),
         ])
 
-        self._compare_munilinq_to_compiled(minilinq, '011_AlternateSourceFields.xlsx')
+        self._compare_minilinq_to_compiled(minilinq, '011_AlternateSourceFields.xlsx')
 
     def test_multi_emit(self):
         minilinq = List([
@@ -339,7 +340,7 @@ class TestExcelQuery(unittest.TestCase):
             )
         ])
 
-        self._compare_munilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=True)
+        self._compare_minilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=True)
 
     def test_multi_emit_no_combine(self):
         minilinq = List([
@@ -388,10 +389,72 @@ class TestExcelQuery(unittest.TestCase):
             )
         ])
 
-        self._compare_munilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=False)
+        self._compare_minilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=False)
 
-    def _compare_munilinq_to_compiled(self, minilinq, filename, combine=False):
+    def test_multi_emit_with_organization(self):
+        minilinq = List([
+            Bind("checkpoint_manager", Apply(Reference('get_checkpoint_manager'), Literal(["Forms", "Cases"])),
+                Filter(
+                    predicate=Apply(
+                        Reference("filter_empty"),
+                        Reference("$")
+                    ),
+                    source=Map(
+                        source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')),
+                        body=List([
+                            Emit(
+                                table="Forms",
+                                headings=[Literal("id"), Literal("name"), Literal("commcare_userid")],
+                                missing_value='---',
+                                source=Map(
+                                    source=Reference("`this`"),
+                                    body=List([
+                                        Reference("id"),
+                                        Reference("form.name"),
+                                        Reference("$.metadata.userID"),
+                                    ]),
+                                )
+                            ),
+                            Emit(
+                                table="Cases",
+                                headings=[Literal("case_id"), Literal("commcare_userid")],
+                                missing_value='---',
+                                source=Map(
+                                    source=Reference("form..case"),
+                                    body=List([
+                                        Reference("@case_id"),
+                                        Reference("$.metadata.userID"),
+                                    ]),
+                                )
+                            )
+                        ])
+                    )
+                )
+            ),
+            Bind(
+                'checkpoint_manager',
+                Apply(Reference('get_checkpoint_manager'), Literal(["Other cases"])),
+                Emit(
+                    table="Other cases",
+                    headings=[Literal("id"), Literal("commcare_userid")],
+                    missing_value='---',
+                    source=Map(
+                        source=Apply(Reference("api_data"), Literal("case"), Reference('checkpoint_manager')),
+                        body=List([
+                            Reference("id"),
+                            Reference("$.user_id")
+                        ])
+                    )
+                )
+            )
+        ])
+
+        column_enforcer = ColumnEnforcer()
+        self._compare_minilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=True,
+                                           column_enforcer=column_enforcer)
+
+    def _compare_minilinq_to_compiled(self, minilinq, filename, combine=False, column_enforcer=None):
         print("Parsing {}".format(filename))
         abs_path = os.path.join(os.path.dirname(__file__), filename)
-        compiled = get_queries_from_excel(openpyxl.load_workbook(abs_path), missing_value='---', combine_emits=combine)
+        compiled = get_queries_from_excel(openpyxl.load_workbook(abs_path), missing_value='---', combine_emits=combine, column_enforcer=column_enforcer)
         assert compiled.to_jvalue() == minilinq.to_jvalue(), filename
