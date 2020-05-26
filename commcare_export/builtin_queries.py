@@ -1,3 +1,4 @@
+import re
 
 from commcare_export import excel_query
 from commcare_export.minilinq import Apply, List, Literal, Reference
@@ -69,7 +70,8 @@ def get_locations_query(lp):
 
     # The input names are codes produced by Django's slugify utility
     # method. Replace hyphens with underscores to be easier to use in SQL.
-    hyphen_to_underscore = str.maketrans({'-': '_'})
+    def sql_column_name(code):
+        return re.sub('-', '_', code)
 
     location_columns = [
         Column('id', 'id'),
@@ -94,9 +96,9 @@ def get_locations_query(lp):
                'get_location_info', Literal('name')),
         Column('location_type_parent', 'location_type',
                'get_location_info', Literal('parent')),
-    ] + [Column(name.translate(hyphen_to_underscore),
+    ] + [Column(sql_column_name(code),
                 'resource_uri', 'get_location_ancestor',
-                Literal(name)) for name in location_codes]
+                Literal(code)) for code in location_codes]
     return compile_query(location_columns, 'location',
                          LOCATIONS_TABLE_NAME)
 
