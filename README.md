@@ -169,6 +169,7 @@ location_id                  | Text | Primary key
 location_type                | Text |
 longitude                    | Text |
 name                         | Text |
+parent                       | Text | Resource URI of parent location
 resource_uri                 | Text |
 site_code                    | Text |
 location_type_administrative | Text |
