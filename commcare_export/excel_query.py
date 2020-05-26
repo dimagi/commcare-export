@@ -277,7 +277,7 @@ def require_column_in_sheet(sheet_name, data_source, table_name, output_headings
         for i in range(len(output_headings)):
             if output_headings[i].value == required_column.name.v:
                 if isinstance(output_fields[i], Reference) and \
-                   output_fields[i].ref == required_column.source:
+                        output_fields[i].ref == required_column.source:
                     extend_fields = False
                     continue
                 else:
