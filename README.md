@@ -175,8 +175,8 @@ location_type_administrative | Text |
 location_type_code           | Text |
 location_type_name           | Text |
 location_type_parent         | Text |
-<location level code>        | Text | Column name depends on project's organization
-<location level code>        | Text | Column name depends on project's organization
+*location level code*        | Text | Column name depends on project's organization
+*location level code*        | Text | Column name depends on project's organization
 
 The data in the 'commcare_locations' table comes from the Location API
 endpoint along with some additional columns from the Location Type API
@@ -186,7 +186,7 @@ organization level. The column name is derived from the Location Type
 that you specified. The column value is the location_id of the containing
 location at that level of your organization. Consider the example organization
 from the [CommCare help page]
-((https://confluence.dimagi.com/display/commcarepublic/Setting+up+Organization+Levels+and+Structure). A piece of the 'commcare_locations' table could look
+(https://confluence.dimagi.com/display/commcarepublic/Setting+up+Organization+Levels+and+Structure). A piece of the 'commcare_locations' table could look
 like this:
 
 location_id | location_type_name | chw    | supervisor | clinic | district
