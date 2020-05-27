@@ -273,7 +273,7 @@ def parse_sheet(worksheet, mappings=None):
     else:
         output_table_name = worksheet.title
     output_headings = get_column_by_name(worksheet, 'field')
-    output_types = get_column_by_name(worksheet, 'data type')
+    output_types = get_column_by_name(worksheet, 'data type') or []
     output_fields = compile_fields(worksheet, mappings=mappings)
 
     if not output_fields:
