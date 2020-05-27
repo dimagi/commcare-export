@@ -9,6 +9,7 @@ import six
 import sqlalchemy
 from six import u
 
+from commcare_export import const
 from commcare_export.specs import TableSpec
 
 logger = logging.getLogger(__name__)
@@ -336,8 +337,22 @@ class SqlTableWriter(SqlMixin, TableWriter):
         super(SqlTableWriter, self).__init__(db_url, poolclass=poolclass)
         self.strict_types = strict_types
 
-    def get_data_type(self, column_name, val):
+    def get_data_type(self, explicit_type, val):
+        if explicit_type:
+            return self.get_explicit_type(explicit_type)
         return self.best_type_for(val)
+
+    def get_explicit_type(self, data_type):
+        if data_type == const.DATA_TYPE_BOOLEAN:
+            return sqlalchemy.Boolean()
+        elif data_type == const.DATA_TYPE_DATETIME:
+            return sqlalchemy.DateTime()
+        elif data_type == const.DATA_TYPE_DATE:
+            return sqlalchemy.Date()
+        elif data_type == const.DATA_TYPE_INTEGER:
+            return sqlalchemy.Integer()
+        else:
+            return self.best_type_for('')  # todo: more explicit fallback
 
     def best_type_for(self, val):
         if isinstance(val, bool):
@@ -428,7 +443,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
         # FIXME: Don't be so silly
         return sqlalchemy.UnicodeText(collation=self.collation)
 
-    def make_table_compatible(self, table_name, row_dict):
+    def make_table_compatible(self, table_name, row_dict, data_type_dict):
         ctx = alembic.migration.MigrationContext.configure(self.connection)
         op = alembic.operations.Operations(ctx)
 
@@ -437,7 +452,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 create_sql = sqlalchemy.schema.CreateTable(sqlalchemy.Table(
                     table_name,
                     sqlalchemy.MetaData(),
-                    *self._get_columns_for_data(row_dict)
+                    *self._get_columns_for_data(row_dict, data_type_dict)
                 )).compile(self.connection.engine)
                 logger.warning("Table '{table_name}' does not exist. Creating table with:\n{schema}".format(
                     table_name=table_name,
@@ -447,7 +462,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 if empty_cols:
                     logger.warning("This schema does not include the following columns since we are unable "
                                 "to determine the column type at this stage: {}".format(empty_cols))
-            op.create_table(table_name, *self._get_columns_for_data(row_dict))
+            op.create_table(table_name, *self._get_columns_for_data(row_dict, data_type_dict))
             self.metadata.clear()
             self.metadata.reflect()
             return
@@ -504,15 +519,18 @@ class SqlTableWriter(SqlMixin, TableWriter):
         """
         table_name = table.name
         headings = table.headings
-
+        # pad the data_types to be the same length as headings so we can zip them
+        padded_data_types = table.data_types + [None] * (len(table.headings) - len(table.data_types))
+        data_type_dict = dict(zip(headings, padded_data_types))
         # Rather inefficient for now...
         for row in table.rows:
             row_dict = dict(zip(headings, row))
-            self.make_table_compatible(table_name, row_dict)
+            self.make_table_compatible(table_name, row_dict, data_type_dict)
             self.upsert(self.table(table_name), row_dict)
 
-    def _get_columns_for_data(self, row_dict):
+    def _get_columns_for_data(self, row_dict, data_type_dict):
         return [self.get_id_column()] + [
-            sqlalchemy.Column(column_name, self.get_data_type(column_name, val), nullable=True)
-            for column_name, val in row_dict.items() if val is not None and column_name != 'id'
+            sqlalchemy.Column(column_name, self.get_data_type(data_type_dict[column_name], val), nullable=True)
+            for column_name, val in row_dict.items() if ((val is not None or data_type_dict[column_name])
+                                                         and column_name != 'id')
         ]
