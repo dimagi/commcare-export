@@ -284,6 +284,36 @@ class TestExcelQuery(unittest.TestCase):
 
         self._compare_munilinq_to_compiled(minilinq, '011_AlternateSourceFields.xlsx')
 
+    def test_columns_with_data_types(self):
+        minilinq = Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal(["Forms"])),
+            Emit(
+                table='Forms',
+                missing_value='---',
+                headings=[
+                    Literal('Name'),
+                    Literal('Date of Birth'),
+                    Literal('No Type Set'),
+                    Literal('A Number'),
+                ],
+                source=Map(
+                    source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')),
+                    body=List([
+                        Reference("name"),
+                        Reference("date_of_birth"),
+                        Reference("no_type_set"),
+                        Reference("a_number"),
+                    ])
+                ),
+                data_types=[
+                    Literal('text'),
+                    Literal('date'),
+                    Literal(None),
+                    Literal('number')
+                ],
+            ),
+        )
+        self._compare_munilinq_to_compiled(minilinq, '012_ColumnsWithTypes.xlsx')
+
     def test_multi_emit(self):
         minilinq = List([
             Bind("checkpoint_manager", Apply(Reference('get_checkpoint_manager'), Literal(["Forms", "Cases"])),
