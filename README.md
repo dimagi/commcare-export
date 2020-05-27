@@ -472,6 +472,13 @@ The following command will run the entire test suite (requires DB environment va
 $ py.test
 ```
 
+To run an individual test class or method you can run, e.g.:
+
+```
+$ py.test -k "TestExcelQuery"
+$ py.test -k "test_get_queries_from_excel"
+```
+
 To exclude the database tests you can run:
 
 ```
