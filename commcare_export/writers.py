@@ -336,6 +336,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
         super(SqlTableWriter, self).__init__(db_url, poolclass=poolclass)
         self.strict_types = strict_types
 
+    def get_data_type(self, column_name, val):
+        return self.best_type_for(val)
+
     def best_type_for(self, val):
         if isinstance(val, bool):
             return sqlalchemy.Boolean()
@@ -458,7 +461,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             if val is None:
                 continue
 
-            ty = self.best_type_for(val)
+            ty = self.get_data_type(column, val)
             if not column in columns:
                 logger.warning("Adding column '{}.{} {}'".format(table_name, column, ty))
                 op.add_column(table_name, sqlalchemy.Column(column, ty, nullable=True))
@@ -510,6 +513,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
     def _get_columns_for_data(self, row_dict):
         return [self.get_id_column()] + [
-            sqlalchemy.Column(name, self.best_type_for(val), nullable=True)
-            for name, val in row_dict.items() if val is not None and name != 'id'
+            sqlalchemy.Column(column_name, self.get_data_type(column_name, val), nullable=True)
+            for column_name, val in row_dict.items() if val is not None and column_name != 'id'
         ]
