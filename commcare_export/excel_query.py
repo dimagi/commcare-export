@@ -273,14 +273,17 @@ def parse_sheet(worksheet, mappings=None):
     else:
         output_table_name = worksheet.title
     output_headings = get_column_by_name(worksheet, 'field')
+    output_types = get_column_by_name(worksheet, 'data type')
     output_fields = compile_fields(worksheet, mappings=mappings)
 
     if not output_fields:
         headings = []
+        data_types = []
         source = source_expr
         body = None
     else:
         headings = [Literal(output_heading.value) for output_heading in output_headings]
+        data_types = [Literal(data_type.value) for data_type in output_types]
         source = source_expr
         body = List(output_fields)
 
@@ -290,12 +293,14 @@ def parse_sheet(worksheet, mappings=None):
         source,
         body,
         root_doc_expr,
+        data_types,
     )
 
 
-class SheetParts(namedtuple('SheetParts', 'name headings source body root_expr')):
-    def __new__(cls, name, headings, source, body, root_expr=None):
-        return super(SheetParts, cls).__new__(cls, name, headings, source, body, root_expr)
+class SheetParts(namedtuple('SheetParts', 'name headings source body root_expr data_types')):
+    def __new__(cls, name, headings, source, body, root_expr=None, data_types=None):
+        data_types = data_types or []
+        return super(SheetParts, cls).__new__(cls, name, headings, source, body, root_expr, data_types)
 
     @property
     def columns(self):
