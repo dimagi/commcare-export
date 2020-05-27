@@ -177,7 +177,7 @@ class TestMiniLinq(unittest.TestCase):
              ]),
              missing_value='---').eval(env)
 
-        assert list(writer.tables['Foo']['rows']) == [[3, True, '---', None]]
+        assert list(writer.tables['Foo'].rows) == [[3, True, '---', None]]
 
     def test_emit_multi_same_query(self):
         """Test that we can emit multiple tables from the same set of source data.
@@ -212,8 +212,8 @@ class TestMiniLinq(unittest.TestCase):
         # evaluate result
         list(result)
         assert 2 == len(writer.tables)
-        assert writer.tables['FooBaz']['rows'] == [[3], [4]]
-        assert writer.tables['FooBar']['rows'] == [[True], [False]]
+        assert writer.tables['FooBaz'].rows == [[3], [4]]
+        assert writer.tables['FooBar'].rows == [[True], [False]]
 
     def test_emit_mutli_different_query(self):
         """Test that we can emit multiple tables from the same set of source data even
@@ -264,8 +264,8 @@ class TestMiniLinq(unittest.TestCase):
         # evaluate result
         list(result)
         print(writer.tables)
-        assert writer.tables['t1']['rows'] == [['1'], ['2']]
-        assert writer.tables['t2']['rows'] == [['1', 3], ['1', 4], ['2', 5], ['2', 6]]
+        assert writer.tables['t1'].rows == [['1'], ['2']]
+        assert writer.tables['t2'].rows == [['1', 3], ['1', 4], ['2', 5], ['2', 6]]
 
     def test_from_jvalue(self):
         assert MiniLinq.from_jvalue({"Ref": "form.log_subreport"}) == Reference("form.log_subreport")
@@ -282,7 +282,7 @@ class TestMiniLinq(unittest.TestCase):
     def test_emit_table_unwrap_dicts(self):
         writer = JValueTableWriter()
         env = EmitterEnv(writer)
-        env.emit_table({
+        env.emit_table(TableSpec(**{
             'name': 't1',
             'headings': ['a'],
             'rows':[
@@ -291,9 +291,9 @@ class TestMiniLinq(unittest.TestCase):
                 [{'@case_type': '', '@relationship': 'child', 'id': 'some_id'}],
                 [{'t': 123}],
             ]
-        })
+        }))
 
-        writer.tables['t1']['rows'] = [
+        writer.tables['t1'].rows = [
             ['hi'],
             ['test_text'],
             [''],

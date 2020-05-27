@@ -11,6 +11,7 @@ import openpyxl
 import pytest
 import sqlalchemy
 
+from commcare_export.specs import TableSpec
 from commcare_export.writers import SqlTableWriter, JValueTableWriter, Excel2007TableWriter, CsvTableWriter
 
 
@@ -29,25 +30,25 @@ TYPE_MAP = {
 class TestWriters(object):
     def test_JValueTableWriter(self):
         writer = JValueTableWriter()
-        writer.write_table({
+        writer.write_table(TableSpec(**{
             'name': 'foo',
             'headings': ['a', 'bjørn', 'c', 'd'],
             'rows': [
                 [1, '2', 3, datetime.date(2015, 1, 1)],
                 [4, '日本', 6, datetime.date(2015, 1, 2)],
             ]
-        })
+        }))
 
-        writer.write_table({
+        writer.write_table(TableSpec(**{
             'name': 'foo',
             'headings': ['a', 'bjørn', 'c', 'd'],
             'rows': [
                 [5, 'bob', 9, datetime.date(2018, 1, 2)],
             ]
-        })
+        }))
 
         assert writer.tables == {
-            'foo': {
+            'foo': TableSpec(**{
                 'name': 'foo',
                 'headings': ['a', 'bjørn', 'c', 'd'],
                 'rows': [
@@ -55,41 +56,41 @@ class TestWriters(object):
                     [4, '日本', 6, '2015-01-02'],
                     [5, 'bob', 9, '2018-01-02'],
                 ],
-            }
+            })
         }
 
     def test_Excel2007TableWriter(self):
         with tempfile.NamedTemporaryFile(suffix='.xlsx') as file:
             with Excel2007TableWriter(file=file) as writer:
-                writer.write_table({
+                writer.write_table(TableSpec(**{
                     'name': 'foo',
                     'headings': ['a', 'bjørn', 'c'],
                     'rows': [
                         [1, '2', 3],
                         [4, '日本', 6],
                     ]
-                })
+                }))
 
             self._check_Excel2007TableWriter_output(file.name)
 
     def test_Excel2007TableWriter_write_mutli(self):
         with tempfile.NamedTemporaryFile(suffix='.xlsx') as file:
             with Excel2007TableWriter(file=file) as writer:
-                writer.write_table({
+                writer.write_table(TableSpec(**{
                     'name': 'foo',
                     'headings': ['a', 'bjørn', 'c'],
                     'rows': [
                         [1, '2', 3],
                     ]
-                })
+                }))
 
-                writer.write_table({
+                writer.write_table(TableSpec(**{
                     'name': 'foo',
                     'headings': ['a', 'bjørn', 'c'],
                     'rows': [
                         [4, '日本', 6],
                     ]
-                })
+                }))
             self._check_Excel2007TableWriter_output(file.name)
 
     def _check_Excel2007TableWriter_output(self, filename):
@@ -106,14 +107,14 @@ class TestWriters(object):
     def test_CsvTableWriter(self):
         with tempfile.NamedTemporaryFile() as file:
             with CsvTableWriter(file=file) as writer:
-                writer.write_table({
+                writer.write_table(TableSpec(**{
                     'name': 'foo',
                     'headings': ['a', 'bjørn', 'c'],
                     'rows': [
                         [1, '2', 3],
                         [4, '日本', 6],
                     ]
-                })
+                }))
 
             with zipfile.ZipFile(file.name, 'r') as output_zip:
                 with output_zip.open('foo.csv') as csv_file:

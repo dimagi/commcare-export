@@ -12,6 +12,7 @@ from mock import mock
 from commcare_export.checkpoint import CheckpointManager
 from commcare_export.cli import CLI_ARGS, main_with_args
 from commcare_export.commcare_hq_client import MockCommCareHqClient
+from commcare_export.specs import TableSpec
 from commcare_export.writers import JValueTableWriter, SqlTableWriter
 
 CLI_ARGS_BY_NAME = {
@@ -216,7 +217,7 @@ class TestCli(unittest.TestCase):
             main_with_args(args)
 
         for table in expected:
-            assert writer.tables[table['name']] == table
+            assert writer.tables[table['name']] == TableSpec(**table)
 
 
     @mock.patch('commcare_export.cli._get_api_client', return_value=client)
