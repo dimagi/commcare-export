@@ -20,6 +20,11 @@ def writer(db_params):
     return SqlTableWriter(db_params['url'], poolclass=sqlalchemy.pool.NullPool)
 
 
+@pytest.fixture()
+def strict_writer(db_params):
+    return SqlTableWriter(db_params['url'], poolclass=sqlalchemy.pool.NullPool, strict_types=True)
+
+
 TYPE_MAP = {
     'mysql': {
         bool: lambda x: int(x)
@@ -285,27 +290,28 @@ class TestSQLWriters(object):
             assert dict(row) == expected[id]
 
 
-    def test_explicit_types(self, writer):
-        with writer:
-            writer.write_table(TableSpec(**{
+    def test_explicit_types(self, strict_writer):
+        with strict_writer:
+            strict_writer.write_table(TableSpec(**{
                 'name': 'foo_insert',
-                'headings': ['id', 'a', 'b', 'c'],
+                'headings': ['id', 'a', 'b', 'c', 'd'],
                 'rows': [
-                    ['bizzle', '1', '2', '3'],
-                    ['bazzle', '4', '5', '6'],
+                    ['bizzle', '1', 2, 3, '7'],
+                    ['bazzle', '4', 5, 6, '8'],
                 ],
                 'data_types': [
                     'text',
-                    'number',
+                    'integer',
                     'text',
                     None,
                 ]
             }))
 
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
-        with writer:
-            result = dict([(row['id'], row) for row in writer.connection.execute('SELECT id, a, b, c FROM foo_insert')])
+        with strict_writer:
+            result = dict([(row['id'], row) for row in strict_writer.connection.execute('SELECT id, a, b, c, d FROM foo_insert')])
 
         assert len(result) == 2
-        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': '2', 'c': 3}
-        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '5', 'c': 6}
+        # a casts strings to ints, b casts ints to text, c default falls back to ints, d default falls back to text
+        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': '2', 'c': 3, 'd': '7'}
+        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '5', 'c': 6, 'd': '8'}
