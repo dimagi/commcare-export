@@ -430,17 +430,11 @@ class SqlTableWriter(SqlMixin, TableWriter):
         op = alembic.operations.Operations(ctx)
 
         if not table_name in self.metadata.tables:
-            def get_columns():
-                return [self.get_id_column()] + [
-                    sqlalchemy.Column(name, self.best_type_for(val), nullable=True)
-                    for name, val in row_dict.items() if val is not None and name != 'id'
-                ]
-
             if self.strict_types:
                 create_sql = sqlalchemy.schema.CreateTable(sqlalchemy.Table(
                     table_name,
                     sqlalchemy.MetaData(),
-                    *get_columns()
+                    *self._get_columns_for_data(row_dict)
                 )).compile(self.connection.engine)
                 logger.warning("Table '{table_name}' does not exist. Creating table with:\n{schema}".format(
                     table_name=table_name,
@@ -450,7 +444,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 if empty_cols:
                     logger.warning("This schema does not include the following columns since we are unable "
                                 "to determine the column type at this stage: {}".format(empty_cols))
-            op.create_table(table_name, *get_columns())
+            op.create_table(table_name, *self._get_columns_for_data(row_dict))
             self.metadata.clear()
             self.metadata.reflect()
             return
@@ -513,3 +507,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
             row_dict = dict(zip(headings, row))
             self.make_table_compatible(table_name, row_dict)
             self.upsert(self.table(table_name), row_dict)
+
+    def _get_columns_for_data(self, row_dict):
+        return [self.get_id_column()] + [
+            sqlalchemy.Column(name, self.best_type_for(val), nullable=True)
+            for name, val in row_dict.items() if val is not None and name != 'id'
+        ]
