@@ -47,3 +47,10 @@ def unwrap_val(val):
         val = val.value
 
     return val
+
+
+def default_to_json(obj):
+    if hasattr(obj, 'toJSON'):
+        return obj.toJSON()
+    else:
+        return RepeatableIterator.to_jvalue(obj)
