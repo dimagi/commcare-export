@@ -146,14 +146,14 @@ class TestSQLWriters(object):
 
     def test_insert(self, writer):
         with writer:
-            writer.write_table({
+            writer.write_table(TableSpec(**{
                 'name': 'foo_insert',
                 'headings': ['id', 'a', 'b', 'c'],
                 'rows': [
                     ['bizzle', 1, 2, 3],
                     ['bazzle', 4, 5, 6],
                 ]
-            })
+            }))
 
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
         with writer:
@@ -165,13 +165,13 @@ class TestSQLWriters(object):
 
     def test_upsert(self, writer):
         with writer:
-            writer.write_table({
+            writer.write_table(TableSpec(**{
                 'name': 'foo_upsert',
                 'headings': ['id', 'a', 'b', 'c'],
                 'rows': [
                     ['zing', 3, None, 5]
                 ]
-            })
+            }))
 
         # don't select column 'b' since it hasn't been created yet
         with writer:
@@ -180,14 +180,14 @@ class TestSQLWriters(object):
         assert dict(result['zing']) == {'id': 'zing', 'a': 3, 'c': 5}
 
         with writer:
-            writer.write_table({
+            writer.write_table(TableSpec(**{
                 'name': 'foo_upsert',
                 'headings': ['id', 'a', 'b', 'c'],
                 'rows': [
                     ['bizzle', 1, 'yo', 3],
                     ['bazzle', 4, '日本', 6],
                 ]
-            })
+            }))
 
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
         with writer:
@@ -198,13 +198,13 @@ class TestSQLWriters(object):
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '日本', 'c': 6}
 
         with writer:
-            writer.write_table({
+            writer.write_table(TableSpec(**{
                 'name': 'foo_upsert',
                 'headings': ['id', 'a', 'b', 'c'],
                 'rows': [
                     ['bizzle', 7, '本', 9],
                 ]
-            })
+            }))
 
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
         with writer:
@@ -219,14 +219,14 @@ class TestSQLWriters(object):
 
     def _test_types(self, writer, table_name):
         with writer:
-            writer.write_table({
+            writer.write_table(TableSpec(**{
                 'name': table_name,
                 'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
                 'rows': [
                     ['bizzle', 1, 'yo', True, datetime.date(2015, 1, 1), datetime.datetime(2014, 4, 2, 18, 56, 12)],
                     ['bazzle', 4, '日本', False, datetime.date(2015, 1, 2), datetime.datetime(2014, 5, 1, 11, 16, 45)],
                 ]
-            })
+            }))
 
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
         with writer:
@@ -250,13 +250,13 @@ class TestSQLWriters(object):
         self._test_types(writer, 'foo_fancy_type_changes')
 
         with writer:
-            writer.write_table({
+            writer.write_table(TableSpec(**{
                 'name': 'foo_fancy_type_changes',
                 'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
                 'rows': [
                     ['bizzle', 'yo dude', '本', 'true', datetime.datetime(2015, 2, 13), '2014-08-01T11:23:45:00.0000Z'],
                 ]
-            })
+            }))
 
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
         with writer:
