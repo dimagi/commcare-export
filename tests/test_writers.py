@@ -283,3 +283,29 @@ class TestSQLWriters(object):
         for id, row in result.items():
             assert id in expected
             assert dict(row) == expected[id]
+
+
+    def test_explicit_types(self, writer):
+        with writer:
+            writer.write_table(TableSpec(**{
+                'name': 'foo_insert',
+                'headings': ['id', 'a', 'b', 'c'],
+                'rows': [
+                    ['bizzle', '1', '2', '3'],
+                    ['bazzle', '4', '5', '6'],
+                ],
+                'data_types': [
+                    'text',
+                    'number',
+                    'text',
+                    None,
+                ]
+            }))
+
+        # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
+        with writer:
+            result = dict([(row['id'], row) for row in writer.connection.execute('SELECT id, a, b, c FROM foo_insert')])
+
+        assert len(result) == 2
+        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': '2', 'c': 3}
+        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '5', 'c': 6}
