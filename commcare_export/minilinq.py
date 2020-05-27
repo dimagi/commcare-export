@@ -8,6 +8,8 @@ from commcare_export.misc import unwrap, unwrap_val
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
+from commcare_export.specs import TableSpec
+
 logger = logging.getLogger(__name__)
 
 class MiniLinq(object):
@@ -428,9 +430,11 @@ class Emit(MiniLinq):
 
     def eval(self, env):
         rows = self.source.eval(env)
-        env.emit_table({'name': self.table,
-                        'headings': [heading.eval(env) for heading in self.headings],
-                        'rows': map(self.coerce_row, rows)})
+        env.emit_table(TableSpec(
+            name=self.table,
+            headings=[heading.eval(env) for heading in self.headings],
+            rows=map(self.coerce_row, rows),
+        ))
 
     @classmethod
     def from_jvalue(cls, jvalue):

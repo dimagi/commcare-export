@@ -9,6 +9,8 @@ import six
 import sqlalchemy
 from six import u
 
+from commcare_export.specs import TableSpec
+
 logger = logging.getLogger(__name__)
 
 MAX_COLUMN_SIZE = 2000
@@ -91,13 +93,13 @@ class CsvTableWriter(TableWriter):
 
         tempfile = io.StringIO()
         writer = csv.writer(tempfile, dialect=csv.excel)
-        writer.writerow(_encode_row(table['headings']))
-        for row in table['rows']:
+        writer.writerow(_encode_row(table.headings))
+        for row in table.rows:
             writer.writerow(_encode_row(row))
 
         # TODO: make this a polite zip and put everything in a subfolder with the same basename
         # as the zipfile
-        self.archive.writestr('%s.csv' % self.zip_safe_name(table['name']),
+        self.archive.writestr('%s.csv' % self.zip_safe_name(table.name),
                               tempfile.getvalue().encode('utf-8'))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -127,15 +129,15 @@ class Excel2007TableWriter(TableWriter):
 
     def write_table(self, table):
         sheet = self.get_sheet(table)
-        for row in table['rows']:
+        for row in table.rows:
             sheet.append([ensure_text(v) for v in row])
 
     def get_sheet(self, table):
-        name = table['name']
+        name = table.name
         if name not in self.sheets:
             sheet = self.book.create_sheet()
             sheet.title = name[:self.max_table_name_size]
-            sheet.append([ensure_text(v) for v in table['headings']])
+            sheet.append([ensure_text(v) for v in table.headings])
             self.sheets[name] = sheet
 
         return self.sheets[name]
@@ -164,20 +166,20 @@ class Excel2003TableWriter(TableWriter):
 
     def write_table(self, table):
         sheet, current_row = self.get_sheet(table)
-        for row in table['rows']:
+        for row in table.rows:
             for colnum, val in enumerate(row):
                 sheet.write(current_row, colnum, ensure_text(val))
             current_row += 1
 
-        self.sheets[table['name']] = (sheet, current_row)
+        self.sheets[table.name] = (sheet, current_row)
 
     def get_sheet(self, table):
-        name = table['name']
+        name = table.name
         if name not in self.sheets:
             sheet = self.book.add_sheet(name[:self.max_table_name_size])
             sheet.title = name[:self.max_table_name_size]
 
-            for colnum, val in enumerate(table['headings']):
+            for colnum, val in enumerate(table.headings):
                 sheet.write(0, colnum, ensure_text(val))
 
             self.sheets[name] = (sheet, 1) # start from row 1
@@ -197,17 +199,17 @@ class JValueTableWriter(TableWriter):
         self.tables = {}
     
     def write_table(self, table):
-        if table['name'] not in self.tables:
-            self.tables[table['name']] = {
-                'name': table['name'],
-                'headings': list(table['headings']),
-                'rows': []
-            }
+        if table.name not in self.tables:
+            self.tables[table.name] = TableSpec(
+                name=table.name,
+                headings=list(table.headings),
+                rows=[],
+            )
         else:
-            assert self.tables[table['name']]['headings'] == list(table['headings'])
+            assert self.tables[table.name].headings == list(table.headings)
 
-        self.tables[table['name']]['rows'].extend(
-            [[to_jvalue(v) for v in row] for row in table['rows']]
+        self.tables[table.name].rows.extend(
+            [[to_jvalue(v) for v in row] for row in table.rows]
         )
 
 
@@ -227,21 +229,21 @@ class StreamingMarkdownTableWriter(TableWriter):
             col_widths = self._get_column_widths(table)
             row_template = ' | '.join(['{{:<{}}}'.format(width) for width in col_widths])
         else:
-            row_template = ' | '.join(['{}'] * len(table['headings']))
+            row_template = ' | '.join(['{}'] * len(table.headings))
 
         if table.get('name'):
-            self.output_stream.write('\n# %s \n\n' % table['name'])
+            self.output_stream.write('\n# %s \n\n' % table.name)
 
-        self.output_stream.write('| %s |\n' % row_template.format(*table['headings']))
+        self.output_stream.write('| %s |\n' % row_template.format(*table.headings))
         if col_widths:
             self.output_stream.write('| %s |\n' % row_template.format(*['-' * width for width in col_widths]))
 
-        for row in table['rows']:
+        for row in table.rows:
             text_row = (ensure_text(val, convert_none=True) for val in row)
             self.output_stream.write('| %s |\n' % row_template.format(*text_row))
 
     def _get_column_widths(self, table):
-        all_rows = [table['headings']] + table['rows']
+        all_rows = [table.headings] + table.rows
         columns = list(map(list, zip(*all_rows)))
         col_widths = map(len, [max(col, key=len) for col in columns])
         return list(col_widths)
@@ -503,11 +505,11 @@ class SqlTableWriter(SqlMixin, TableWriter):
         """
         :param table: dict of {'name': 'name', 'headings', [...], 'rows': [[...], [...]]
         """
-        table_name = table['name']
-        headings = table['headings']
+        table_name = table.name
+        headings = table.headings
 
         # Rather inefficient for now...
-        for row in table['rows']:
+        for row in table.rows:
             row_dict = dict(zip(headings, row))
             self.make_table_compatible(table_name, row_dict)
             self.upsert(self.table(table_name), row_dict)
