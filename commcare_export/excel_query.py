@@ -397,7 +397,8 @@ def get_multi_emit_query(source, sheets, missing_value):
                     source=root_expr,
                     body=sheet.body
                 ),
-                missing_value=missing_value
+                missing_value=missing_value,
+                data_types=sheet.data_types,
             )
         )
 
@@ -426,7 +427,8 @@ def get_single_emit_query(sheet, missing_value):
             source=_get_source(sheet.source, sheet.root_expr),
             body=sheet.body
         ),
-        missing_value=missing_value
+        missing_value=missing_value,
+        data_types=sheet.data_types,
     )
     return Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal([sheet.name])), emit)
 
