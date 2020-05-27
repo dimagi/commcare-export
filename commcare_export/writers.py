@@ -449,10 +449,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
             self.metadata.reflect()
             return
 
-        def get_cols():
+        def get_current_table_columns():
             return {c.name: c for c in self.table(table_name).columns}
 
-        columns = get_cols()
+        columns = get_current_table_columns()
 
         for column, val in row_dict.items():
             if val is None:
@@ -464,7 +464,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 op.add_column(table_name, sqlalchemy.Column(column, ty, nullable=True))
                 self.metadata.clear()
                 self.metadata.reflect()
-                columns = get_cols()
+                columns = get_current_table_columns()
             elif not columns[column].primary_key:
                 current_ty = columns[column].type
                 new_type = None
@@ -479,7 +479,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
                     self.metadata.reflect()
-                    columns = get_cols()
+                    columns = get_current_table_columns()
 
     def upsert(self, table, row_dict):
         # For atomicity "insert, catch, update" is slightly better than "select, insert or update".
