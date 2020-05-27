@@ -500,7 +500,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
     def write_table(self, table):
         """
-        :param table: dict of {'name': 'name', 'headings', [...], 'rows': [[...], [...]]
+        :param table: a TableSpec
         """
         table_name = table.name
         headings = table.headings
