@@ -293,7 +293,7 @@ class TestSQLWriters(object):
     def test_explicit_types(self, strict_writer):
         with strict_writer:
             strict_writer.write_table(TableSpec(**{
-                'name': 'foo_insert',
+                'name': 'foo_explicit_types',
                 'headings': ['id', 'a', 'b', 'c', 'd'],
                 'rows': [
                     ['bizzle', '1', 2, 3, '7'],
@@ -309,7 +309,9 @@ class TestSQLWriters(object):
 
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
         with strict_writer:
-            result = dict([(row['id'], row) for row in strict_writer.connection.execute('SELECT id, a, b, c, d FROM foo_insert')])
+            result = dict([(row['id'], row) for row in strict_writer.connection.execute(
+                'SELECT id, a, b, c, d FROM foo_explicit_types'
+            )])
 
         assert len(result) == 2
         # a casts strings to ints, b casts ints to text, c default falls back to ints, d default falls back to text
