@@ -426,7 +426,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 return  # Can't do anything
             elif dest_type.length is None:
                 return  # already a TEXT column
-            elif dest_type.length >= len(val):
+            elif isinstance(val, six.string_types) and dest_type.length >= len(val):
                 return  # no need to upgrade to TEXT column
             elif source_type.length is None:
                 return sqlalchemy.UnicodeText(collation=self.collation)
