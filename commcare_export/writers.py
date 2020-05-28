@@ -476,7 +476,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             if val is None:
                 continue
 
-            ty = self.get_data_type(column, val)
+            ty = self.get_data_type(data_type_dict[column], val)
             if not column in columns:
                 logger.warning("Adding column '{}.{} {}'".format(table_name, column, ty))
                 op.add_column(table_name, sqlalchemy.Column(column, ty, nullable=True))
