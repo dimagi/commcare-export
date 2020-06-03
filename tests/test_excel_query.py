@@ -313,7 +313,7 @@ class TestExcelQuery(unittest.TestCase):
                 ],
             ),
         )
-        self._compare_munilinq_to_compiled(minilinq, '012_ColumnsWithTypes.xlsx')
+        self._compare_minilinq_to_compiled(minilinq, '012_ColumnsWithTypes.xlsx')
 
     def test_multi_emit(self):
         minilinq = List([
