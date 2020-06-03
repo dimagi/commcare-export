@@ -306,13 +306,18 @@ def parse_sheet(worksheet, mappings=None, column_enforcer=None):
     else:
         output_table_name = worksheet.title
     output_headings = get_column_by_name(worksheet, 'field')
+    output_types = get_column_by_name(worksheet, 'data type') or []
     output_fields = compile_fields(worksheet, mappings=mappings)
 
     if not output_fields:
         headings = []
+        data_types = []
         source = source_expr
         body = None
     else:
+        # note: if we want to add data types to the columns added by the column_enforcer
+        # this will have to conditionally move into the if/else below
+        data_types = [Literal(data_type.value) for data_type in output_types]
         if column_enforcer is not None:
             (headings, body) = require_column_in_sheet(worksheet.title,
                                                        data_source,
@@ -333,12 +338,14 @@ def parse_sheet(worksheet, mappings=None, column_enforcer=None):
         source,
         body,
         root_doc_expr,
+        data_types,
     )
 
 
-class SheetParts(namedtuple('SheetParts', 'name headings source body root_expr')):
-    def __new__(cls, name, headings, source, body, root_expr=None):
-        return super(SheetParts, cls).__new__(cls, name, headings, source, body, root_expr)
+class SheetParts(namedtuple('SheetParts', 'name headings source body root_expr data_types')):
+    def __new__(cls, name, headings, source, body, root_expr=None, data_types=None):
+        data_types = data_types or []
+        return super(SheetParts, cls).__new__(cls, name, headings, source, body, root_expr, data_types)
 
     @property
     def columns(self):
@@ -435,7 +442,8 @@ def get_multi_emit_query(source, sheets, missing_value):
                     source=root_expr,
                     body=sheet.body
                 ),
-                missing_value=missing_value
+                missing_value=missing_value,
+                data_types=sheet.data_types,
             )
         )
 
@@ -464,7 +472,8 @@ def get_single_emit_query(sheet, missing_value):
             source=_get_source(sheet.source, sheet.root_expr),
             body=sheet.body
         ),
-        missing_value=missing_value
+        missing_value=missing_value,
+        data_types=sheet.data_types,
     )
     return Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal([sheet.name])), emit)
 

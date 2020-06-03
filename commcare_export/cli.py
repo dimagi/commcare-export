@@ -15,6 +15,7 @@ from six.moves import input
 from commcare_export import excel_query
 from commcare_export import writers
 from commcare_export.checkpoint import CheckpointManagerProvider
+from commcare_export.misc import default_to_json
 from commcare_export.utils import get_checkpoint_manager
 from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION
 from commcare_export.commcare_minilinq import CommCareHqEnv
@@ -328,7 +329,7 @@ def main_with_args(args):
     exit_status = evaluate_query(env, query)
 
     if args.output_format == 'json':
-        print(json.dumps(list(writer.tables.values()), indent=4, default=RepeatableIterator.to_jvalue))
+        print(json.dumps(list(writer.tables.values()), indent=4, default=default_to_json))
 
     return exit_status
 

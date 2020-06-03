@@ -8,6 +8,8 @@ from commcare_export.misc import unwrap, unwrap_val
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
+from commcare_export.specs import TableSpec
+
 logger = logging.getLogger(__name__)
 
 class MiniLinq(object):
@@ -400,12 +402,13 @@ class Emit(MiniLinq):
     are actually lists - it is just crashy instead.
     """
 
-    def __init__(self, table, headings, source, missing_value=None):
+    def __init__(self, table, headings, source, missing_value=None, data_types=None):
         "(str, [str], [MiniLinq]) -> MiniLinq"
         self.table = table
         self.headings = headings
         self.source = source
         self.missing_value = missing_value
+        self.data_types = data_types or []
 
     @unwrap('cell')
     def coerce_cell_blithely(self, cell):
@@ -428,24 +431,29 @@ class Emit(MiniLinq):
 
     def eval(self, env):
         rows = self.source.eval(env)
-        env.emit_table({'name': self.table,
-                        'headings': [heading.eval(env) for heading in self.headings],
-                        'rows': map(self.coerce_row, rows)})
+        env.emit_table(TableSpec(
+            name=self.table,
+            headings=[heading.eval(env) for heading in self.headings],
+            rows=list(map(self.coerce_row, rows)),
+        ))
 
     @classmethod
     def from_jvalue(cls, jvalue):
         fields = jvalue['Emit']
-
-        return cls(table    = fields['table'],
-                   source   = MiniLinq.from_jvalue(fields['source']),
-                   headings = [MiniLinq.from_jvalue(heading) for heading in fields['headings']],
-                   missing_value=fields.get('missing_value'))
+        return cls(
+            table=fields['table'],
+            source=MiniLinq.from_jvalue(fields['source']),
+            headings=[MiniLinq.from_jvalue(heading) for heading in fields['headings']],
+            missing_value=fields.get('missing_value'),
+            data_types=fields.get('data_types'),
+        )
 
     def to_jvalue(self):
         return {'Emit': {'table': self.table,
                          'headings': [heading.to_jvalue() for heading in self.headings],
                          'source': self.source.to_jvalue(),
-                         'missing_value': self.missing_value}}
+                         'missing_value': self.missing_value,
+                         'data_types': [heading.to_jvalue() for heading in self.headings]}}
 
     def __eq__(self, other):
         return (
@@ -453,6 +461,7 @@ class Emit(MiniLinq):
             and self.headings == other.headings
             and self.source == other.source
             and self.missing_value == other.missing_value
+            and self.data_types == other.data_types
         )
 
     def __repr__(self):

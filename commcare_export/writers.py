@@ -2,12 +2,16 @@ import datetime
 import io
 import logging
 import zipfile
+from six.moves import zip_longest
 
 import alembic
 import csv342 as csv
 import six
 import sqlalchemy
 from six import u
+
+from commcare_export.data_types import UnknownDataType, get_sqlalchemy_type
+from commcare_export.specs import TableSpec
 
 logger = logging.getLogger(__name__)
 
@@ -91,13 +95,13 @@ class CsvTableWriter(TableWriter):
 
         tempfile = io.StringIO()
         writer = csv.writer(tempfile, dialect=csv.excel)
-        writer.writerow(_encode_row(table['headings']))
-        for row in table['rows']:
+        writer.writerow(_encode_row(table.headings))
+        for row in table.rows:
             writer.writerow(_encode_row(row))
 
         # TODO: make this a polite zip and put everything in a subfolder with the same basename
         # as the zipfile
-        self.archive.writestr('%s.csv' % self.zip_safe_name(table['name']),
+        self.archive.writestr('%s.csv' % self.zip_safe_name(table.name),
                               tempfile.getvalue().encode('utf-8'))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -127,15 +131,15 @@ class Excel2007TableWriter(TableWriter):
 
     def write_table(self, table):
         sheet = self.get_sheet(table)
-        for row in table['rows']:
+        for row in table.rows:
             sheet.append([ensure_text(v) for v in row])
 
     def get_sheet(self, table):
-        name = table['name']
+        name = table.name
         if name not in self.sheets:
             sheet = self.book.create_sheet()
             sheet.title = name[:self.max_table_name_size]
-            sheet.append([ensure_text(v) for v in table['headings']])
+            sheet.append([ensure_text(v) for v in table.headings])
             self.sheets[name] = sheet
 
         return self.sheets[name]
@@ -164,20 +168,20 @@ class Excel2003TableWriter(TableWriter):
 
     def write_table(self, table):
         sheet, current_row = self.get_sheet(table)
-        for row in table['rows']:
+        for row in table.rows:
             for colnum, val in enumerate(row):
                 sheet.write(current_row, colnum, ensure_text(val))
             current_row += 1
 
-        self.sheets[table['name']] = (sheet, current_row)
+        self.sheets[table.name] = (sheet, current_row)
 
     def get_sheet(self, table):
-        name = table['name']
+        name = table.name
         if name not in self.sheets:
             sheet = self.book.add_sheet(name[:self.max_table_name_size])
             sheet.title = name[:self.max_table_name_size]
 
-            for colnum, val in enumerate(table['headings']):
+            for colnum, val in enumerate(table.headings):
                 sheet.write(0, colnum, ensure_text(val))
 
             self.sheets[name] = (sheet, 1) # start from row 1
@@ -197,17 +201,17 @@ class JValueTableWriter(TableWriter):
         self.tables = {}
     
     def write_table(self, table):
-        if table['name'] not in self.tables:
-            self.tables[table['name']] = {
-                'name': table['name'],
-                'headings': list(table['headings']),
-                'rows': []
-            }
+        if table.name not in self.tables:
+            self.tables[table.name] = TableSpec(
+                name=table.name,
+                headings=list(table.headings),
+                rows=[],
+            )
         else:
-            assert self.tables[table['name']]['headings'] == list(table['headings'])
+            assert self.tables[table.name].headings == list(table.headings)
 
-        self.tables[table['name']]['rows'].extend(
-            [[to_jvalue(v) for v in row] for row in table['rows']]
+        self.tables[table.name].rows.extend(
+            [to_jvalue(v) for v in row] for row in table.rows
         )
 
 
@@ -227,21 +231,21 @@ class StreamingMarkdownTableWriter(TableWriter):
             col_widths = self._get_column_widths(table)
             row_template = ' | '.join(['{{:<{}}}'.format(width) for width in col_widths])
         else:
-            row_template = ' | '.join(['{}'] * len(table['headings']))
+            row_template = ' | '.join(['{}'] * len(table.headings))
 
         if table.get('name'):
-            self.output_stream.write('\n# %s \n\n' % table['name'])
+            self.output_stream.write('\n# %s \n\n' % table.name)
 
-        self.output_stream.write('| %s |\n' % row_template.format(*table['headings']))
+        self.output_stream.write('| %s |\n' % row_template.format(*table.headings))
         if col_widths:
             self.output_stream.write('| %s |\n' % row_template.format(*['-' * width for width in col_widths]))
 
-        for row in table['rows']:
+        for row in table.rows:
             text_row = (ensure_text(val, convert_none=True) for val in row)
             self.output_stream.write('| %s |\n' % row_template.format(*text_row))
 
     def _get_column_widths(self, table):
-        all_rows = [table['headings']] + table['rows']
+        all_rows = [table.headings] + table.rows
         columns = list(map(list, zip(*all_rows)))
         col_widths = map(len, [max(col, key=len) for col in columns])
         return list(col_widths)
@@ -334,6 +338,21 @@ class SqlTableWriter(SqlMixin, TableWriter):
         super(SqlTableWriter, self).__init__(db_url, poolclass=poolclass)
         self.strict_types = strict_types
 
+    def get_data_type(self, explicit_type, val):
+        if explicit_type:
+            return self.get_explicit_type(explicit_type)
+        return self.best_type_for(val)
+
+    def get_explicit_type(self, data_type):
+        try:
+            return get_sqlalchemy_type(data_type)
+        except UnknownDataType:
+            if data_type:
+                logger.warning("Found unknown data type '{data_type}'".format(
+                    data_type=data_type,
+                ))
+            return self.best_type_for('')  # todo: more explicit fallback
+
     def best_type_for(self, val):
         if isinstance(val, bool):
             return sqlalchemy.Boolean()
@@ -406,7 +425,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 return  # Can't do anything
             elif dest_type.length is None:
                 return  # already a TEXT column
-            elif dest_type.length >= len(val):
+            elif isinstance(val, six.string_types) and dest_type.length >= len(val):
                 return  # no need to upgrade to TEXT column
             elif source_type.length is None:
                 return sqlalchemy.UnicodeText(collation=self.collation)
@@ -423,22 +442,16 @@ class SqlTableWriter(SqlMixin, TableWriter):
         # FIXME: Don't be so silly
         return sqlalchemy.UnicodeText(collation=self.collation)
 
-    def make_table_compatible(self, table_name, row_dict):
+    def make_table_compatible(self, table_name, row_dict, data_type_dict):
         ctx = alembic.migration.MigrationContext.configure(self.connection)
         op = alembic.operations.Operations(ctx)
 
         if not table_name in self.metadata.tables:
-            def get_columns():
-                return [self.get_id_column()] + [
-                    sqlalchemy.Column(name, self.best_type_for(val), nullable=True)
-                    for name, val in row_dict.items() if val is not None and name != 'id'
-                ]
-
             if self.strict_types:
                 create_sql = sqlalchemy.schema.CreateTable(sqlalchemy.Table(
                     table_name,
                     sqlalchemy.MetaData(),
-                    *get_columns()
+                    *self._get_columns_for_data(row_dict, data_type_dict)
                 )).compile(self.connection.engine)
                 logger.warning("Table '{table_name}' does not exist. Creating table with:\n{schema}".format(
                     table_name=table_name,
@@ -448,27 +461,27 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 if empty_cols:
                     logger.warning("This schema does not include the following columns since we are unable "
                                 "to determine the column type at this stage: {}".format(empty_cols))
-            op.create_table(table_name, *get_columns())
+            op.create_table(table_name, *self._get_columns_for_data(row_dict, data_type_dict))
             self.metadata.clear()
             self.metadata.reflect()
             return
 
-        def get_cols():
+        def get_current_table_columns():
             return {c.name: c for c in self.table(table_name).columns}
 
-        columns = get_cols()
+        columns = get_current_table_columns()
 
         for column, val in row_dict.items():
             if val is None:
                 continue
 
-            ty = self.best_type_for(val)
+            ty = self.get_data_type(data_type_dict[column], val)
             if not column in columns:
                 logger.warning("Adding column '{}.{} {}'".format(table_name, column, ty))
                 op.add_column(table_name, sqlalchemy.Column(column, ty, nullable=True))
                 self.metadata.clear()
                 self.metadata.reflect()
-                columns = get_cols()
+                columns = get_current_table_columns()
             elif not columns[column].primary_key:
                 current_ty = columns[column].type
                 new_type = None
@@ -483,7 +496,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
                     self.metadata.reflect()
-                    columns = get_cols()
+                    columns = get_current_table_columns()
 
     def upsert(self, table, row_dict):
         # For atomicity "insert, catch, update" is slightly better than "select, insert or update".
@@ -501,13 +514,20 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
     def write_table(self, table):
         """
-        :param table: dict of {'name': 'name', 'headings', [...], 'rows': [[...], [...]]
+        :param table: a TableSpec
         """
-        table_name = table['name']
-        headings = table['headings']
-
+        table_name = table.name
+        headings = table.headings
+        data_type_dict = dict(zip_longest(headings, table.data_types))
         # Rather inefficient for now...
-        for row in table['rows']:
+        for row in table.rows:
             row_dict = dict(zip(headings, row))
-            self.make_table_compatible(table_name, row_dict)
+            self.make_table_compatible(table_name, row_dict, data_type_dict)
             self.upsert(self.table(table_name), row_dict)
+
+    def _get_columns_for_data(self, row_dict, data_type_dict):
+        return [self.get_id_column()] + [
+            sqlalchemy.Column(column_name, self.get_data_type(data_type_dict[column_name], val), nullable=True)
+            for column_name, val in row_dict.items()
+            if (val is not None or data_type_dict[column_name]) and column_name != 'id'
+        ]

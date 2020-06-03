@@ -451,7 +451,7 @@ class EmitterEnv(Env):
 
     def emit_table(self, table_spec):
         self.emitted = True
-        table_spec['rows'] = self._unwrap_row_vals(table_spec['rows'])
+        table_spec.rows = self._unwrap_row_vals(table_spec.rows)
         self.writer.write_table(table_spec)
 
     def has_emitted_tables(self):
