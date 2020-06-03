@@ -295,6 +295,7 @@ class TestExcelQuery(unittest.TestCase):
                     Literal('Date of Birth'),
                     Literal('No Type Set'),
                     Literal('A Number'),
+                    Literal('Bad Type'),
                 ],
                 source=Map(
                     source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')),
@@ -303,13 +304,15 @@ class TestExcelQuery(unittest.TestCase):
                         Reference("date_of_birth"),
                         Reference("no_type_set"),
                         Reference("a_number"),
+                        Reference("bad_type"),
                     ])
                 ),
                 data_types=[
                     Literal('text'),
                     Literal('date'),
                     Literal(None),
-                    Literal('number')
+                    Literal('integer'),
+                    Literal('bad_type'),
                 ],
             ),
         )
