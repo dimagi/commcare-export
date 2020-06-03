@@ -2,6 +2,7 @@ import datetime
 import io
 import logging
 import zipfile
+from itertools import zip_longest
 
 import alembic
 import csv342 as csv
