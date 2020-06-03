@@ -216,7 +216,7 @@ class JValueTableWriter(TableWriter):
             assert self.tables[table.name].headings == list(table.headings)
 
         self.tables[table.name].rows.extend(
-            [[to_jvalue(v) for v in row] for row in table.rows]
+            [to_jvalue(v) for v in row] for row in table.rows
         )
 
 
