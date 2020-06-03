@@ -86,6 +86,10 @@ CLI_ARGS = [
         Argument('locations', default=False, action='store_true',
                  help="Export a table containing data about this project's "
                       "locations"),
+        Argument('with-organization', default=False, action='store_true',
+                 help="Export tables containing mobile worker data and "
+                      "location data and add a commcare_userid field to any "
+                      "exported form or case"),
     ]
 
 
@@ -142,45 +146,46 @@ def main(argv):
             stats.print_stats(100)
 
 
-def _get_query(args, writer):
+def _get_query(args, writer, column_enforcer=None):
     return _get_query_from_file(
         args.query,
         args.missing_value,
         writer.supports_multi_table_write,
         writer.max_column_length,
-        writer.required_columns
+        writer.required_columns,
+        column_enforcer
     )
 
-def _get_query_from_file(query_arg, missing_value, combine_emits, max_column_length, required_columns):
+def _get_query_from_file(query_arg, missing_value, combine_emits,
+                         max_column_length, required_columns, column_enforcer):
     if os.path.exists(query_arg):
         if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
             import openpyxl
             workbook = openpyxl.load_workbook(query_arg)
             return excel_query.get_queries_from_excel(
                 workbook, missing_value, combine_emits,
-                max_column_length, required_columns
+                max_column_length, required_columns, column_enforcer
             )
         else:
             with io.open(query_arg, encoding='utf-8') as fh:
                 return MiniLinq.from_jvalue(json.loads(fh.read()))
 
-
-def get_queries(args, writer):
+def get_queries(args, writer, lp, column_enforcer=None):
     query_list = []
     if args.query is not None:
-        query = _get_query(args, writer)
+        query = _get_query(args, writer, column_enforcer=column_enforcer)
 
         if not query:
             raise MissingQueryFileException(args.query)
         query_list.append(query)
 
-    if args.users:
+    if args.users or args.with_organization:
         # Add user data to query
         query_list.append(builtin_queries.users_query)
 
-    if args.locations:
+    if args.locations or args.with_organization:
         # Add location data to query
-        query_list.append(builtin_queries.locations_query)
+        query_list.append(builtin_queries.get_locations_query(lp))
 
     return List(query_list) if len(query_list) > 1 else query_list[0]
 
@@ -272,8 +277,15 @@ def main_with_args(args):
               '--query, --users, --locations', file=sys.stderr)
         return EXIT_STATUS_ERROR
 
+    column_enforcer = None
+    if args.with_organization:
+        column_enforcer = builtin_queries.ColumnEnforcer()
+
+    commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
+    api_client = _get_api_client(args, commcarehq_base_url)
+    lp = LocationInfoProvider(api_client, page_size=args.batch_size)
     try:
-        query = get_queries(args, writer)
+        query = get_queries(args, writer, lp, column_enforcer)
     except DataExportException as e:
         print(e.message, file=sys.stderr)
         return EXIT_STATUS_ERROR
@@ -293,9 +305,6 @@ def main_with_args(args):
         # Windows getpass does not accept unicode
         args.password = getpass.getpass()
 
-    commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
-    api_client = _get_api_client(args, commcarehq_base_url)
-
     since, until = get_date_params(args)
     if args.start_over:
         if checkpoint_manager:
@@ -304,11 +313,11 @@ def main_with_args(args):
         logger.debug('Starting from %s', args.since)
 
     cm = CheckpointManagerProvider(checkpoint_manager, since, args.start_over)
-    lp = LocationInfoProvider(api_client)
     static_env = {
         'commcarehq_base_url': commcarehq_base_url,
         'get_checkpoint_manager': cm.get_checkpoint_manager,
-        'get_location_info': lp.get_location_info
+        'get_location_info': lp.get_location_info,
+        'get_location_ancestor': lp.get_location_ancestor
     }
     env = (
             BuiltInEnv(static_env)
