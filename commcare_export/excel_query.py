@@ -315,7 +315,8 @@ def parse_sheet(worksheet, mappings=None, column_enforcer=None):
         source = source_expr
         body = None
     else:
-        # todo: does this break when using a column_enforcer?
+        # note: if we want to add data types to the columns added by the column_enforcer
+        # this will have to conditionally move into the if/else below
         data_types = [Literal(data_type.value) for data_type in output_types]
         if column_enforcer is not None:
             (headings, body) = require_column_in_sheet(worksheet.title,
