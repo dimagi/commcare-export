@@ -347,6 +347,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
         try:
             return get_sqlalchemy_type(data_type)
         except UnknownDataType:
+            if data_type:
+                logger.warning("Found unknown data type '{data_type}'".format(
+                    data_type=data_type,
+                ))
             return self.best_type_for('')  # todo: more explicit fallback
 
     def best_type_for(self, val):
