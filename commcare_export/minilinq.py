@@ -453,7 +453,7 @@ class Emit(MiniLinq):
                          'headings': [heading.to_jvalue() for heading in self.headings],
                          'source': self.source.to_jvalue(),
                          'missing_value': self.missing_value,
-                         'data_types': self.data_types}}
+                         'data_types': [heading.to_jvalue() for heading in self.headings]}}
 
     def __eq__(self, other):
         return (
