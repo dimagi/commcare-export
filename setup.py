@@ -54,6 +54,7 @@ setuptools.setup(
     version = version,
     description = 'A command-line tool (and Python library) to extract data from CommCareHQ into a SQL database or Excel workbook',
     long_description = io.open(readme, encoding='utf-8').read(),
+    long_description_content_type = 'text/markdown',
     author = 'Dimagi',
     author_email = 'information@dimagi.com',
     url = "https://github.com/dimagi/commcare-export",
