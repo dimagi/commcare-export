@@ -519,9 +519,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
         """
         table_name = table.name
         headings = table.headings
-        # pad the data_types to be the same length as headings so we can zip them
-        padded_data_types = table.data_types + [None] * (len(table.headings) - len(table.data_types))
-        data_type_dict = dict(zip(headings, padded_data_types))
+        data_type_dict = dict(zip_longest(headings, table.data_types))
         # Rather inefficient for now...
         for row in table.rows:
             row_dict = dict(zip(headings, row))
