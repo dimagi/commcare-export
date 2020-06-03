@@ -10,7 +10,7 @@ import six
 import sqlalchemy
 from six import u
 
-from commcare_export import const
+from commcare_export.data_types import UnknownDataType, get_sqlalchemy_type
 from commcare_export.specs import TableSpec
 
 logger = logging.getLogger(__name__)
@@ -344,15 +344,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
         return self.best_type_for(val)
 
     def get_explicit_type(self, data_type):
-        if data_type == const.DATA_TYPE_BOOLEAN:
-            return sqlalchemy.Boolean()
-        elif data_type == const.DATA_TYPE_DATETIME:
-            return sqlalchemy.DateTime()
-        elif data_type == const.DATA_TYPE_DATE:
-            return sqlalchemy.Date()
-        elif data_type == const.DATA_TYPE_INTEGER:
-            return sqlalchemy.Integer()
-        else:
+        try:
+            return get_sqlalchemy_type(data_type)
+        except UnknownDataType:
             return self.best_type_for('')  # todo: more explicit fallback
 
     def best_type_for(self, val):
