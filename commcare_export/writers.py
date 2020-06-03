@@ -529,6 +529,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
     def _get_columns_for_data(self, row_dict, data_type_dict):
         return [self.get_id_column()] + [
             sqlalchemy.Column(column_name, self.get_data_type(data_type_dict[column_name], val), nullable=True)
-            for column_name, val in row_dict.items() if ((val is not None or data_type_dict[column_name])
-                                                         and column_name != 'id')
+            for column_name, val in row_dict.items()
+            if (val is not None or data_type_dict[column_name]) and column_name != 'id'
         ]
