@@ -19,6 +19,6 @@ class UnknownDataType(Exception):
 
 def get_sqlalchemy_type(data_type):
     if data_type not in DATA_TYPES_TO_SQLALCHEMY_TYPES:
-        raise UnknownDataType()
+        raise UnknownDataType(data_type)
     else:
         return DATA_TYPES_TO_SQLALCHEMY_TYPES[data_type]

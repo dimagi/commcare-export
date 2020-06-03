@@ -2,12 +2,7 @@ import datetime
 import io
 import logging
 import zipfile
-try:
-    from itertools import zip_longest
-except ImportError:
-    # python 2.7 support
-    from itertools import izip_longest as zip_longest
-
+from six.moves import zip_longest
 
 import alembic
 import csv342 as csv
