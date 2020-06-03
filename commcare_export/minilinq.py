@@ -434,7 +434,7 @@ class Emit(MiniLinq):
         env.emit_table(TableSpec(
             name=self.table,
             headings=[heading.eval(env) for heading in self.headings],
-            rows=map(self.coerce_row, rows),
+            rows=list(map(self.coerce_row, rows)),
         ))
 
     @classmethod
