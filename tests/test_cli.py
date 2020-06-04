@@ -27,6 +27,7 @@ except ImportError:
     from itertools import zip_longest
 
 
+DEFAULT_BATCH_SIZE = 200
 
 def make_args(project='test', username='test', password='test', **kwargs):
     kwargs['project'] = project
@@ -49,7 +50,7 @@ def mock_hq_client(include_parent):
     return MockCommCareHqClient({
         'form': [
             (
-                {'limit': 100, 'order_by': ['server_modified_on', 'received_on']},
+                {'limit': DEFAULT_BATCH_SIZE, 'order_by': ['server_modified_on', 'received_on']},
                 [
                     {'id': 1, 'form': {'name': 'f1', 'case': {'@case_id': 'c1'}},
                      'metadata': {'userID': 'id1'}},
@@ -60,7 +61,7 @@ def mock_hq_client(include_parent):
         ],
         'case': [
             (
-                {'limit': 100, 'order_by': 'server_date_modified'},
+                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'server_date_modified'},
                 [
                     {'id': 'case1'},
                     {'id': 'case2'},
@@ -69,7 +70,7 @@ def mock_hq_client(include_parent):
         ],
         'user': [
             (
-                {'limit': 100},
+                {'limit': DEFAULT_BATCH_SIZE},
                 [
                     {'id': 'id1', 'email': 'em1', 'first_name': 'fn1',
                      'last_name': 'ln1',
@@ -88,7 +89,7 @@ def mock_hq_client(include_parent):
         ],
         'location_type': [
             (
-                {'limit': 100},
+                {'limit': DEFAULT_BATCH_SIZE},
                 [
                     {'administrative': True, 'code': 'hq', 'domain': 'd1', 'id': 1,
                      'name': 'HQ', 'parent': None, 'resource_uri': 'lt1',
@@ -102,7 +103,7 @@ def mock_hq_client(include_parent):
         ],
         'location': [
             (
-                {'limit': 100},
+                {'limit': DEFAULT_BATCH_SIZE},
                 [
                     {'id': 'id1', 'created_at': '2020-04-01T21:57:26.403053',
                      'domain': 'd1', 'external_id': 'eid1',
