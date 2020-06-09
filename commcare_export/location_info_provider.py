@@ -1,5 +1,9 @@
+import logging
+
 from commcare_export.misc import unwrap_val
 from commcare_export.commcare_minilinq import SimplePaginator
+
+logger = logging.getLogger(__name__)
 
 # LocationInfoProvider uses the /location_type/ endpoint of the API
 # to retrieve location type data, stores that information in a dictionary
@@ -71,8 +75,17 @@ class LocationInfoProvider:
             loc_uri = resource_uri
             type_code_to_id = {}
             while loc_uri is not None:
+                if loc_uri not in location_data:
+                    logger.warning('Unknown location referenced: {}'.format(loc_uri))
+                    break
+
                 loc_data = location_data[loc_uri]
-                type_code = self.location_types[loc_data['location_type']]['code']
+                loc_type = loc_data['location_type']
+                if loc_type not in self.location_types:
+                    logger.warning('Unknown location type referenced: {}'.format(loc_type))
+                    break
+
+                type_code = self.location_types[loc_type]['code']
                 type_code_to_id[type_code] = loc_data['location_id']
                 loc_uri = loc_data['parent']
             ancestors[resource_uri] = type_code_to_id
