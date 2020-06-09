@@ -5,6 +5,7 @@ from commcare_export.minilinq import Literal, Apply, Reference
 SELECTED_AT = 'selected-at'
 SELECTED = 'selected'
 TEMPLATE = 'template'
+SUBSTR = 'substr'
 
 
 class ParsingException(Exception):
@@ -57,10 +58,28 @@ def parse_template(value_expr, format_expr_string):
     return Apply(Reference(TEMPLATE), Literal(template), *args)
 
 
+def parse_substr(value_expr, substr_expr_string):
+    args_string = parse_function_arg(SUBSTR, substr_expr_string)
+    regex = r'^\s*(\d+)\s*,\s*(\d+)\s*$'
+    matches = re.match(regex, args_string)
+    if not matches or len(matches.groups()) != 2:
+        raise ParsingException('Error: both substr arguments must be non-negative integers: {}'.format(substr_expr_string))
+
+    try:
+        start = int(matches.groups()[0])
+        end = int(matches.groups()[1])
+    except ValueError:
+        # This should not happen if the regular expression actually matches.
+        return Literal('Error: both substr arguments must be non-negative integers: {}'.format(substr_expr_string))
+
+    return Apply(Reference(SUBSTR), value_expr, Literal(start), Literal(end))
+
+
 MAP_FORMAT_PARSERS = {
     SELECTED_AT: parse_selected_at,
     SELECTED: parse_selected,
     TEMPLATE: parse_template,
+    SUBSTR: parse_substr,
 }
 
 

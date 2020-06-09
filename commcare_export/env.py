@@ -388,6 +388,17 @@ def _or(*args):
         pass
 
 
+@unwrap('val')
+def substr(val, start, end):
+    if not val:
+        return None
+
+    if start < 0 or end < 0:
+        return None
+
+    return val[start:end]
+
+
 class BuiltInEnv(DictEnv):
     """
     A built-in environment of operators and functions
@@ -427,6 +438,7 @@ class BuiltInEnv(DictEnv):
             'filter_empty': _not_val,
             'or': _or,
             'sha1': sha1,
+            'substr': substr,
         })
         return super(BuiltInEnv, self).__init__(d)
 

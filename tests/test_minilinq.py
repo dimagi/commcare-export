@@ -132,6 +132,38 @@ class TestMiniLinq(unittest.TestCase):
         env = BuiltInEnv() | JsonPathEnv({'a': '1', 'b': '2'})
         assert Apply(Reference('template'), Literal('{}.{}'), Reference('a'), Reference('b')).eval(env) == '1.2'
 
+    def test_substr(self):
+        env = BuiltInEnv({'single_byte_chars': 'abcdefghijklmnopqrstuvwxyz',
+                          'multi_byte_chars': 'αβγδεζηθικλμνξοπρςστυφχψω'
+        })
+        assert Apply(Reference('substr'), Reference('single_byte_chars'),
+                     Literal(-4), Literal(30)).eval(env) == None
+        assert Apply(Reference('substr'), Reference('single_byte_chars'),
+                     Literal(0), Literal(26)).eval(env) == 'abcdefghijklmnopqrstuvwxyz'
+        assert Apply(Reference('substr'), Reference('single_byte_chars'),
+                     Literal(10), Literal(16)).eval(env) == 'klmnop'
+        assert Apply(Reference('substr'), Reference('single_byte_chars'),
+                     Literal(13), Literal(14)).eval(env) == 'n'
+        assert Apply(Reference('substr'), Reference('single_byte_chars'),
+                     Literal(13), Literal(13)).eval(env) == ''
+        assert Apply(Reference('substr'), Reference('single_byte_chars'),
+                     Literal(14), Literal(13)).eval(env) == ''
+        assert Apply(Reference('substr'), Reference('single_byte_chars'),
+                     Literal(5), Literal(-1)).eval(env) == None
+        assert Apply(Reference('substr'), Reference('multi_byte_chars'),
+                     Literal(-4), Literal(30)).eval(env) == None
+        assert Apply(Reference('substr'), Reference('multi_byte_chars'),
+                     Literal(0), Literal(25)).eval(env) == 'αβγδεζηθικλμνξοπρςστυφχψω'
+        assert Apply(Reference('substr'), Reference('multi_byte_chars'),
+                     Literal(10), Literal(15)).eval(env) == 'λμνξο'
+        assert Apply(Reference('substr'), Reference('multi_byte_chars'),
+                     Literal(13), Literal(14)).eval(env) == 'ξ'
+        assert Apply(Reference('substr'), Reference('multi_byte_chars'),
+                     Literal(13), Literal(12)).eval(env) == ''
+        assert Apply(Reference('substr'), Reference('multi_byte_chars'),
+                     Literal(14), Literal(13)).eval(env) == ''
+        assert Apply(Reference('substr'), Reference('multi_byte_chars'),
+                     Literal(5), Literal(-1)).eval(env) == None
 
     def test_map(self):
         env = BuiltInEnv() | DictEnv({})
