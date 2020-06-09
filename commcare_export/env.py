@@ -396,6 +396,8 @@ def substr(val, start, end):
     if start < 0 or end < 0:
         return None
 
+    val = _to_unicode(val)
+
     return val[start:end]
 
 

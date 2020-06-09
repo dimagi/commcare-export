@@ -65,12 +65,9 @@ def parse_substr(value_expr, substr_expr_string):
     if not matches or len(matches.groups()) != 2:
         raise ParsingException('Error: both substr arguments must be non-negative integers: {}'.format(substr_expr_string))
 
-    try:
-        start = int(matches.groups()[0])
-        end = int(matches.groups()[1])
-    except ValueError:
-        # This should not happen if the regular expression actually matches.
-        return Literal('Error: both substr arguments must be non-negative integers: {}'.format(substr_expr_string))
+    # These conversions should always succeed after a pattern match.
+    start = int(matches.groups()[0])
+    end = int(matches.groups()[1])
 
     return Apply(Reference(SUBSTR), value_expr, Literal(start), Literal(end))
 
