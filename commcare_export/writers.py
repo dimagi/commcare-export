@@ -233,7 +233,7 @@ class StreamingMarkdownTableWriter(TableWriter):
         else:
             row_template = ' | '.join(['{}'] * len(table.headings))
 
-        if table.get('name'):
+        if table.name:
             self.output_stream.write('\n# %s \n\n' % table.name)
 
         self.output_stream.write('| %s |\n' % row_template.format(*table.headings))
