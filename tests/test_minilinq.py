@@ -134,7 +134,8 @@ class TestMiniLinq(unittest.TestCase):
 
     def test_substr(self):
         env = BuiltInEnv({'single_byte_chars': u'abcdefghijklmnopqrstuvwxyz',
-                          'multi_byte_chars': u'αβγδεζηθικλμνξοπρςστυφχψω'
+                          'multi_byte_chars': u'αβγδεζηθικλμνξοπρςστυφχψω',
+                          'an_integer': 123456
         })
         assert Apply(Reference('substr'), Reference('single_byte_chars'),
                      Literal(-4), Literal(30)).eval(env) == None
@@ -150,6 +151,7 @@ class TestMiniLinq(unittest.TestCase):
                      Literal(14), Literal(13)).eval(env) == u''
         assert Apply(Reference('substr'), Reference('single_byte_chars'),
                      Literal(5), Literal(-1)).eval(env) == None
+
         assert Apply(Reference('substr'), Reference('multi_byte_chars'),
                      Literal(-4), Literal(30)).eval(env) == None
         assert Apply(Reference('substr'), Reference('multi_byte_chars'),
@@ -163,6 +165,17 @@ class TestMiniLinq(unittest.TestCase):
         assert Apply(Reference('substr'), Reference('multi_byte_chars'),
                      Literal(14), Literal(13)).eval(env) == u''
         assert Apply(Reference('substr'), Reference('multi_byte_chars'),
+                     Literal(5), Literal(-1)).eval(env) == None
+
+        assert Apply(Reference('substr'), Reference('an_integer'),
+                     Literal(-1), Literal(3)).eval(env) == None
+        assert Apply(Reference('substr'), Reference('an_integer'),
+                     Literal(0), Literal(6)).eval(env) == u'123456'
+        assert Apply(Reference('substr'), Reference('an_integer'),
+                     Literal(2), Literal(4)).eval(env) == u'34'
+        assert Apply(Reference('substr'), Reference('an_integer'),
+                     Literal(4), Literal(2)).eval(env) == u''
+        assert Apply(Reference('substr'), Reference('an_integer'),
                      Literal(5), Literal(-1)).eval(env) == None
 
     def test_map(self):
