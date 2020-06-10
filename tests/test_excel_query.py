@@ -113,7 +113,10 @@ class TestExcelQuery(unittest.TestCase):
                  headings = [
                      Literal('Form Type'), Literal('Fecha de Nacimiento'), Literal('Sexo'),
                      Literal('Danger 0'), Literal('Danger 1'), Literal('Danger Fever'),
-                     Literal('Danger error'), Literal('Danger error'), Literal('special')
+                     Literal('Danger error'), Literal('Danger error'), Literal('special'),
+                     Literal('Danger substring 1'), Literal('Danger substring 2'),
+                     Literal('Danger substring error 3'), Literal('Danger substring error 4'),
+                     Literal('Danger substring error 5')
                  ],
                  source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')),
                  body=List([
@@ -125,7 +128,12 @@ class TestExcelQuery(unittest.TestCase):
                      Apply(Reference("selected"), Reference("dangers"), Literal('fever')),
                      Literal('Error: selected-at index must be an integer: selected-at(abc)'),
                      Literal('Error: Unable to parse: selected(fever'),
-                     Reference('path."#text"')
+                     Reference('path."#text"'),
+                     Apply(Reference("substr"), Reference("dangers"), Literal(0), Literal(10)),
+                     Apply(Reference("substr"), Reference("dangers"), Literal(4), Literal(3)),
+                     Literal('Error: both substr arguments must be non-negative integers: substr(a, b)'),
+                     Literal('Error: both substr arguments must be non-negative integers: substr(-1, 10)'),
+                     Literal('Error: both substr arguments must be non-negative integers: substr(3, -4)')
                  ])
              )),
 
@@ -220,7 +228,10 @@ class TestExcelQuery(unittest.TestCase):
             headings =[
                 Literal('Form Type'), Literal('Fecha de Nacimiento'), Literal('Sexo'),
                 Literal('Danger 0'), Literal('Danger 1'), Literal('Danger Fever'),
-                Literal('Danger error'), Literal('Danger error'), Literal('special')
+                Literal('Danger error'), Literal('Danger error'), Literal('special'),
+                Literal('Danger substring 1'), Literal('Danger substring 2'),
+                Literal('Danger substring error 3'), Literal('Danger substring error 4'),
+                Literal('Danger substring error 5')
             ],
             source = Map(
                 source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')),
@@ -233,7 +244,12 @@ class TestExcelQuery(unittest.TestCase):
                     Apply(Reference("selected"), Reference("dangers"), Literal('fever')),
                     Literal('Error: selected-at index must be an integer: selected-at(abc)'),
                     Literal('Error: Unable to parse: selected(fever'),
-                    Reference('path."#text"')
+                    Reference('path."#text"'),
+                    Apply(Reference("substr"), Reference("dangers"), Literal(0), Literal(10)),
+                    Apply(Reference("substr"), Reference("dangers"), Literal(4), Literal(3)),
+                    Literal('Error: both substr arguments must be non-negative integers: substr(a, b)'),
+                    Literal('Error: both substr arguments must be non-negative integers: substr(-1, 10)'),
+                    Literal('Error: both substr arguments must be non-negative integers: substr(3, -4)')
                 ]))
             )
         )
