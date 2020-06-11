@@ -24,7 +24,7 @@ from commcare_export.repeatable_iterator import RepeatableIterator
 logger = logging.getLogger(__name__)
 
 LATEST_KNOWN_VERSION='0.5'
-
+RESOURCE_REPEAT_LIMIT=10
 
 def on_backoff(details):
     _log_backoff(details, 'Waiting for retry.')
@@ -47,6 +47,11 @@ def is_client_error(ex):
             return False
         return 400 <= ex.response.status_code < 500
     return False
+
+
+class ResourceRepeatException(Exception):
+    def __init__(self, message):
+        self.message = message
 
 
 class CommCareHqClient(object):
@@ -118,9 +123,19 @@ class CommCareHqClient(object):
             last_batch_ids = set()
             total_count = None
             fetched = 0
+            repeat_counter = 0
+            last_params = None
 
             while more_to_fetch:
+                if params == last_params:
+                    repeat_counter += 1
+                else:
+                    repeat_counter = 0
+                if repeat_counter >= RESOURCE_REPEAT_LIMIT:
+                    raise ResourceRepeatException("Requested resource '{}' {} times with same parameters".format(resource, repeat_counter))
+
                 batch = self.get(resource, params)
+                last_params = params
                 if not total_count or total_count == 'unknown' or fetched >= total_count:
                     total_count = int(batch['meta']['total_count']) if batch['meta']['total_count'] else 'unknown'
                     fetched = 0

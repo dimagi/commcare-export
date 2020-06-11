@@ -17,7 +17,7 @@ from commcare_export import writers
 from commcare_export.checkpoint import CheckpointManagerProvider
 from commcare_export.misc import default_to_json
 from commcare_export.utils import get_checkpoint_manager
-from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION
+from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION, ResourceRepeatException
 from commcare_export.commcare_minilinq import CommCareHqEnv
 from commcare_export.env import BuiltInEnv, JsonPathEnv, EmitterEnv
 from commcare_export.exceptions import LongFieldsException, DataExportException, MissingQueryFileException
@@ -263,6 +263,11 @@ def evaluate_query(env, query):
                 return EXIT_STATUS_ERROR
             else:
                 raise
+        except ResourceRepeatException as e:
+            print('Stopping because the export is stuck')
+            print(e.message)
+            print('Try increasing --batch-size to overcome the error')
+            return EXIT_STATUS_ERROR
         except KeyboardInterrupt:
             print('\nExport aborted', file=sys.stderr)
             return EXIT_STATUS_ERROR
