@@ -8,8 +8,10 @@ import simplejson
 
 import requests
 
+import pytest
+
 from commcare_export.checkpoint import CheckpointManagerWithSince
-from commcare_export.commcare_hq_client import CommCareHqClient
+from commcare_export.commcare_hq_client import CommCareHqClient, ResourceRepeatException
 from commcare_export.commcare_minilinq import SimplePaginator, DatePaginator, resource_since_params, get_paginator
 
 
@@ -50,6 +52,27 @@ class FakeDateCaseSession(FakeSession):
             return {
                 'meta': { 'next': None, 'offset': 1, 'limit': 1, 'total_count': 2 },
                 'objects': [ {'id': 1, 'foo': 1}, {'id': 2, 'foo': 2} ]
+            }
+
+
+class FakeRepeatedDateCaseSession(FakeSession):
+    # Model the case where there are as many or more cases with the same
+    # server_date_modified than the batch size (2), so the client requests
+    # the same set of cases in a loop.
+    def _get_results(self, params):
+        if not params:
+            return {
+                'meta': {'next': '?offset=1', 'offset': 0, 'limit': 2, 'total_count': 4},
+                'objects': [{'id': 1, 'foo': 1, 'server_date_modified': '2017-01-01T15:36:22Z'},
+                            {'id': 2, 'foo': 2, 'server_date_modified': '2017-01-01T15:36:22Z'}]
+            }
+        else:
+            since_query_param =resource_since_params['case'].start_param
+            assert params[since_query_param] == '2017-01-01T15:36:22'
+            return {
+                'meta': { 'next': '?offset=1', 'offset': 0, 'limit': 2, 'total_count': 4},
+                'objects': [{'id': 1, 'foo': 1, 'server_date_modified': '2017-01-01T15:36:22Z'},
+                            {'id': 2, 'foo': 2, 'server_date_modified': '2017-01-01T15:36:22Z'}]
             }
 
 
@@ -101,6 +124,11 @@ class TestCommCareHqClient(unittest.TestCase):
     def test_iterate_date(self):
         self._test_iterate(FakeDateFormSession(), get_paginator('form'), 3, [1, 2, 3])
         self._test_iterate(FakeDateCaseSession(), get_paginator('case'), 2, [1, 2])
+
+    def test_repeat_limit(self):
+        with pytest.raises(ResourceRepeatException,
+                           match="Requested resource '/fake/uri' 10 times with same parameters"):
+            self._test_iterate(FakeRepeatedDateCaseSession(), get_paginator('case', 2), 2, [1, 2])
 
 
 class TestDatePaginator(unittest.TestCase):
