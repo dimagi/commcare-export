@@ -8,6 +8,8 @@ import simplejson
 
 import requests
 
+import pytest
+
 from commcare_export.checkpoint import CheckpointManagerWithSince
 from commcare_export.commcare_hq_client import CommCareHqClient, ResourceRepeatException
 from commcare_export.commcare_minilinq import SimplePaginator, DatePaginator, resource_since_params, get_paginator
@@ -124,12 +126,9 @@ class TestCommCareHqClient(unittest.TestCase):
         self._test_iterate(FakeDateCaseSession(), get_paginator('case'), 2, [1, 2])
 
     def test_repeat_limit(self):
-        try:
+        with pytest.raises(ResourceRepeatException,
+                           match="Requested resource '/fake/uri' 10 times with same parameters"):
             self._test_iterate(FakeRepeatedDateCaseSession(), get_paginator('case', 2), 2, [1, 2])
-        except ResourceRepeatException as e:
-            assert e.message == "Requested resource '/fake/uri' 10 times with same parameters"
-        else:
-            assert False, "Expected exception never happened"
 
 
 class TestDatePaginator(unittest.TestCase):
