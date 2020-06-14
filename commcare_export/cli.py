@@ -10,6 +10,7 @@ import sys
 
 import dateutil.parser
 import requests
+import sqlalchemy
 from six.moves import input
 
 from commcare_export import excel_query
@@ -267,6 +268,10 @@ def evaluate_query(env, query):
             print('Stopping because the export is stuck')
             print(e.message)
             print('Try increasing --batch-size to overcome the error')
+            return EXIT_STATUS_ERROR
+        except (sqlalchemy.exc.DataError, sqlalchemy.exc.InternalError,
+                sqlalchemy.exc.ProgrammingError) as e:
+            print('Stopping because of database error:\n', e)
             return EXIT_STATUS_ERROR
         except KeyboardInterrupt:
             print('\nExport aborted', file=sys.stderr)

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import csv342 as csv
 import os
+import re
 import unittest
 from argparse import Namespace
 from copy import copy
@@ -10,7 +11,7 @@ import sqlalchemy
 from mock import mock
 
 from commcare_export.checkpoint import CheckpointManager
-from commcare_export.cli import CLI_ARGS, main_with_args
+from commcare_export.cli import CLI_ARGS, EXIT_STATUS_ERROR, main_with_args
 from commcare_export.commcare_hq_client import MockCommCareHqClient
 from commcare_export.specs import TableSpec
 from commcare_export.writers import JValueTableWriter, SqlTableWriter
@@ -395,3 +396,51 @@ class TestCLIIntegrationTests(object):
             else:
                 message += '✓ {}: {} in {}\n'.format(i, items[0], items[1])
         assert not fail, 'Checkpoint comparison failed:\n' + message
+
+
+# Conflicting types for 'count' will cause errors when inserting into database.
+CONFLICTING_TYPES_CLIENT = MockCommCareHqClient({
+    'form': [
+        (
+            {'limit': DEFAULT_BATCH_SIZE, 'order_by': ['server_modified_on', 'received_on']},
+            [
+                {'id': 1, 'form': {'name': 'n1', 'count': 10}},
+                {'id': 2, 'form': {'name': 'f2', 'count': 'abc'}}
+            ]
+        ),
+    ],
+})
+
+@pytest.fixture(scope='class')
+def strict_writer(db_params):
+    return SqlTableWriter(db_params['url'], poolclass=sqlalchemy.pool.NullPool, strict_types=True)
+
+@pytest.fixture(scope='class')
+def all_db_checkpoint_manager(db_params):
+    cm = CheckpointManager(db_params['url'], 'query', '123', 'test', 'hq', poolclass=sqlalchemy.pool.NullPool)
+    cm.create_checkpoint_table()
+    return cm
+
+@pytest.mark.dbtest
+class TestCLIWithDatabaseErrors(object):
+    def test_cli_database_error(self, strict_writer, all_db_checkpoint_manager, capfd):
+        args = make_args(
+            query='tests/013_ConflictingTypes.xlsx',
+            output_format='sql'
+        )
+        # set this so that it get's written to the checkpoints
+        checkpoint_manager.query = args.query
+
+        api_client_patch = mock.patch('commcare_export.cli._get_api_client',
+                                      return_value=CONFLICTING_TYPES_CLIENT)
+        # have to mock these to override the pool class otherwise they hold the db connection open
+        strict_writer_patch = mock.patch('commcare_export.cli._get_writer',
+                                         return_value=strict_writer)
+        checkpoint_patch = mock.patch('commcare_export.cli._get_checkpoint_manager',
+                                      return_value=all_db_checkpoint_manager)
+        with api_client_patch, strict_writer_patch, checkpoint_patch:
+            assert main_with_args(args) == EXIT_STATUS_ERROR
+        out, err = capfd.readouterr()
+
+        expected_re = re.compile('Stopping because of database error')
+        assert re.search(expected_re, out)
