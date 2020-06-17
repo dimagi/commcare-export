@@ -1,6 +1,7 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 
 import hashlib
+import json
 from datetime import datetime
 import operator
 import pytz
@@ -344,6 +345,16 @@ def count_selected(val):
     return len(val.split())
 
 
+@unwrap('val')
+def json2str(val):
+    if isinstance(val, six.string_types):
+        return val
+    try:
+        return json.dumps(val)
+    except ValueError:
+        return
+
+
 def join(*args):
     args = [unwrap_val(arg)for arg in args]
     try:
@@ -430,6 +441,7 @@ class BuiltInEnv(DictEnv):
             'bool2int': bool2int,
             'str2num': str2num,
             'str2date': str2date,
+            'json2str': json2str,
             'selected': selected,
             'selected-at': selected_at,
             'count-selected': count_selected,

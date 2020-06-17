@@ -391,6 +391,7 @@ List of builtin functions:
 | selected-at                  | Returns the Nth word in a string. N is zero-indexed.                           | selected-at(3) - return 4th word |
 | selected                     | Returns True if the given word is in the value.                                | selected(fever)                  |
 | count-selected               | Count the number of words                                                      |                                  |
+| json2str                     | Convert a JSON object to a string                                              |
 | template                     | Render a string template (not robust)                                          | template({} on {}, state, date)  |
 | attachment_url               | Convert an attachment name into it's download URL                              |                                  |
 
