@@ -98,7 +98,7 @@ def get_locations_query(lp):
         Column('external_id', 'external_id'),
         Column('last_modified', 'last_modified', 'str2date'),
         Column('latitude', 'latitude'),
-        Column('location_data', 'location_data'),
+        Column('location_data', 'location_data', 'json2str'),
         Column('location_id', 'location_id'),
         Column('location_type', 'location_type'),
         Column('longitude', 'longitude'),
