@@ -487,7 +487,7 @@ class TestCLIWithDataTypes(object):
 
         # We intentionally don't check the types because SQLAlchemy doesn't
         # support type comparison, and even if we convert to strings, the
-        # values ae backend-specific.
+        # values are backend specific.
 
         values = [
             list(row) for row in
