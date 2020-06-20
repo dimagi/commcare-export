@@ -444,3 +444,69 @@ class TestCLIWithDatabaseErrors(object):
 
         expected_re = re.compile('Stopping because of database error')
         assert re.search(expected_re, out)
+
+
+# An input where missing fields should be added due to declared data types.
+DATA_TYPES_CLIENT = MockCommCareHqClient({
+    'form': [
+        (
+            {'limit': DEFAULT_BATCH_SIZE, 'order_by': ['server_modified_on', 'received_on']},
+            [
+                {'id': 1, 'form': {}},
+                {'id': 2, 'form': {}}
+            ]
+        ),
+    ],
+})
+
+@pytest.mark.dbtest
+class TestCLIWithDataTypes(object):
+    def test_cli_data_types_add_columns(self, strict_writer, all_db_checkpoint_manager, capfd):
+        args = make_args(
+            query='tests/014_ExportWithDataTypes.xlsx',
+            output_format='sql'
+        )
+        # set this so that it get's written to the checkpoints
+        checkpoint_manager.query = args.query
+
+        api_client_patch = mock.patch('commcare_export.cli._get_api_client',
+                                      return_value=DATA_TYPES_CLIENT)
+        # have to mock these to override the pool class otherwise they hold the db connection open
+        strict_writer_patch = mock.patch('commcare_export.cli._get_writer',
+                                         return_value=strict_writer)
+        checkpoint_patch = mock.patch('commcare_export.cli._get_checkpoint_manager',
+                                      return_value=all_db_checkpoint_manager)
+        with api_client_patch, strict_writer_patch, checkpoint_patch:
+            main_with_args(args)
+
+        metadata = sqlalchemy.schema.MetaData(bind=strict_writer.engine,
+                                              reflect=True)
+
+        cols = metadata.tables['forms'].c
+        assert [c.name for c in cols] == ['id', 'a_bool', 'an_int', 'a_date', 'a_datetime', 'a_text']
+
+        # SQLAlchemy doesn't support comparison of type objects, so we
+        # compare their string representations.
+        expected_types = []
+        if strict_writer.is_mysql:
+            expected_types = ["VARCHAR(length=255)", "TINYINT(display_width=1)",
+                              "INTEGER()", "DATE()", "DATETIME()",
+                              "VARCHAR(charset='utf8', collation='utf8_bin', length=32)"]
+        if strict_writer.is_mssql:
+            expected_types = ["NVARCHAR(length=255)", "BIT()",
+                              "INTEGER()", "DATE()", "DATETIME()",
+                              "NVARCHAR()"]
+        if strict_writer.is_postgres:
+            expected_types = ["VARCHAR(length=255)", "BOOLEAN()",
+                              "INTEGER()", "DATE()", "TIMESTAMP()",
+                              "TEXT()"]
+
+        assert [repr(c.type) for c in cols] == expected_types
+
+        values = [
+            list(row) for row in
+            strict_writer.engine.execute("SELECT * FROM forms")
+        ]
+
+        assert values == [['1', None, None, None, None, None],
+                          ['2', None, None, None, None, None]]
