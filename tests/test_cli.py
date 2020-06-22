@@ -421,25 +421,27 @@ def all_db_checkpoint_manager(db_params):
     cm.create_checkpoint_table()
     return cm
 
+def _pull_mock_data(writer, checkpoint_manager, api_client, query):
+    args = make_args(
+        query=query,
+        output_format='sql',
+    )
+
+    # set this so that it get's written to the checkpoints
+    checkpoint_manager.query = query
+
+    # have to mock these to override the pool class otherwise they hold the db connection open
+    api_client_patch = mock.patch('commcare_export.cli._get_api_client',
+                                  return_value=api_client)
+    writer_patch = mock.patch('commcare_export.cli._get_writer', return_value=writer)
+    checkpoint_patch = mock.patch('commcare_export.cli._get_checkpoint_manager', return_value=checkpoint_manager)
+    with api_client_patch, writer_patch, checkpoint_patch:
+        return main_with_args(args)
+
 @pytest.mark.dbtest
 class TestCLIWithDatabaseErrors(object):
     def test_cli_database_error(self, strict_writer, all_db_checkpoint_manager, capfd):
-        args = make_args(
-            query='tests/013_ConflictingTypes.xlsx',
-            output_format='sql'
-        )
-        # set this so that it get's written to the checkpoints
-        checkpoint_manager.query = args.query
-
-        api_client_patch = mock.patch('commcare_export.cli._get_api_client',
-                                      return_value=CONFLICTING_TYPES_CLIENT)
-        # have to mock these to override the pool class otherwise they hold the db connection open
-        strict_writer_patch = mock.patch('commcare_export.cli._get_writer',
-                                         return_value=strict_writer)
-        checkpoint_patch = mock.patch('commcare_export.cli._get_checkpoint_manager',
-                                      return_value=all_db_checkpoint_manager)
-        with api_client_patch, strict_writer_patch, checkpoint_patch:
-            assert main_with_args(args) == EXIT_STATUS_ERROR
+        _pull_mock_data(strict_writer, all_db_checkpoint_manager, CONFLICTING_TYPES_CLIENT, 'tests/013_ConflictingTypes.xlsx')
         out, err = capfd.readouterr()
 
         expected_re = re.compile('Stopping because of database error')
@@ -462,22 +464,7 @@ DATA_TYPES_CLIENT = MockCommCareHqClient({
 @pytest.mark.dbtest
 class TestCLIWithDataTypes(object):
     def test_cli_data_types_add_columns(self, strict_writer, all_db_checkpoint_manager, capfd):
-        args = make_args(
-            query='tests/014_ExportWithDataTypes.xlsx',
-            output_format='sql'
-        )
-        # set this so that it get's written to the checkpoints
-        checkpoint_manager.query = args.query
-
-        api_client_patch = mock.patch('commcare_export.cli._get_api_client',
-                                      return_value=DATA_TYPES_CLIENT)
-        # have to mock these to override the pool class otherwise they hold the db connection open
-        strict_writer_patch = mock.patch('commcare_export.cli._get_writer',
-                                         return_value=strict_writer)
-        checkpoint_patch = mock.patch('commcare_export.cli._get_checkpoint_manager',
-                                      return_value=all_db_checkpoint_manager)
-        with api_client_patch, strict_writer_patch, checkpoint_patch:
-            main_with_args(args)
+        _pull_mock_data(strict_writer, all_db_checkpoint_manager, CONFLICTING_TYPES_CLIENT, 'tests/014_ExportWithDataTypes.xlsx')
 
         metadata = sqlalchemy.schema.MetaData(bind=strict_writer.engine,
                                               reflect=True)
