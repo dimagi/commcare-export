@@ -457,7 +457,8 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     table_name=table_name,
                     schema=create_sql
                 ))
-                empty_cols = [name for name, val in row_dict.items() if val is None]
+                empty_cols = [name for name, val in row_dict.items()
+                              if val is None and name not in data_type_dict]
                 if empty_cols:
                     logger.warning("This schema does not include the following columns since we are unable "
                                 "to determine the column type at this stage: {}".format(empty_cols))

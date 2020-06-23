@@ -421,26 +421,65 @@ def all_db_checkpoint_manager(db_params):
     cm.create_checkpoint_table()
     return cm
 
+def _pull_mock_data(writer, checkpoint_manager, api_client, query):
+    args = make_args(
+        query=query,
+        output_format='sql',
+    )
+
+    # set this so that it get's written to the checkpoints
+    checkpoint_manager.query = query
+
+    # have to mock these to override the pool class otherwise they hold the db connection open
+    api_client_patch = mock.patch('commcare_export.cli._get_api_client',
+                                  return_value=api_client)
+    writer_patch = mock.patch('commcare_export.cli._get_writer', return_value=writer)
+    checkpoint_patch = mock.patch('commcare_export.cli._get_checkpoint_manager', return_value=checkpoint_manager)
+    with api_client_patch, writer_patch, checkpoint_patch:
+        return main_with_args(args)
+
 @pytest.mark.dbtest
 class TestCLIWithDatabaseErrors(object):
     def test_cli_database_error(self, strict_writer, all_db_checkpoint_manager, capfd):
-        args = make_args(
-            query='tests/013_ConflictingTypes.xlsx',
-            output_format='sql'
-        )
-        # set this so that it get's written to the checkpoints
-        checkpoint_manager.query = args.query
-
-        api_client_patch = mock.patch('commcare_export.cli._get_api_client',
-                                      return_value=CONFLICTING_TYPES_CLIENT)
-        # have to mock these to override the pool class otherwise they hold the db connection open
-        strict_writer_patch = mock.patch('commcare_export.cli._get_writer',
-                                         return_value=strict_writer)
-        checkpoint_patch = mock.patch('commcare_export.cli._get_checkpoint_manager',
-                                      return_value=all_db_checkpoint_manager)
-        with api_client_patch, strict_writer_patch, checkpoint_patch:
-            assert main_with_args(args) == EXIT_STATUS_ERROR
+        _pull_mock_data(strict_writer, all_db_checkpoint_manager, CONFLICTING_TYPES_CLIENT, 'tests/013_ConflictingTypes.xlsx')
         out, err = capfd.readouterr()
 
         expected_re = re.compile('Stopping because of database error')
         assert re.search(expected_re, out)
+
+
+# An input where missing fields should be added due to declared data types.
+DATA_TYPES_CLIENT = MockCommCareHqClient({
+    'form': [
+        (
+            {'limit': DEFAULT_BATCH_SIZE, 'order_by': ['server_modified_on', 'received_on']},
+            [
+                {'id': 1, 'form': {}},
+                {'id': 2, 'form': {}}
+            ]
+        ),
+    ],
+})
+
+@pytest.mark.dbtest
+class TestCLIWithDataTypes(object):
+    def test_cli_data_types_add_columns(self, strict_writer, all_db_checkpoint_manager, capfd):
+        _pull_mock_data(strict_writer, all_db_checkpoint_manager, CONFLICTING_TYPES_CLIENT, 'tests/014_ExportWithDataTypes.xlsx')
+
+        metadata = sqlalchemy.schema.MetaData(bind=strict_writer.engine,
+                                              reflect=True)
+
+        cols = metadata.tables['forms'].c
+        assert sorted([c.name for c in cols]) == sorted([u'id', u'a_bool', u'an_int', u'a_date', u'a_datetime', u'a_text'])
+
+        # We intentionally don't check the types because SQLAlchemy doesn't
+        # support type comparison, and even if we convert to strings, the
+        # values are backend specific.
+
+        values = [
+            list(row) for row in
+            strict_writer.engine.execute('SELECT * FROM forms')
+        ]
+
+        assert values == [['1', None, None, None, None, None],
+                          ['2', None, None, None, None, None]]
