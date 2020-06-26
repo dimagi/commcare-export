@@ -1,5 +1,6 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 
+import copy
 import logging
 from collections import OrderedDict
 
@@ -138,7 +139,7 @@ class CommCareHqClient(object):
                     raise ResourceRepeatException("Requested resource '{}' {} times with same parameters".format(resource, repeat_counter))
 
                 batch = self.get(resource, params)
-                last_params = params
+                last_params = copy.copy(params)
                 if not total_count or total_count == 'unknown' or fetched >= total_count:
                     total_count = int(batch['meta']['total_count']) if batch['meta']['total_count'] else 'unknown'
                     fetched = 0
