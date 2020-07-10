@@ -294,26 +294,28 @@ class TestSQLWriters(object):
         with strict_writer:
             strict_writer.write_table(TableSpec(**{
                 'name': 'foo_explicit_types',
-                'headings': ['id', 'a', 'b', 'c', 'd'],
+                'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
                 'rows': [
-                    ['bizzle', '1', 2, 3, '7'],
-                    ['bazzle', '4', 5, 6, '8'],
+                    ['bizzle', '1', 2, 3, '7', '9'],
+                    ['bazzle', '4', 5, 6, '8.5', '10'],
                 ],
                 'data_types': [
                     'text',
                     'integer',
                     'text',
                     None,
+                    'numeric',
                 ]
             }))
 
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
         with strict_writer:
             result = dict([(row['id'], row) for row in strict_writer.connection.execute(
-                'SELECT id, a, b, c, d FROM foo_explicit_types'
+                'SELECT id, a, b, c, d, e FROM foo_explicit_types'
             )])
 
         assert len(result) == 2
-        # a casts strings to ints, b casts ints to text, c default falls back to ints, d default falls back to text
-        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': '2', 'c': 3, 'd': '7'}
-        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '5', 'c': 6, 'd': '8'}
+        # a casts strings to ints, b casts ints to text, c default falls back to ints, d casts to numbers
+        # e default falls back to text
+        assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': '2', 'c': 3, 'd': 7, 'e': '9'}
+        assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '5', 'c': 6, 'd': 8.5, 'e': '10'}
