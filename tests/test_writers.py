@@ -304,7 +304,7 @@ class TestSQLWriters(object):
                     'integer',
                     'text',
                     None,
-                    'numeric',
+                    'decimal',
                 ]
             }))
 
@@ -315,7 +315,7 @@ class TestSQLWriters(object):
             )])
 
         assert len(result) == 2
-        # a casts strings to ints, b casts ints to text, c default falls back to ints, d casts to numbers
+        # a casts strings to ints, b casts ints to text, c default falls back to ints, d casts to decimals
         # e default falls back to text
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': '2', 'c': 3, 'd': 7, 'e': '9'}
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '5', 'c': 6, 'd': 8.5, 'e': '10'}
