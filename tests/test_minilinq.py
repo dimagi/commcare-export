@@ -230,7 +230,7 @@ class TestMiniLinq(unittest.TestCase):
         Emit(table='Foo',
              headings=[Literal('foo')],
              source=Map(
-                 source=Reference("form..*.[*].a.`parent`"),
+                 source=Reference("form..*[*].a.`parent`"),
                  body=List([
                      Reference("a")
                  ]),
