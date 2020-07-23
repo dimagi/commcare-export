@@ -224,6 +224,20 @@ class TestMiniLinq(unittest.TestCase):
 
         assert list(writer.tables['Foo'].rows) == [[3, True, '---', None]]
 
+    def test_emit_1(self):
+        writer = JValueTableWriter()
+        env = BuiltInEnv() | JsonPathEnv({'form': {'case': [{"a": 1}, {"a": 2}], "bar": {"case": {"a": 3}}}}) | EmitterEnv(writer)
+        Emit(table='Foo',
+             headings=[Literal('foo')],
+             source=Map(
+                 source=Reference("form..*.[*].a.`parent`"),
+                 body=List([
+                     Reference("a")
+                 ]),
+             )).eval(env)
+
+        assert list(writer.tables['Foo'].rows) == [[3, True, '---', None]]
+
     def test_emit_multi_same_query(self):
         """Test that we can emit multiple tables from the same set of source data.
         This is useful if you need to generate multiple tables from the same datasource.
