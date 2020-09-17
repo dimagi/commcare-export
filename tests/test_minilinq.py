@@ -77,6 +77,9 @@ class TestMiniLinq(unittest.TestCase):
         assert Apply(Reference("str2date"), Literal('2015-01-01T18:32:57.001200Z')).eval(env) == datetime(2015, 1, 1, 18, 32, 57)
         assert Apply(Reference("str2date"), Literal(u'日'.encode('utf8'))).eval(env) == None
         assert Apply(Reference("str2date"), Literal(u'日')).eval(env) == None
+        assert Apply(Reference("hex2uuid"), Literal(0xf00)).eval(env) == None
+        assert Apply(Reference("hex2uuid"), Literal('f00')).eval(env) == None
+        assert Apply(Reference("hex2uuid"), Literal('00a3e019-4ce1-4587-94c5-0971dee2de22')).eval(env) == '00a3e019-4ce1-4587-94c5-0971dee2de22'
         assert Apply(Reference("selected-at"), Literal('a b c'), Literal('1')).eval(env) == 'b'
         assert Apply(Reference("selected-at"), Literal(u'a b 日'), Literal('-1')).eval(env) == u'日'
         assert Apply(Reference("selected-at"), Literal('a b c'), Literal('5')).eval(env) is None
