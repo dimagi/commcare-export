@@ -357,13 +357,13 @@ def json2str(val):
 
 
 @unwrap('val')
-def hex2uuid(val):
+def format_uuid(val):
     """
     Renders a hex UUID in hyphen-separated groups
 
-    >>> hex2uuid('00a3e0194ce1458794c50971dee2de22')
+    >>> format_uuid('00a3e0194ce1458794c50971dee2de22')
     '00a3e019-4ce1-4587-94c5-0971dee2de22'
-    >>> hex2uuid(0x00a3e0194ce1458794c50971dee2de22)
+    >>> format_uuid(0x00a3e0194ce1458794c50971dee2de22)
     '00a3e019-4ce1-4587-94c5-0971dee2de22'
     """
     if not val:
@@ -463,7 +463,7 @@ class BuiltInEnv(DictEnv):
             'str2num': str2num,
             'str2date': str2date,
             'json2str': json2str,
-            'hex2uuid': hex2uuid,
+            'format-uuid': format_uuid,
             'selected': selected,
             'selected-at': selected_at,
             'count-selected': count_selected,
