@@ -387,6 +387,7 @@ List of builtin functions:
 | str2date                     | Convert string to date                                                         |                                  |
 | bool2int                     | Convert boolean to integer (0, 1)                                              |                                  |
 | str2num                      | Parse string as a number                                                       |                                  |
+| format-uuid                  | Parse a hex UUID, and format it into hyphen-separated groups                   |                                  |
 | substr                       | Returns substring indexed by [first arg, second arg), zero-indexed.            | substr(2, 5) of 'abcdef' = 'cde' |
 | selected-at                  | Returns the Nth word in a string. N is zero-indexed.                           | selected-at(3) - return 4th word |
 | selected                     | Returns True if the given word is in the value.                                | selected(fever)                  |

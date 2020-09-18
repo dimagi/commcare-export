@@ -2,6 +2,7 @@ from __future__ import unicode_literals, print_function, absolute_import, divisi
 
 import hashlib
 import json
+import uuid
 from datetime import datetime
 import operator
 import pytz
@@ -355,6 +356,26 @@ def json2str(val):
         return
 
 
+@unwrap('val')
+def format_uuid(val):
+    """
+    Renders a hex UUID in hyphen-separated groups
+
+    >>> format_uuid('00a3e0194ce1458794c50971dee2de22')
+    '00a3e019-4ce1-4587-94c5-0971dee2de22'
+    >>> format_uuid(0x00a3e0194ce1458794c50971dee2de22)
+    '00a3e019-4ce1-4587-94c5-0971dee2de22'
+    """
+    if not val:
+        return None
+    if isinstance(val, int):
+        val = hex(val)
+    try:
+        return str(uuid.UUID(val))
+    except ValueError:
+        return None
+
+
 def join(*args):
     args = [unwrap_val(arg)for arg in args]
     try:
@@ -442,6 +463,7 @@ class BuiltInEnv(DictEnv):
             'str2num': str2num,
             'str2date': str2date,
             'json2str': json2str,
+            'format-uuid': format_uuid,
             'selected': selected,
             'selected-at': selected_at,
             'count-selected': count_selected,
