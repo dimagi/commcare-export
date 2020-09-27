@@ -48,7 +48,7 @@ class TestCommCareMiniLinq(unittest.TestCase):
 
             'case': [
                 (
-                    {'limit': 1000, 'type': 'foo', 'order_by': 'server_date_modified'},
+                    {'limit': 1000, 'type': 'foo', 'order_by': 'inserted_at'},
                     [
                         { 'x': 1 },
                         { 'x': 2 },

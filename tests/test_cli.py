@@ -62,7 +62,7 @@ def mock_hq_client(include_parent):
         ],
         'case': [
             (
-                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'server_date_modified'},
+                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'inserted_at'},
                 [
                     {'id': 'case1'},
                     {'id': 'case2'},

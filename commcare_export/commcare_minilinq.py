@@ -76,7 +76,7 @@ class FormFilterSinceParams(object):
 
 resource_since_params = {
     'form': FormFilterSinceParams(),
-    'case': SimpleSinceParams('server_date_modified_start', 'server_date_modified_end'),
+    'case': SimpleSinceParams('inserted_at_start', 'inserted_at_end'),
     'user': None,
     'location': None,
     'application': None,
@@ -87,7 +87,7 @@ resource_since_params = {
 def get_paginator(resource, page_size=1000):
     return {
         'form': DatePaginator('form', ['server_modified_on','received_on'], page_size),
-        'case': DatePaginator('case', 'server_date_modified', page_size),
+        'case': DatePaginator('case', 'inserted_at', page_size),
         'user': SimplePaginator('user', page_size),
         'location': SimplePaginator('location', page_size),
         'application': SimplePaginator('application', page_size),

@@ -43,7 +43,7 @@ class FakeDateCaseSession(FakeSession):
         if not params:
             return {
                 'meta': {'next': '?offset=1', 'offset': 0, 'limit': 1, 'total_count': 2},
-                'objects': [{'id': 1, 'foo': 1, 'server_date_modified': '2017-01-01T15:36:22Z'}]
+                'objects': [{'id': 1, 'foo': 1, 'inserted_at': '2017-01-01T15:36:22Z'}]
             }
         else:
             since_query_param =resource_since_params['case'].start_param
@@ -57,22 +57,22 @@ class FakeDateCaseSession(FakeSession):
 
 class FakeRepeatedDateCaseSession(FakeSession):
     # Model the case where there are as many or more cases with the same
-    # server_date_modified than the batch size (2), so the client requests
+    # inserted_at than the batch size (2), so the client requests
     # the same set of cases in a loop.
     def _get_results(self, params):
         if not params:
             return {
                 'meta': {'next': '?offset=1', 'offset': 0, 'limit': 2, 'total_count': 4},
-                'objects': [{'id': 1, 'foo': 1, 'server_date_modified': '2017-01-01T15:36:22Z'},
-                            {'id': 2, 'foo': 2, 'server_date_modified': '2017-01-01T15:36:22Z'}]
+                'objects': [{'id': 1, 'foo': 1, 'inserted_at': '2017-01-01T15:36:22Z'},
+                            {'id': 2, 'foo': 2, 'inserted_at': '2017-01-01T15:36:22Z'}]
             }
         else:
             since_query_param =resource_since_params['case'].start_param
             assert params[since_query_param] == '2017-01-01T15:36:22'
             return {
                 'meta': { 'next': '?offset=1', 'offset': 0, 'limit': 2, 'total_count': 4},
-                'objects': [{'id': 1, 'foo': 1, 'server_date_modified': '2017-01-01T15:36:22Z'},
-                            {'id': 2, 'foo': 2, 'server_date_modified': '2017-01-01T15:36:22Z'}]
+                'objects': [{'id': 1, 'foo': 1, 'inserted_at': '2017-01-01T15:36:22Z'},
+                            {'id': 2, 'foo': 2, 'inserted_at': '2017-01-01T15:36:22Z'}]
             }
 
 
