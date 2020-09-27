@@ -41,7 +41,7 @@ class FormFilterSinceParams(object):
             range_expression['lte'] = until.isoformat()
 
         server_modified_missing = {"missing": {
-            "field": "server_modified_on", "null_value": True, "existence": True}
+            "field": "inserted_at", "null_value": True, "existence": True}
         }
         query = json.dumps({
             'filter': {
@@ -53,7 +53,7 @@ class FormFilterSinceParams(object):
                             },
                             {
                                 "range": {
-                                    "server_modified_on": range_expression
+                                    "inserted_at": range_expression
                                 }
                             }
                         ]
@@ -86,7 +86,7 @@ resource_since_params = {
 
 def get_paginator(resource, page_size=1000):
     return {
-        'form': DatePaginator('form', ['server_modified_on','received_on'], page_size),
+        'form': DatePaginator('form', ['inserted_at','received_on'], page_size),
         'case': DatePaginator('case', 'inserted_at', page_size),
         'user': SimplePaginator('user', page_size),
         'location': SimplePaginator('location', page_size),

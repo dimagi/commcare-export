@@ -89,12 +89,12 @@ class FakeDateFormSession(FakeSession):
             search = json.loads(params['_search'])
             _or = search['filter']['or']
             received_on = _or[1]['and'][1]['range']['received_on']['gte']
-            modified_on = _or[0]['and'][1]['range']['server_modified_on']['gte']
+            modified_on = _or[0]['and'][1]['range']['inserted_at']['gte']
             if received_on == modified_on == since1:
                 # include ID=1 again to make sure it gets filtered out
                 return {
                     'meta': { 'next': '?offset=2', 'offset': 0, 'limit': 1, 'total_count': 3 },
-                    'objects': [{'id': 1, 'foo': 1}, {'id': 2, 'foo': 2, 'server_modified_on': '{}Z'.format(since2)}]
+                    'objects': [{'id': 1, 'foo': 1}, {'id': 2, 'foo': 2, 'inserted_at': '{}Z'.format(since2)}]
                 }
             elif received_on == modified_on == since2:
                 return {
