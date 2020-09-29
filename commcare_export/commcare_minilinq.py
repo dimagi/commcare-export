@@ -40,16 +40,15 @@ class FormFilterSinceParams(object):
         if until:
             range_expression['lte'] = until.isoformat()
 
-        server_modified_missing = {"missing": {
-            "field": "inserted_at", "null_value": True, "existence": True}
-        }
         query = json.dumps({
             'filter': {
                 "or": [
                     {
                         "and": [
                             {
-                                "not": server_modified_missing
+                                "not": {
+                                    "missing": "inserted_at"
+                                }
                             },
                             {
                                 "range": {
