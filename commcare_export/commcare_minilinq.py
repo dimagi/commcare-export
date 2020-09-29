@@ -59,7 +59,9 @@ class FormFilterSinceParams(object):
                     },
                     {
                         "and": [
-                            server_modified_missing,
+                            {
+                                "missing": "inserted_at"
+                            },
                             {
                                 "range": {
                                     "received_on": range_expression
