@@ -31,52 +31,8 @@ class SimpleSinceParams(object):
         return params
 
 
-class FormFilterSinceParams(object):
-    def __call__(self, since, until):
-        range_expression = {}
-        if since:
-            range_expression['gte'] = since.isoformat()
-
-        if until:
-            range_expression['lte'] = until.isoformat()
-
-        query = json.dumps({
-            'filter': {
-                "or": [
-                    {
-                        "and": [
-                            {
-                                "not": {
-                                    "missing": "inserted_at"
-                                }
-                            },
-                            {
-                                "range": {
-                                    "inserted_at": range_expression
-                                }
-                            }
-                        ]
-                    },
-                    {
-                        "and": [
-                            {
-                                "missing": "inserted_at"
-                            },
-                            {
-                                "range": {
-                                    "received_on": range_expression
-                                }
-                            }
-                        ]
-                    }
-                ]
-            }})
-
-        return {'_search': query}
-
-
 resource_since_params = {
-    'form': FormFilterSinceParams(),
+    'form': SimpleSinceParams('inserted_at_start', 'inserted_at_end'),
     'case': SimpleSinceParams('inserted_at_start', 'inserted_at_end'),
     'user': None,
     'location': None,
