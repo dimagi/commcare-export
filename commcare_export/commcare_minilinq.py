@@ -43,7 +43,7 @@ resource_since_params = {
 
 def get_paginator(resource, page_size=1000):
     return {
-        'form': DatePaginator('form', ['inserted_at','received_on'], page_size),
+        'form': DatePaginator('form', 'inserted_at', page_size),
         'case': DatePaginator('case', 'inserted_at', page_size),
         'user': SimplePaginator('user', page_size),
         'location': SimplePaginator('location', page_size),
@@ -57,7 +57,7 @@ class CommCareHqEnv(DictEnv):
     An environment providing primitives for pulling from the
     CommCareHq API.
     """
-    
+
     def __init__(self, commcare_hq_client, until=None, page_size=1000):
         self.commcare_hq_client = commcare_hq_client
         self.until = until
