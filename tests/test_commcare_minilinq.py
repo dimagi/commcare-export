@@ -21,15 +21,15 @@ class TestCommCareMiniLinq(unittest.TestCase):
 
     def test_eval(self):
         def die(msg): raise Exception(msg)
-        
+
         client = MockCommCareHqClient({
             'form': [
                 (
-                    {'limit': 1000, 'filter': 'test1', 'order_by': ['inserted_at', 'received_on']},
+                    {'limit': 1000, 'filter': 'test1', 'order_by': 'inserted_at'},
                     [1, 2, 3],
                 ),
                 (
-                    {'limit': 1000, 'filter': 'test2', 'order_by': ['inserted_at', 'received_on']},
+                    {'limit': 1000, 'filter': 'test2', 'order_by': 'inserted_at'},
                     [
                         { 'x': [{ 'y': 1 }, {'y': 2}] },
                         { 'x': [{ 'y': 3 }, {'z': 4}] },
@@ -37,11 +37,11 @@ class TestCommCareMiniLinq(unittest.TestCase):
                     ]
                 ),
                 (
-                    {'limit': 1000, 'filter': 'laziness-test', 'order_by': ['inserted_at', 'received_on']},
+                    {'limit': 1000, 'filter': 'laziness-test', 'order_by': 'inserted_at'},
                     (i if i < 5 else die('Not lazy enough') for i in range(12))
                 ),
                 (
-                    {'limit': 1000, 'cases__full': 'true', 'order_by': ['inserted_at', 'received_on']},
+                    {'limit': 1000, 'cases__full': 'true', 'order_by': 'inserted_at'},
                     [1, 2, 3, 4, 5]
                 ),
             ],
@@ -56,7 +56,7 @@ class TestCommCareMiniLinq(unittest.TestCase):
                     ]
                 )
             ],
-            
+
             'user': [
                 (
                     {'limit': 1000},
@@ -113,7 +113,7 @@ class TestCommCareMiniLinq(unittest.TestCase):
                                              Literal({'type': 'foo'})),
                                 body=Reference('x')).eval(env),
                         [1, 2, 3])
-        
+
         self.check_case(FlatMap(source=Apply(Reference('api_data'),
                                              Literal('user'),
                                              Literal(checkpoint_manager),
