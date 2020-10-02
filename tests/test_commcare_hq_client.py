@@ -67,7 +67,7 @@ class FakeRepeatedDateCaseSession(FakeSession):
                             {'id': 2, 'foo': 2, 'inserted_at': '2017-01-01T15:36:22Z'}]
             }
         else:
-            since_query_param =resource_since_params['case'].start_param
+            since_query_param = resource_since_params['case'].start_param
             assert params[since_query_param] == '2017-01-01T15:36:22'
             return {
                 'meta': { 'next': '?offset=1', 'offset': 0, 'limit': 2, 'total_count': 4},
@@ -83,26 +83,24 @@ class FakeDateFormSession(FakeSession):
         if not params:
             return {
                 'meta': {'next': '?offset=1', 'offset': 0, 'limit': 1, 'total_count': 3},
-                'objects': [{'id': 1, 'foo': 1, 'received_on': '{}Z'.format(since1)}]
+                'objects': [{'id': 1, 'foo': 1, 'inserted_at': '{}Z'.format(since1)}]
             }
         else:
-            search = json.loads(params['_search'])
-            _or = search['filter']['or']
-            received_on = _or[1]['and'][1]['range']['received_on']['gte']
-            modified_on = _or[0]['and'][1]['range']['inserted_at']['gte']
-            if received_on == modified_on == since1:
+            since_query_param = resource_since_params['form'].start_param
+            inserted_at = params[since_query_param]
+            if inserted_at == since1:
                 # include ID=1 again to make sure it gets filtered out
                 return {
                     'meta': { 'next': '?offset=2', 'offset': 0, 'limit': 1, 'total_count': 3 },
                     'objects': [{'id': 1, 'foo': 1}, {'id': 2, 'foo': 2, 'inserted_at': '{}Z'.format(since2)}]
                 }
-            elif received_on == modified_on == since2:
+            elif inserted_at == since2:
                 return {
                     'meta': { 'next': None, 'offset': 0, 'limit': 1, 'total_count': 3 },
                     'objects': [{'id': 3, 'foo': 3}]
                 }
             else:
-                raise Exception(modified_on)
+                raise Exception(inserted_at)
 
 
 class TestCommCareHqClient(unittest.TestCase):
