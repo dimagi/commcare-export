@@ -32,8 +32,8 @@ class SimpleSinceParams(object):
 
 
 resource_since_params = {
-    'form': SimpleSinceParams('inserted_at_start', 'inserted_at_end'),
-    'case': SimpleSinceParams('inserted_at_start', 'inserted_at_end'),
+    'form': SimpleSinceParams('indexed_on_start', 'indexed_on_end'),
+    'case': SimpleSinceParams('indexed_on_start', 'indexed_on_end'),
     'user': None,
     'location': None,
     'application': None,
@@ -43,8 +43,8 @@ resource_since_params = {
 
 def get_paginator(resource, page_size=1000):
     return {
-        'form': DatePaginator('form', 'inserted_at', page_size),
-        'case': DatePaginator('case', 'inserted_at', page_size),
+        'form': DatePaginator('form', 'indexed_on', page_size),
+        'case': DatePaginator('case', 'indexed_on', page_size),
         'user': SimplePaginator('user', page_size),
         'location': SimplePaginator('location', page_size),
         'application': SimplePaginator('application', page_size),

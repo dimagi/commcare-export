@@ -43,7 +43,7 @@ class FakeDateCaseSession(FakeSession):
         if not params:
             return {
                 'meta': {'next': '?offset=1', 'offset': 0, 'limit': 1, 'total_count': 2},
-                'objects': [{'id': 1, 'foo': 1, 'inserted_at': '2017-01-01T15:36:22Z'}]
+                'objects': [{'id': 1, 'foo': 1, 'indexed_on': '2017-01-01T15:36:22Z'}]
             }
         else:
             since_query_param =resource_since_params['case'].start_param
@@ -57,22 +57,22 @@ class FakeDateCaseSession(FakeSession):
 
 class FakeRepeatedDateCaseSession(FakeSession):
     # Model the case where there are as many or more cases with the same
-    # inserted_at than the batch size (2), so the client requests
+    # indexed_on than the batch size (2), so the client requests
     # the same set of cases in a loop.
     def _get_results(self, params):
         if not params:
             return {
                 'meta': {'next': '?offset=1', 'offset': 0, 'limit': 2, 'total_count': 4},
-                'objects': [{'id': 1, 'foo': 1, 'inserted_at': '2017-01-01T15:36:22Z'},
-                            {'id': 2, 'foo': 2, 'inserted_at': '2017-01-01T15:36:22Z'}]
+                'objects': [{'id': 1, 'foo': 1, 'indexed_on': '2017-01-01T15:36:22Z'},
+                            {'id': 2, 'foo': 2, 'indexed_on': '2017-01-01T15:36:22Z'}]
             }
         else:
             since_query_param = resource_since_params['case'].start_param
             assert params[since_query_param] == '2017-01-01T15:36:22'
             return {
                 'meta': { 'next': '?offset=1', 'offset': 0, 'limit': 2, 'total_count': 4},
-                'objects': [{'id': 1, 'foo': 1, 'inserted_at': '2017-01-01T15:36:22Z'},
-                            {'id': 2, 'foo': 2, 'inserted_at': '2017-01-01T15:36:22Z'}]
+                'objects': [{'id': 1, 'foo': 1, 'indexed_on': '2017-01-01T15:36:22Z'},
+                            {'id': 2, 'foo': 2, 'indexed_on': '2017-01-01T15:36:22Z'}]
             }
 
 
@@ -83,24 +83,24 @@ class FakeDateFormSession(FakeSession):
         if not params:
             return {
                 'meta': {'next': '?offset=1', 'offset': 0, 'limit': 1, 'total_count': 3},
-                'objects': [{'id': 1, 'foo': 1, 'inserted_at': '{}Z'.format(since1)}]
+                'objects': [{'id': 1, 'foo': 1, 'indexed_on': '{}Z'.format(since1)}]
             }
         else:
             since_query_param = resource_since_params['form'].start_param
-            inserted_at = params[since_query_param]
-            if inserted_at == since1:
+            indexed_on = params[since_query_param]
+            if indexed_on == since1:
                 # include ID=1 again to make sure it gets filtered out
                 return {
                     'meta': { 'next': '?offset=2', 'offset': 0, 'limit': 1, 'total_count': 3 },
-                    'objects': [{'id': 1, 'foo': 1}, {'id': 2, 'foo': 2, 'inserted_at': '{}Z'.format(since2)}]
+                    'objects': [{'id': 1, 'foo': 1}, {'id': 2, 'foo': 2, 'indexed_on': '{}Z'.format(since2)}]
                 }
-            elif inserted_at == since2:
+            elif indexed_on == since2:
                 return {
                     'meta': { 'next': None, 'offset': 0, 'limit': 1, 'total_count': 3 },
                     'objects': [{'id': 3, 'foo': 3}]
                 }
             else:
-                raise Exception(inserted_at)
+                raise Exception(indexed_on)
 
 
 class TestCommCareHqClient(unittest.TestCase):

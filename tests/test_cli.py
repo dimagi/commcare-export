@@ -51,7 +51,7 @@ def mock_hq_client(include_parent):
     return MockCommCareHqClient({
         'form': [
             (
-                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'inserted_at'},
+                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on'},
                 [
                     {'id': 1, 'form': {'name': 'f1', 'case': {'@case_id': 'c1'}},
                      'metadata': {'userID': 'id1'}},
@@ -62,7 +62,7 @@ def mock_hq_client(include_parent):
         ],
         'case': [
             (
-                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'inserted_at'},
+                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on'},
                 [
                     {'id': 'case1'},
                     {'id': 'case2'},
@@ -367,7 +367,7 @@ class TestCLIIntegrationTests(object):
     def _check_data(self, writer, expected, table_name):
         actual = [
             list(row) for row in
-            writer.engine.execute("SELECT id, name, inserted_at FROM {}".format(table_name))
+            writer.engine.execute("SELECT id, name, indexed_on FROM {}".format(table_name))
         ]
 
         message = ''
@@ -402,7 +402,7 @@ class TestCLIIntegrationTests(object):
 CONFLICTING_TYPES_CLIENT = MockCommCareHqClient({
     'form': [
         (
-            {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'inserted_at'},
+            {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on'},
             [
                 {'id': 1, 'form': {'name': 'n1', 'count': 10}},
                 {'id': 2, 'form': {'name': 'f2', 'count': 'abc'}}
@@ -452,7 +452,7 @@ class TestCLIWithDatabaseErrors(object):
 DATA_TYPES_CLIENT = MockCommCareHqClient({
     'form': [
         (
-            {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'inserted_at'},
+            {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on'},
             [
                 {'id': 1, 'form': {}},
                 {'id': 2, 'form': {}}
