@@ -326,12 +326,12 @@ class TestCLIIntegrationTests(object):
             reader = csv.reader(f)
             expected_form_data = list(reader)[1:]
 
-        _pull_data(writer, checkpoint_manager, 'tests/009_integration.xlsx', '2012-01-01', '2012-08-01')
+        _pull_data(writer, checkpoint_manager, 'tests/009_integration.xlsx', '2012-01-01', '2017-08-29')
         self._check_checkpoints(caplog, ['forms', 'batch', 'final'])
-        self._check_data(writer, expected_form_data[:16], 'forms')
+        self._check_data(writer, expected_form_data[:12], 'forms')
 
         caplog.clear()
-        _pull_data(writer, checkpoint_manager, 'tests/009_integration.xlsx', None, '2012-09-01', batch_size=8)
+        _pull_data(writer, checkpoint_manager, 'tests/009_integration.xlsx', None, '2020-10-11', batch_size=8)
         self._check_data(writer, expected_form_data, 'forms')
         self._check_checkpoints(caplog, ['forms', 'batch', 'final'])
 
@@ -349,7 +349,7 @@ class TestCLIIntegrationTests(object):
             reader = csv.reader(f)
             expected_form_2_data = list(reader)[1:]
 
-        _pull_data(writer, checkpoint_manager, 'tests/009b_integration_multiple.xlsx', None, '2012-05-01')
+        _pull_data(writer, checkpoint_manager, 'tests/009b_integration_multiple.xlsx', None, '2020-10-11')
         self._check_checkpoints(caplog, ['forms_1', 'final', 'forms_2', 'final'])
         self._check_checkpoints(caplog, ['forms_1', 'forms_1', 'forms_2', 'forms_2'])
         self._check_data(writer, expected_form_1_data, 'forms_1')
