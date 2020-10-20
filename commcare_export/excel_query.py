@@ -43,7 +43,7 @@ def get_column_by_name(worksheet, column_name):
     # columns and rows are indexed from 1
     for col in xrange(1, worksheet.max_column + 1):
         value = worksheet.cell(row=1, column=col).value
-        value = value.lower() if value else value
+        value = value.lower().strip() if value else value
         if column_name == value:
             return without_empty_tail([
                 worksheet.cell(row=i, column=col) for i in xrange(2, worksheet.max_row + 1)
