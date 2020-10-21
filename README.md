@@ -554,7 +554,10 @@ Postgresql
 ```
 $ docker pull postgres:9.6
 $ docker run --name ccexport-postgres -p 5432:5432 -d postgres:9.6
+$ export POSTGRES_URL=postgresql://postgres:postgres@postgres/
 ```
+
+[Docker postgres image docs](https://hub.docker.com/_/postgres/)
 
 MySQL
 =====
