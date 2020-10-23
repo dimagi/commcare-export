@@ -6,15 +6,14 @@ API directly.
 """
 import json
 
-from commcare_export.env import DictEnv, CannotBind, CannotReplace
-from datetime import datetime
-
+from commcare_export.env import CannotBind, CannotReplace, DictEnv
 from commcare_export.misc import unwrap
+from dateutil.parser import parse
 
 try:
-    from urllib.parse import urlparse, parse_qs
+    from urllib.parse import parse_qs, urlparse
 except ImportError:
-    from urlparse import urlparse, parse_qs
+    from urlparse import parse_qs, urlparse
 
 
 class SimpleSinceParams(object):
@@ -162,8 +161,4 @@ class DatePaginator(SimplePaginator):
                 since = last_obj.get(self.since_field)
 
             if since:
-                for fmt in ('%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S.%fZ'):
-                    try:
-                        return datetime.strptime(since, fmt)
-                    except ValueError:
-                        pass
+                return parse(since)
