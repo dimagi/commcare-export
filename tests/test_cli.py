@@ -328,7 +328,7 @@ class TestCLIIntegrationTests(object):
 
         _pull_data(writer, checkpoint_manager, 'tests/009_integration.xlsx', '2012-01-01', '2017-08-29')
         self._check_checkpoints(caplog, ['forms', 'batch', 'final'])
-        self._check_data(writer, expected_form_data[:12], 'forms')
+        self._check_data(writer, expected_form_data[:13], 'forms')
 
         caplog.clear()
         _pull_data(writer, checkpoint_manager, 'tests/009_integration.xlsx', None, '2020-10-11', batch_size=8)
