@@ -22,9 +22,9 @@ class SimpleSinceParams(object):
         self.end_param = end
 
     def __call__(self, since, until):
-        params = {
-            self.start_param: since.isoformat()
-        }
+        params = {}
+        if since:
+            params[self.start_param] = since.isoformat()
         if until:
             params[self.end_param] = until.isoformat()
         return params
