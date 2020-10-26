@@ -161,4 +161,4 @@ class DatePaginator(SimplePaginator):
                 since = last_obj.get(self.since_field)
 
             if since:
-                return parse(since)
+                return parse(since, ignoretz=True)
