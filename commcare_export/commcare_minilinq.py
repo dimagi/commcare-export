@@ -8,7 +8,7 @@ import json
 
 from commcare_export.env import CannotBind, CannotReplace, DictEnv
 from commcare_export.misc import unwrap
-from dateutil.parser import parse
+from dateutil.parser import ParserError, parse
 
 try:
     from urllib.parse import parse_qs, urlparse
@@ -161,4 +161,7 @@ class DatePaginator(SimplePaginator):
                 since = last_obj.get(self.since_field)
 
             if since:
-                return parse(since, ignoretz=True)
+                try:
+                    return parse(since, ignoretz=True)  # ignoretz since we assume utc, and use naive datetimes everywhere
+                except ParserError:
+                    return None
