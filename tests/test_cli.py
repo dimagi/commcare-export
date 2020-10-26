@@ -360,8 +360,8 @@ class TestCLIIntegrationTests(object):
             'tests/009b_integration_multiple.xlsx'
         ))
         assert {r[0]: r[1] for r in runs} == {
-            'forms_1': '2012-04-27T10:05:55',
-            'forms_2': '2012-04-27T14:23:50'
+            'forms_1': '2017-09-02T20:05:35.459547',
+            'forms_2': '2020-06-01T17:43:26.107701',
         }
 
     def _check_data(self, writer, expected, table_name):
