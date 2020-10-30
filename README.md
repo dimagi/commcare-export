@@ -394,6 +394,8 @@ List of builtin functions:
 | json2str                     | Convert a JSON object to a string                                              |
 | template                     | Render a string template (not robust)                                          | template({} on {}, state, date)  |
 | attachment_url               | Convert an attachment name into it's download URL                              |                                  |
+| form_url                     | Output the URL to the form view on CommCare HQ                                 |                                  |
+| case_url                     | Output the URL to the case view on CommCare HQ                                 |                                  |
 
 Output Formats
 --------------

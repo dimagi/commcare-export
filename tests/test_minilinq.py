@@ -128,6 +128,18 @@ class TestMiniLinq(unittest.TestCase):
         ).eval(env))
         assert result == expected
 
+    def test_form_url(self):
+        env = BuiltInEnv({'commcarehq_base_url': 'https://www.commcarehq.org'}) | JsonPathEnv(
+            {'id': '123', 'domain': 'd1'})
+        expected = 'https://www.commcarehq.org/a/d1/reports/form_data/123/'
+        assert Apply(Reference('form_url'), Reference('id')).eval(env) == expected
+
+    def test_case_url(self):
+        env = BuiltInEnv({'commcarehq_base_url': 'https://www.commcarehq.org'}) | JsonPathEnv(
+            {'id': '123', 'domain': 'd1'})
+        expected = 'https://www.commcarehq.org/a/d1/reports/case_data/123/'
+        assert Apply(Reference('case_url'), Reference('id')).eval(env) == expected
+
     def test_template(self):
         env = BuiltInEnv() | JsonPathEnv({'a': '1', 'b': '2'})
         assert Apply(Reference('template'), Literal('{}.{}'), Reference('a'), Reference('b')).eval(env) == '1.2'
