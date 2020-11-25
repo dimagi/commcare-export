@@ -357,7 +357,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
         if isinstance(val, bool):
             return sqlalchemy.Boolean()
         elif isinstance(val, datetime.datetime):
-            return sqlalchemy.DateTime()
+            if self.is_mssql:
+                return sqlalchemy.dialects.mssql.DATETIME2()
+            else:
+                return sqlalchemy.DateTime()
         elif isinstance(val, datetime.date):
             return sqlalchemy.Date()
 
