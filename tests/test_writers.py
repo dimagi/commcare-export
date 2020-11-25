@@ -281,9 +281,8 @@ class TestSQLWriters(object):
             expected['bazzle']['c'] = '0'
         if 'pyodbc' in writer.connection.engine.driver:
             expected['bazzle']['c'] = '0'
-            # couldn't figure out how to make SQL Server convert date to ISO8601
-            # see https://docs.microsoft.com/en-us/sql/t-sql/functions/cast-and-convert-transact-sql?view=sql-server-2017#date-and-time-styles
-            expected['bazzle']['e'] = 'May  1 2014 11:16AM'
+            # MSSQL includes fractional seconds in returned value.
+            expected['bazzle']['e'] = '2014-05-01 11:16:45.0000000'
 
         for id, row in result.items():
             assert id in expected
