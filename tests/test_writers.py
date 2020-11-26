@@ -317,3 +317,47 @@ class TestSQLWriters(object):
         # a casts strings to ints, b casts ints to text, c default falls back to ints, d default falls back to text
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': '2', 'c': 3, 'd': '7'}
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '5', 'c': 6, 'd': '8'}
+
+    def test_mssql_nvarchar_length(self, writer):
+        with writer:
+            if 'mssql' not in writer.connection.engine.driver:
+                return
+
+            # Initialize a table with columns where we expect the "some_data"
+            # column to be of length 900 bytes, and the "big_data" column to be
+            # of nvarchar(max)
+            writer.write_table(TableSpec(**{
+                'name': 'mssql_nvarchar_length',
+                'headings': ['id', 'some_data', 'big_data'],
+                'rows': [
+                    ['bizzle', (b'\0' * 800).decode('utf-8'), (b'\0' * 901).decode('utf-8')],
+                    ['bazzle', (b'\0' * 500).decode('utf-8'), (b'\0' * 800).decode('utf-8')],
+                ]
+            }))
+
+            connection = writer.connection
+
+            result = self._get_column_lengths(connection, 'mssql_nvarchar_length')
+            assert result['some_data'] == ('some_data', 'nvarchar', 900)
+            assert result['big_data'] == ('big_data', 'nvarchar', -1)  # nvarchar(max) is listed as -1
+
+            # put bigger data into "some_column" to ensure it is resized properly
+            writer.write_table(TableSpec(**{
+                'name': 'mssql_nvarchar_length',
+                'headings': ['id', 'some_data', 'big_data'],
+                'rows': [
+                    ['sizzle', (b'\0' * 901).decode('utf-8'), (b'\0' * 901).decode('utf-8')],
+                ]
+            }))
+
+            result = self._get_column_lengths(connection, 'mssql_nvarchar_length')
+            assert result['some_data'] == ('some_data', 'nvarchar', -1)
+            assert result['big_data'] == ('big_data', 'nvarchar', -1)
+
+    def _get_column_lengths(connection, table_name):
+        return {
+            row['COLUMN_NAME']: row for row in connection.execute(
+                "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH "
+                "FROM INFORMATION_SCHEMA.COLUMNS "
+                "WHERE TABLE_NAME = {};".format(table_name))
+        }
