@@ -320,7 +320,7 @@ class TestSQLWriters(object):
 
     def test_mssql_nvarchar_length(self, writer):
         with writer:
-            if 'mssql' not in writer.connection.engine.driver:
+            if 'odbc' not in writer.connection.engine.driver:
                 return
 
             # Initialize a table with columns where we expect the "some_data"
@@ -354,10 +354,10 @@ class TestSQLWriters(object):
             assert result['some_data'] == ('some_data', 'nvarchar', -1)
             assert result['big_data'] == ('big_data', 'nvarchar', -1)
 
-    def _get_column_lengths(connection, table_name):
+    def _get_column_lengths(self, connection, table_name):
         return {
             row['COLUMN_NAME']: row for row in connection.execute(
                 "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH "
                 "FROM INFORMATION_SCHEMA.COLUMNS "
-                "WHERE TABLE_NAME = {};".format(table_name))
+                "WHERE TABLE_NAME = '{}';".format(table_name))
         }
