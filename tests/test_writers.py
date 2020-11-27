@@ -318,7 +318,7 @@ class TestSQLWriters(object):
         assert dict(result['bizzle']) == {'id': 'bizzle', 'a': 1, 'b': '2', 'c': 3, 'd': '7'}
         assert dict(result['bazzle']) == {'id': 'bazzle', 'a': 4, 'b': '5', 'c': 6, 'd': '8'}
 
-    def test_mssql_nvarchar_length(self, writer):
+    def test_mssql_nvarchar_length_upsize(self, writer):
         with writer:
             if 'odbc' not in writer.connection.engine.driver:
                 return
@@ -353,6 +353,34 @@ class TestSQLWriters(object):
             result = self._get_column_lengths(connection, 'mssql_nvarchar_length')
             assert result['some_data'] == ('some_data', 'nvarchar', -1)
             assert result['big_data'] == ('big_data', 'nvarchar', -1)
+
+    def test_mssql_nvarchar_length_downsize(self, writer):
+        with writer:
+            if 'odbc' not in writer.connection.engine.driver:
+                return
+
+            # Initialize a table with NVARCHAR(max), and make sure smaller data
+            # doesn't reduce the size of the column
+            metadata = sqlalchemy.MetaData()
+            create_sql = sqlalchemy.schema.CreateTable(sqlalchemy.Table(
+                'mssql_nvarchar_length_downsize',
+                metadata,
+                sqlalchemy.Column('id', sqlalchemy.NVARCHAR(length=100), primary_key=True),
+                sqlalchemy.Column('some_data', sqlalchemy.NVARCHAR(length=None)),
+                )).compile(writer.connection.engine)
+            metadata.create_all(writer.connection.engine)
+
+            writer.write_table(TableSpec(**{
+                'name': 'mssql_nvarchar_length',
+                'headings': ['id', 'some_data'],
+                'rows': [
+                    ['bizzle', (b'\0' * 800).decode('utf-8'), (b'\0' * 800).decode('utf-8')],
+                    ['bazzle', (b'\0' * 500).decode('utf-8'), (b'\0' * 800).decode('utf-8')],
+                ]
+            }))
+            result = self._get_column_lengths(writer.connection, 'mssql_nvarchar_length_downsize')
+            assert result['some_data'] == ('some_data', 'nvarchar', -1)
+
 
     def _get_column_lengths(self, connection, table_name):
         return {
