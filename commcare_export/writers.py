@@ -210,9 +210,9 @@ class JValueTableWriter(TableWriter):
         else:
             assert self.tables[table.name].headings == list(table.headings)
 
-        self.tables[table.name].rows.extend(
+        self.tables[table.name].rows = list(self.tables[table.name].rows) + [
             [to_jvalue(v) for v in row] for row in table.rows
-        )
+        ]
 
 
 class StreamingMarkdownTableWriter(TableWriter):
