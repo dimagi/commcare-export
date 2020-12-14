@@ -30,6 +30,7 @@ except ImportError:
 
 DEFAULT_BATCH_SIZE = 200
 
+
 def make_args(project='test', username='test', password='test', **kwargs):
     kwargs['project'] = project
     kwargs['username'] = username
@@ -125,6 +126,7 @@ def mock_hq_client(include_parent):
         ],
     })
 
+
 EXPECTED_MULTIPLE_TABLES_RESULTS = [
     {
         "name": "Forms",
@@ -178,6 +180,7 @@ EXPECTED_USERS_RESULTS = [
         ]
     }
 ]
+
 
 def get_expected_locations_results(include_parent):
     return [
@@ -295,6 +298,7 @@ def checkpoint_manager(pg_db_params):
     cm.create_checkpoint_table()
     return cm
 
+
 def _pull_data(writer, checkpoint_manager, query, since, until, batch_size=10):
     args = make_args(
         query=query,
@@ -411,15 +415,18 @@ CONFLICTING_TYPES_CLIENT = MockCommCareHqClient({
     ],
 })
 
+
 @pytest.fixture(scope='class')
 def strict_writer(db_params):
     return SqlTableWriter(db_params['url'], poolclass=sqlalchemy.pool.NullPool, strict_types=True)
+
 
 @pytest.fixture(scope='class')
 def all_db_checkpoint_manager(db_params):
     cm = CheckpointManager(db_params['url'], 'query', '123', 'test', 'hq', poolclass=sqlalchemy.pool.NullPool)
     cm.create_checkpoint_table()
     return cm
+
 
 def _pull_mock_data(writer, checkpoint_manager, api_client, query):
     args = make_args(
@@ -437,6 +444,7 @@ def _pull_mock_data(writer, checkpoint_manager, api_client, query):
     checkpoint_patch = mock.patch('commcare_export.cli._get_checkpoint_manager', return_value=checkpoint_manager)
     with api_client_patch, writer_patch, checkpoint_patch:
         return main_with_args(args)
+
 
 @pytest.mark.dbtest
 class TestCLIWithDatabaseErrors(object):
@@ -460,6 +468,7 @@ DATA_TYPES_CLIENT = MockCommCareHqClient({
         ),
     ],
 })
+
 
 @pytest.mark.dbtest
 class TestCLIWithDataTypes(object):
