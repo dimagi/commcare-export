@@ -402,14 +402,14 @@ class TestCLIIntegrationTests(object):
         assert not fail, 'Checkpoint comparison failed:\n' + message
 
 
-# Conflicting types for 'count' will cause errors when inserting into database.
+# Conflicting types for 'count' will cause errors when inserting into database.'
 CONFLICTING_TYPES_CLIENT = MockCommCareHqClient({
-    'form': [
+    'case': [
         (
-            {'limit': DEFAULT_BATCH_SIZE, 'order_by': ['server_modified_on', 'received_on']},
+            {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'server_date_modified'},
             [
-                {'id': 1, 'form': {'name': 'n1', 'count': 10}},
-                {'id': 2, 'form': {'name': 'f2', 'count': 'abc'}}
+                {'id': 1, 'name': 'n1', 'count': 10},
+                {'id': 2, 'name': 'f2', 'count': 'abc'}
             ]
         ),
     ],
