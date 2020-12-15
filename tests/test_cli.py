@@ -12,7 +12,7 @@ from mock import mock
 
 from commcare_export.checkpoint import CheckpointManager
 from commcare_export.cli import CLI_ARGS, EXIT_STATUS_ERROR, main_with_args
-from commcare_export.commcare_hq_client import MockCommCareHqClient
+from commcare_export.commcare_hq_client import MockCommCareHqClient, CommCareHqClient, _params_to_url
 from commcare_export.specs import TableSpec
 from commcare_export.writers import JValueTableWriter, SqlTableWriter
 
@@ -416,6 +416,55 @@ CONFLICTING_TYPES_CLIENT = MockCommCareHqClient({
 })
 
 
+class MockCheckpointingClient(CommCareHqClient):
+    """Mock client that uses the main client for iteration but overrides the data request
+    to return mocked data"""
+    def __init__(self, mock_data):
+        self.mock_data = {
+            resource: {
+                _params_to_url(params): result
+                for params, result in resource_results
+            }
+            for resource, resource_results in mock_data.items()
+        }
+        self.totals = {
+            resource: sum(len(results) for _, results in resource_results)
+            for resource, resource_results in mock_data.items()
+        }
+
+    def get(self, resource, params=None):
+        mock_requests = self.mock_data[resource]
+        key = _params_to_url(params)
+        objects = mock_requests.pop(key)
+        if objects:
+            return {'meta': {'limit': len(objects), 'next': bool(mock_requests),
+                             'offset': 0, 'previous': None,
+                             'total_count': self.totals[resource]},
+                    'objects': objects}
+        else:
+            return None
+
+
+CONFLICTING_TYPES_CHECKPOINT_CLIENT = MockCheckpointingClient({
+    'case': [
+        (
+            {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'server_date_modified'},
+            [
+                {'id': 1, 'name': 'n1', 'count': 10, 'server_date_modified': '2012-04-23T05:13:01.000000Z'},
+                {'id': 2, 'name': 'f2', 'count': 123, 'server_date_modified': '2012-04-24T05:13:01.000000Z'}
+            ]
+        ),
+        (
+            {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'server_date_modified', 'server_date_modified_start': '2012-04-24T05:13:01'},
+            [
+                {'id': 3, 'name': 'n1', 'count': 10, 'server_date_modified': '2012-04-25T05:13:01.000000Z'},
+                {'id': 4, 'name': 'f2', 'count': 'abc', 'server_date_modified': '2012-04-26T05:13:01.000000Z'}
+            ]
+        ),
+    ],
+})
+
+
 @pytest.fixture(scope='class')
 def strict_writer(db_params):
     return SqlTableWriter(db_params['url'], poolclass=sqlalchemy.pool.NullPool, strict_types=True)
@@ -454,6 +503,25 @@ class TestCLIWithDatabaseErrors(object):
 
         expected_re = re.compile('Stopping because of database error')
         assert re.search(expected_re, out)
+
+    def test_cli_database_error_checkpoint(self, strict_writer, all_db_checkpoint_manager, capfd):
+        _pull_mock_data(
+            strict_writer, all_db_checkpoint_manager,
+            CONFLICTING_TYPES_CHECKPOINT_CLIENT, 'tests/013_ConflictingTypes.xlsx'
+        )
+        out, err = capfd.readouterr()
+
+        expected_re = re.compile('Stopping because of database error')
+        assert re.search(expected_re, out)
+
+        # expect checkpoint to have the date from the first batch and not the 2nd
+        runs = list(strict_writer.engine.execute(
+            'SELECT table_name, since_param from commcare_export_runs where query_file_name = %s',
+            'tests/013_ConflictingTypes.xlsx'
+        ))
+        assert {r[0]: r[1] for r in runs} == {
+            'Case': '2012-04-24T05:13:01',
+        }
 
 
 # An input where missing fields should be added due to declared data types.
