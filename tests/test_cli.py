@@ -418,7 +418,9 @@ CONFLICTING_TYPES_CLIENT = MockCommCareHqClient({
 
 class MockCheckpointingClient(CommCareHqClient):
     """Mock client that uses the main client for iteration but overrides the data request
-    to return mocked data"""
+    to return mocked data.
+
+    Note this client needs to be re-initialized after use."""
     def __init__(self, mock_data):
         self.mock_data = {
             resource: {
@@ -445,24 +447,25 @@ class MockCheckpointingClient(CommCareHqClient):
             return None
 
 
-CONFLICTING_TYPES_CHECKPOINT_CLIENT = MockCheckpointingClient({
-    'case': [
-        (
-            {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'server_date_modified'},
-            [
-                {'id': 1, 'name': 'n1', 'count': 10, 'server_date_modified': '2012-04-23T05:13:01.000000Z'},
-                {'id': 2, 'name': 'f2', 'count': 123, 'server_date_modified': '2012-04-24T05:13:01.000000Z'}
-            ]
-        ),
-        (
-            {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'server_date_modified', 'server_date_modified_start': '2012-04-24T05:13:01'},
-            [
-                {'id': 3, 'name': 'n1', 'count': 10, 'server_date_modified': '2012-04-25T05:13:01.000000Z'},
-                {'id': 4, 'name': 'f2', 'count': 'abc', 'server_date_modified': '2012-04-26T05:13:01.000000Z'}
-            ]
-        ),
-    ],
-})
+def get_conflicting_types_checkpoint_client():
+    return MockCheckpointingClient({
+        'case': [
+            (
+                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'server_date_modified'},
+                [
+                    {'id': 1, 'name': 'n1', 'count': 10, 'server_date_modified': '2012-04-23T05:13:01.000000Z'},
+                    {'id': 2, 'name': 'f2', 'count': 123, 'server_date_modified': '2012-04-24T05:13:01.000000Z'}
+                ]
+            ),
+            (
+                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'server_date_modified', 'server_date_modified_start': '2012-04-24T05:13:01'},
+                [
+                    {'id': 3, 'name': 'n1', 'count': 10, 'server_date_modified': '2012-04-25T05:13:01.000000Z'},
+                    {'id': 4, 'name': 'f2', 'count': 'abc', 'server_date_modified': '2012-04-26T05:13:01.000000Z'}
+                ]
+            ),
+        ],
+    })
 
 
 @pytest.fixture(scope='class')
@@ -507,7 +510,7 @@ class TestCLIWithDatabaseErrors(object):
     def test_cli_database_error_checkpoint(self, strict_writer, all_db_checkpoint_manager, capfd):
         _pull_mock_data(
             strict_writer, all_db_checkpoint_manager,
-            CONFLICTING_TYPES_CHECKPOINT_CLIENT, 'tests/013_ConflictingTypes.xlsx'
+            get_conflicting_types_checkpoint_client(), 'tests/013_ConflictingTypes.xlsx'
         )
         out, err = capfd.readouterr()
 
