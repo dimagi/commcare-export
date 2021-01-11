@@ -519,8 +519,8 @@ class TestCLIWithDatabaseErrors(object):
 
         # expect checkpoint to have the date from the first batch and not the 2nd
         runs = list(strict_writer.engine.execute(
-            'SELECT table_name, since_param from commcare_export_runs where query_file_name = %s',
-            'tests/013_ConflictingTypes.xlsx'
+            sqlalchemy.text('SELECT table_name, since_param from commcare_export_runs where query_file_name = :fn'),
+            fn='tests/013_ConflictingTypes.xlsx'
         ))
         assert {r[0]: r[1] for r in runs} == {
             'Case': '2012-04-24T05:13:01',
