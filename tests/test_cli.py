@@ -546,8 +546,8 @@ class TestCLIWithDataTypes(object):
     def test_cli_data_types_add_columns(self, strict_writer, all_db_checkpoint_manager, capfd):
         _pull_mock_data(strict_writer, all_db_checkpoint_manager, CONFLICTING_TYPES_CLIENT, 'tests/014_ExportWithDataTypes.xlsx')
 
-        metadata = sqlalchemy.schema.MetaData(bind=strict_writer.engine,
-                                              reflect=True)
+        metadata = sqlalchemy.schema.MetaData(bind=strict_writer.engine)
+        metadata.reflect()
 
         cols = metadata.tables['forms'].c
         assert sorted([c.name for c in cols]) == sorted([u'id', u'a_bool', u'an_int', u'a_date', u'a_datetime', u'a_text'])
