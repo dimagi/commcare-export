@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import inspect
+import types
 import unittest
 from itertools import *
 
@@ -227,17 +229,38 @@ class TestMiniLinq(unittest.TestCase):
         except LazinessException:
             pass
 
-    def test_emit(self):
-        writer = JValueTableWriter()
-        env = BuiltInEnv() | JsonPathEnv({'foo': {'baz': 3, 'bar': True, 'boo': None}}) | EmitterEnv(writer)
+    def _setup_emit_test(self, emitter_env):
+        env = BuiltInEnv() | JsonPathEnv({'foo': {'baz': 3, 'bar': True, 'boo': None}}) | emitter_env
         Emit(table='Foo',
              headings=[Literal('foo')],
              source=List([
-                 List([ Reference('foo.baz'), Reference('foo.bar'), Reference('foo.foo'), Reference('foo.boo') ])
+                 List([Reference('foo.baz'), Reference('foo.bar'), Reference('foo.foo'), Reference('foo.boo')])
              ]),
              missing_value='---').eval(env)
 
+    def test_emit(self):
+        writer = JValueTableWriter()
+        self._setup_emit_test(EmitterEnv(writer))
         assert list(writer.tables['Foo'].rows) == [[3, True, '---', None]]
+
+    def test_emit_generator(self):
+        class TestWriter(JValueTableWriter):
+            def write_table(self, table):
+                self.tables[table.name] = table
+
+        writer = TestWriter()
+        self._setup_emit_test(EmitterEnv(writer))
+        assert isinstance(writer.tables['Foo'].rows, (map, filter, types.GeneratorType))
+
+    def test_emit_env_generator(self):
+        class TestEmitterEnv(EmitterEnv):
+            def emit_table(self, table_spec):
+                self.table = table_spec
+
+        env = TestEmitterEnv(JValueTableWriter())
+        self._setup_emit_test(env)
+        assert isinstance(env.table.rows, (map, filter, types.GeneratorType))
+
 
     def test_emit_multi_same_query(self):
         """Test that we can emit multiple tables from the same set of source data.
@@ -323,7 +346,6 @@ class TestMiniLinq(unittest.TestCase):
 
         # evaluate result
         list(result)
-        print(writer.tables)
         assert writer.tables['t1'].rows == [['1'], ['2']]
         assert writer.tables['t2'].rows == [['1', 3], ['1', 4], ['2', 5], ['2', 6]]
 
