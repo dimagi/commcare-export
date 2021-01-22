@@ -36,6 +36,7 @@ class Checkpoint(Base):
     since_param = Column(String)
     time_of_run = Column(String)
     final = Column(Boolean)
+    data_source = Column(String)
 
     def __repr__(self):
         return (
@@ -49,8 +50,9 @@ class Checkpoint(Base):
             "commcare={r.commcare}, "
             "since_param={r.since_param}, "
             "time_of_run={r.time_of_run}, "
-            "final={r.final})>".format(r=self)
-        )
+            "final={r.final}), "
+            "data_source={r.data_source}>"
+        ).format(r=self)
 
 
 @contextmanager
@@ -71,7 +73,8 @@ class CheckpointManager(SqlMixin):
     table_name = 'commcare_export_runs'
     migrations_repository = os.path.join(repo_root, 'migrations')
 
-    def __init__(self, db_url, query, query_md5, project, commcare, key=None, table_names=None, poolclass=None, engine=None):
+    def __init__(self, db_url, query, query_md5, project, commcare,
+                 key=None, table_names=None, poolclass=None, engine=None, data_source=None):
         super(CheckpointManager, self).__init__(db_url, poolclass=poolclass, engine=engine)
         self.query = query
         self.query_md5 = query_md5
@@ -80,11 +83,12 @@ class CheckpointManager(SqlMixin):
         self.key = key
         self.Session = sessionmaker(self.engine, expire_on_commit=False)
         self.table_names = table_names
+        self.data_source = data_source
 
-    def for_tables(self, table_names):
+    def for_dataset(self, data_source, table_names):
         return CheckpointManager(
             self.db_url, self.query, self.query_md5, self.project, self.commcare, self.key,
-            engine=self.engine, table_names=table_names
+            engine=self.engine, table_names=table_names, data_source=data_source
         )
 
     def set_checkpoint(self, checkpoint_time, is_final=False):
@@ -94,8 +98,9 @@ class CheckpointManager(SqlMixin):
 
     def _set_checkpoint(self, checkpoint_time, final, time_of_run=None):
         logger.info(
-            'Setting %s checkpoint for tables %s: %s',
+            'Setting %s checkpoint: data_source: %s, tables %s: checkpoint: %s',
             'final' if final else 'batch',
+            self.data_source,
             ', '.join(self.table_names),
             checkpoint_time
         )
@@ -121,7 +126,8 @@ class CheckpointManager(SqlMixin):
                     commcare=self.commcare,
                     since_param=since_param,
                     time_of_run=time_of_run or datetime.datetime.utcnow().isoformat(),
-                    final=final
+                    final=final,
+                    data_source=self.data_source
                 )
                 session.add(checkpoint)
                 created.append(checkpoint)
@@ -317,16 +323,17 @@ class CheckpointManagerProvider(object):
             since = checkpoint_manager.get_time_of_last_checkpoint()
             return dateutil.parser.parse(since) if since else None
 
-    def get_checkpoint_manager(self, table_names):
+    def get_checkpoint_manager(self, data_source, table_names):
         """This get's called before each table is exported and set in the `env`. It is then
         passed to the API client and used to set the checkpoints.
 
+        :param data_source: Data source for this checkout e.g. 'form'
         :param table_names: List of table names being exported to. This is a list since
                             multiple tables can be processed by a since API query.
         """
         manager = None
         if self.base_checkpoint_manager:
-            manager = self.base_checkpoint_manager.for_tables(table_names)
+            manager = self.base_checkpoint_manager.for_dataset(data_source, table_names)
 
         since = self.get_since(manager)
 

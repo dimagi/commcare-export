@@ -39,7 +39,7 @@ class TestCheckpointManager(object):
 
     def test_get_time_of_last_checkpoint(self, manager):
         manager.create_checkpoint_table()
-        manager = manager.for_tables(['t1'])
+        manager = manager.for_dataset('form', ['t1'])
         manager.set_checkpoint(datetime.datetime.utcnow())
         second_run = datetime.datetime.utcnow()
         manager.set_checkpoint(second_run)
@@ -61,7 +61,7 @@ class TestCheckpointManager(object):
                 time_of_run=datetime.datetime.utcnow().isoformat(),
                 final=True
             ))
-        manager = manager.for_tables(['t1', 't2'])
+        manager = manager.for_dataset('form', ['t1', 't2'])
         checkpoint = manager.get_last_checkpoint()
         assert checkpoint.since_param == since_param
         assert checkpoint.project == manager.project
@@ -95,7 +95,7 @@ class TestCheckpointManager(object):
                 time_of_run=datetime.datetime.utcnow().isoformat(),
                 final=True
             ))
-        manager = manager.for_tables(['t1', 't2'])
+        manager = manager.for_dataset('form', ['t1', 't2'])
         checkpoint = manager.get_last_checkpoint()
         assert checkpoint.since_param == since_param
         assert checkpoint.table_name in manager.table_names
@@ -105,7 +105,7 @@ class TestCheckpointManager(object):
 
     def test_clean_on_final_run(self, manager):
         manager.create_checkpoint_table()
-        manager = manager.for_tables(['t1'])
+        manager = manager.for_dataset('form', ['t1'])
         manager.set_checkpoint(datetime.datetime.utcnow())
         manager.set_checkpoint(datetime.datetime.utcnow())
 
@@ -119,7 +119,7 @@ class TestCheckpointManager(object):
 
     def test_get_time_of_last_checkpoint_with_key(self, manager):
         manager.create_checkpoint_table()
-        manager = manager.for_tables(['t1'])
+        manager = manager.for_dataset('form', ['t1'])
         manager.key = 'my key'
         last_run_time = datetime.datetime.utcnow()
         manager.set_checkpoint(last_run_time)
@@ -132,13 +132,13 @@ class TestCheckpointManager(object):
         manager.create_checkpoint_table()
         t1 = uuid.uuid4().hex
         t2 = uuid.uuid4().hex
-        manager = manager.for_tables([t1, t2])
+        manager = manager.for_dataset('form', [t1, t2])
         last_run_time = datetime.datetime.utcnow()
         manager.set_checkpoint(last_run_time)
 
-        assert manager.for_tables([t1]).get_time_of_last_checkpoint() == last_run_time.isoformat()
-        assert manager.for_tables([t2]).get_time_of_last_checkpoint() == last_run_time.isoformat()
-        assert manager.for_tables(['t3']).get_last_checkpoint() is None
+        assert manager.for_dataset('form', [t1]).get_time_of_last_checkpoint() == last_run_time.isoformat()
+        assert manager.for_dataset('form', [t2]).get_time_of_last_checkpoint() == last_run_time.isoformat()
+        assert manager.for_dataset('form', ['t3']).get_last_checkpoint() is None
 
         checkpoints = manager.list_checkpoints()
         assert len(checkpoints) == 2
@@ -146,7 +146,7 @@ class TestCheckpointManager(object):
 
     def test_get_latest_checkpoints(self, manager):
         manager.create_checkpoint_table()
-        manager = manager.for_tables(['t1', 't2'])
+        manager = manager.for_dataset('form', ['t1', 't2'])
         manager.set_checkpoint(datetime.datetime.utcnow())
 
         manager.query_md5 = '456'
