@@ -106,15 +106,15 @@ class TestCheckpointManager(object):
     def test_clean_on_final_run(self, manager):
         manager.create_checkpoint_table()
         manager = manager.for_dataset('form', ['t1'])
-        manager.set_checkpoint(datetime.datetime.utcnow())
-        manager.set_checkpoint(datetime.datetime.utcnow())
+        manager.set_checkpoint(datetime.datetime.utcnow(), doc_id="1")
+        manager.set_checkpoint(datetime.datetime.utcnow(), doc_id="2")
 
         def _get_non_final_rows_count():
             with session_scope(manager.Session) as session:
                 return session.query(Checkpoint).filter_by(final=False).count()
 
         assert _get_non_final_rows_count() == 2
-        manager.set_checkpoint(datetime.datetime.utcnow(), True)
+        manager.set_checkpoint(datetime.datetime.utcnow(), True, doc_id="3")
         assert _get_non_final_rows_count() == 0
 
     def test_get_time_of_last_checkpoint_with_key(self, manager):
@@ -134,7 +134,8 @@ class TestCheckpointManager(object):
         t2 = uuid.uuid4().hex
         manager = manager.for_dataset('form', [t1, t2])
         last_run_time = datetime.datetime.utcnow()
-        manager.set_checkpoint(last_run_time)
+        doc_id = uuid.uuid4().hex
+        manager.set_checkpoint(last_run_time, doc_id=doc_id)
 
         assert manager.for_dataset('form', [t1]).get_time_of_last_checkpoint() == last_run_time.isoformat()
         assert manager.for_dataset('form', [t2]).get_time_of_last_checkpoint() == last_run_time.isoformat()
@@ -143,6 +144,7 @@ class TestCheckpointManager(object):
         checkpoints = manager.list_checkpoints()
         assert len(checkpoints) == 2
         assert {checkpoints[0].table_name, checkpoints[1].table_name} == {t1, t2}
+        assert {checkpoints[0].last_doc_id, checkpoints[1].last_doc_id} == {doc_id}
 
     def test_get_latest_checkpoints(self, manager):
         manager.create_checkpoint_table()

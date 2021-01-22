@@ -22,6 +22,11 @@ def upgrade():
         'commcare_export_runs',
         sa.Column('data_source', sa.Unicode(255, collation=collation))
     )
+    op.add_column(
+        'commcare_export_runs',
+        sa.Column('last_doc_id', sa.Unicode(255, collation=collation))
+    )
 
 def downgrade():
     op.drop_column('commcare_export_runs', 'data_source')
+    op.drop_column('commcare_export_runs', 'last_doc_id')

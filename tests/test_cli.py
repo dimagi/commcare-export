@@ -453,15 +453,15 @@ def get_conflicting_types_checkpoint_client():
             (
                 {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'server_date_modified'},
                 [
-                    {'id': 1, 'name': 'n1', 'count': 10, 'server_date_modified': '2012-04-23T05:13:01.000000Z'},
-                    {'id': 2, 'name': 'f2', 'count': 123, 'server_date_modified': '2012-04-24T05:13:01.000000Z'}
+                    {'id': "doc 1", 'name': 'n1', 'count': 10, 'server_date_modified': '2012-04-23T05:13:01.000000Z'},
+                    {'id': "doc 2", 'name': 'f2', 'count': 123, 'server_date_modified': '2012-04-24T05:13:01.000000Z'}
                 ]
             ),
             (
                 {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'server_date_modified', 'server_date_modified_start': '2012-04-24T05:13:01'},
                 [
-                    {'id': 3, 'name': 'n1', 'count': 10, 'server_date_modified': '2012-04-25T05:13:01.000000Z'},
-                    {'id': 4, 'name': 'f2', 'count': 'abc', 'server_date_modified': '2012-04-26T05:13:01.000000Z'}
+                    {'id': "doc 3", 'name': 'n1', 'count': 10, 'server_date_modified': '2012-04-25T05:13:01.000000Z'},
+                    {'id': "doc 4", 'name': 'f2', 'count': 'abc', 'server_date_modified': '2012-04-26T05:13:01.000000Z'}
                 ]
             ),
         ],
@@ -519,12 +519,12 @@ class TestCLIWithDatabaseErrors(object):
 
         # expect checkpoint to have the date from the first batch and not the 2nd
         runs = list(strict_writer.engine.execute(
-            sqlalchemy.text('SELECT table_name, since_param from commcare_export_runs where query_file_name = :fn'),
+            sqlalchemy.text('SELECT table_name, since_param, last_doc_id from commcare_export_runs where query_file_name = :fn'),
             fn='tests/013_ConflictingTypes.xlsx'
         ))
-        assert {r[0]: r[1] for r in runs} == {
-            'Case': '2012-04-24T05:13:01',
-        }
+        assert runs == [
+            ('Case', '2012-04-24T05:13:01', 'doc 2'),
+        ]
 
 
 # An input where missing fields should be added due to declared data types.

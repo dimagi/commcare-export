@@ -37,6 +37,7 @@ class Checkpoint(Base):
     time_of_run = Column(String)
     final = Column(Boolean)
     data_source = Column(String)
+    last_doc_id = Column(String)
 
     def __repr__(self):
         return (
@@ -51,7 +52,8 @@ class Checkpoint(Base):
             "since_param={r.since_param}, "
             "time_of_run={r.time_of_run}, "
             "final={r.final}), "
-            "data_source={r.data_source}>"
+            "data_source={r.data_source}, "
+            "last_doc_id={r.last_doc_id}>"
         ).format(r=self)
 
 
@@ -91,18 +93,18 @@ class CheckpointManager(SqlMixin):
             engine=self.engine, table_names=table_names, data_source=data_source
         )
 
-    def set_checkpoint(self, checkpoint_time, is_final=False):
-        self._set_checkpoint(checkpoint_time, is_final)
+    def set_checkpoint(self, checkpoint_time, is_final=False, doc_id=None):
+        self._set_checkpoint(checkpoint_time, is_final, doc_id=doc_id)
         if is_final:
             self._cleanup()
 
-    def _set_checkpoint(self, checkpoint_time, final, time_of_run=None):
+    def _set_checkpoint(self, checkpoint_time, final, time_of_run=None, doc_id=None):
         logger.info(
-            'Setting %s checkpoint: data_source: %s, tables %s: checkpoint: %s',
+            'Setting %s checkpoint: data_source: %s, tables %s: checkpoint: %s:%s',
             'final' if final else 'batch',
             self.data_source,
             ', '.join(self.table_names),
-            checkpoint_time
+            checkpoint_time, doc_id
         )
         if not checkpoint_time:
             raise DataExportException('Tried to set an empty checkpoint. This is not allowed.')
@@ -127,7 +129,8 @@ class CheckpointManager(SqlMixin):
                     since_param=since_param,
                     time_of_run=time_of_run or datetime.datetime.utcnow().isoformat(),
                     final=final,
-                    data_source=self.data_source
+                    data_source=self.data_source,
+                    last_doc_id=doc_id
                 )
                 session.add(checkpoint)
                 created.append(checkpoint)
@@ -301,9 +304,9 @@ class CheckpointManagerWithSince(object):
         self.manager = manager
         self.since_param = since
 
-    def set_checkpoint(self, checkpoint_time, is_final=False):
+    def set_checkpoint(self, checkpoint_time, is_final=False, doc_id=None):
         if self.manager:
-            self.manager.set_checkpoint(checkpoint_time, is_final)
+            self.manager.set_checkpoint(checkpoint_time, is_final, doc_id=doc_id)
 
 
 class CheckpointManagerProvider(object):

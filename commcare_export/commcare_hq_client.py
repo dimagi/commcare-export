@@ -171,7 +171,11 @@ class CommCareHqClient(object):
         if isinstance(paginator, DatePaginator):
             since_date = paginator.get_since_date(batch)
             if since_date:
-                checkpoint_manager.set_checkpoint(since_date, is_final)
+                try:
+                    last_obj = batch['objects'][-1]
+                except IndexError:
+                    last_obj = {}
+                checkpoint_manager.set_checkpoint(since_date, is_final, doc_id=last_obj.get("id", None))
             else:
                 logger.warning('Failed to get a checkpoint date from a batch of data.')
 
