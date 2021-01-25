@@ -40,11 +40,16 @@ DATE_PARAMS = {
 }
 
 
-def get_paginator(resource, page_size=1000):
+def get_paginator(resource, page_size=1000, pagination_mode='by_date_indexed'):
     return {
-        'form': DatePaginator('indexed_on', page_size),
-        'case': DatePaginator('indexed_on', page_size),
-    }.get(resource, SimplePaginator(page_size))
+        'by_date_indexed': {
+            'form': DatePaginator('indexed_on', page_size),
+            'case': DatePaginator('indexed_on', page_size),
+        },
+        'by_date_modified': {
+
+        }
+    }[pagination_mode].get(resource, SimplePaginator(page_size))
 
 
 class CommCareHqEnv(DictEnv):
@@ -53,10 +58,11 @@ class CommCareHqEnv(DictEnv):
     CommCareHq API.
     """
 
-    def __init__(self, commcare_hq_client, until=None, page_size=1000):
+    def __init__(self, commcare_hq_client, until=None, page_size=1000, pagination_mode='by_date_indexed'):
         self.commcare_hq_client = commcare_hq_client
         self.until = until
         self.page_size = page_size
+        self.pagination_mode = pagination_mode
         super(CommCareHqEnv, self).__init__({
             'api_data' : self.api_data
         })
@@ -66,7 +72,7 @@ class CommCareHqEnv(DictEnv):
         if resource not in SUPPORTED_RESOURCES:
             raise ValueError('Unknown API resource "%s' % resource)
 
-        paginator = get_paginator(resource, self.page_size)
+        paginator = get_paginator(resource, self.page_size, self.pagination_mode)
         paginator.init(payload, include_referenced_items, self.until)
         initial_params = paginator.next_page_params_since(checkpoint_manager.since_param)
         return self.commcare_hq_client.iterate(
