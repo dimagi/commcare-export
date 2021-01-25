@@ -29,7 +29,7 @@ class MissingColumnException(DataExportException):
     @property
     def message(self):
         lines = [
-            'Table "{}" is missing required columns: "{}"'.format(
+            'Sheet "{}" is missing definitions for required fields: "{}"'.format(
                 sheet, '", "'.join(missing_cols)
             ) for sheet, missing_cols in self.errors_by_sheet.items()
         ]

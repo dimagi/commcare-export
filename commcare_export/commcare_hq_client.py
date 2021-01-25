@@ -171,7 +171,11 @@ class CommCareHqClient(object):
         if isinstance(paginator, DatePaginator):
             since_date = paginator.get_since_date(batch)
             if since_date:
-                checkpoint_manager.set_checkpoint(since_date, is_final)
+                try:
+                    last_obj = batch['objects'][-1]
+                except IndexError:
+                    last_obj = {}
+                checkpoint_manager.set_checkpoint(since_date, is_final, doc_id=last_obj.get("id", None))
             else:
                 logger.warning('Failed to get a checkpoint date from a batch of data.')
 
@@ -183,7 +187,7 @@ class MockCommCareHqClient(object):
 
     Since dictionaries are not hashable, the mapping is
     written as a pair of tuples, handled appropriately
-    internallly.
+    internally.
 
     MockCommCareHqClient({
         'forms': [
@@ -197,16 +201,21 @@ class MockCommCareHqClient(object):
     })
     """    
     def __init__(self, mock_data):
-        self.mock_data = dict([(resource, dict([(urlencode(OrderedDict(sorted(params.items()))), result) for params, result in resource_results]))
-                              for resource, resource_results in mock_data.items()])
+        self.mock_data = {
+            resource: {
+                _params_to_url(params): result
+                for params, result in resource_results
+            }
+            for resource, resource_results in mock_data.items()
+        }
 
     def iterate(self, resource, paginator, params=None, checkpoint_manager=None):
         logger.debug('Mock client call to resource "%s" with params "%s"', resource, params)
-        return self.mock_data[resource][urlencode(OrderedDict(sorted(params.items())))]
+        return self.mock_data[resource][_params_to_url(params)]
 
     def get(self, resource):
         logger.debug('Mock client call to get resource "%s"', resource)
-        objects = self.mock_data[resource][urlencode(OrderedDict([('get', True)]))]
+        objects = self.mock_data[resource][_params_to_url({'get': True})]
         if objects:
             return {'meta': {'limit': len(objects), 'next': None,
                              'offset': 0, 'previous': None,
@@ -214,6 +223,10 @@ class MockCommCareHqClient(object):
                     'objects': objects}
         else:
             return None
+
+
+def _params_to_url(params):
+    return urlencode(OrderedDict(sorted(params.items())))
 
 
 class ApiKeyAuth(AuthBase):

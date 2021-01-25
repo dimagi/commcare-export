@@ -43,7 +43,7 @@ def get_column_by_name(worksheet, column_name):
     # columns and rows are indexed from 1
     for col in xrange(1, worksheet.max_column + 1):
         value = worksheet.cell(row=1, column=col).value
-        value = value.lower() if value else value
+        value = value.lower().strip() if value else value
         if column_name == value:
             return without_empty_tail([
                 worksheet.cell(row=i, column=col) for i in xrange(2, worksheet.max_row + 1)
@@ -339,13 +339,14 @@ def parse_sheet(worksheet, mappings=None, column_enforcer=None):
         body,
         root_doc_expr,
         data_types,
+        data_source,
     )
 
 
-class SheetParts(namedtuple('SheetParts', 'name headings source body root_expr data_types')):
-    def __new__(cls, name, headings, source, body, root_expr=None, data_types=None):
+class SheetParts(namedtuple('SheetParts', 'name headings source body root_expr data_types data_source')):
+    def __new__(cls, name, headings, source, body, root_expr=None, data_types=None, data_source=None):
         data_types = data_types or []
-        return super(SheetParts, cls).__new__(cls, name, headings, source, body, root_expr, data_types)
+        return super(SheetParts, cls).__new__(cls, name, headings, source, body, root_expr, data_types, data_source)
 
     @property
     def columns(self):
@@ -448,7 +449,10 @@ def get_multi_emit_query(source, sheets, missing_value):
         )
 
     table_names = [sheet.name for sheet in sheets]
-    return Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal(table_names)), multi_query)
+    data_source = sheets[0].data_source  # sheets will all have the same datasource
+    return Bind('checkpoint_manager', Apply(
+        Reference('get_checkpoint_manager'), Literal(data_source), Literal(table_names)
+    ), multi_query)
 
 
 def get_single_emit_query(sheet, missing_value):
@@ -475,7 +479,9 @@ def get_single_emit_query(sheet, missing_value):
         missing_value=missing_value,
         data_types=sheet.data_types,
     )
-    return Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal([sheet.name])), emit)
+    return Bind('checkpoint_manager', Apply(
+        Reference('get_checkpoint_manager'), Literal(sheet.data_source), Literal([sheet.name])
+    ), emit)
 
 
 def check_field_length(parsed_sheets, max_column_length):

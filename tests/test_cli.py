@@ -12,7 +12,7 @@ from mock import mock
 
 from commcare_export.checkpoint import CheckpointManager
 from commcare_export.cli import CLI_ARGS, EXIT_STATUS_ERROR, main_with_args
-from commcare_export.commcare_hq_client import MockCommCareHqClient
+from commcare_export.commcare_hq_client import MockCommCareHqClient, CommCareHqClient, _params_to_url
 from commcare_export.specs import TableSpec
 from commcare_export.writers import JValueTableWriter, SqlTableWriter
 
@@ -29,6 +29,7 @@ except ImportError:
 
 
 DEFAULT_BATCH_SIZE = 200
+
 
 def make_args(project='test', username='test', password='test', **kwargs):
     kwargs['project'] = project
@@ -125,6 +126,7 @@ def mock_hq_client(include_parent):
         ],
     })
 
+
 EXPECTED_MULTIPLE_TABLES_RESULTS = [
     {
         "name": "Forms",
@@ -178,6 +180,7 @@ EXPECTED_USERS_RESULTS = [
         ]
     }
 ]
+
 
 def get_expected_locations_results(include_parent):
     return [
@@ -295,6 +298,7 @@ def checkpoint_manager(pg_db_params):
     cm.create_checkpoint_table()
     return cm
 
+
 def _pull_data(writer, checkpoint_manager, query, since, until, batch_size=10):
     args = make_args(
         query=query,
@@ -398,28 +402,83 @@ class TestCLIIntegrationTests(object):
         assert not fail, 'Checkpoint comparison failed:\n' + message
 
 
-# Conflicting types for 'count' will cause errors when inserting into database.
+# Conflicting types for 'count' will cause errors when inserting into database.'
 CONFLICTING_TYPES_CLIENT = MockCommCareHqClient({
-    'form': [
+    'case': [
         (
             {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on'},
             [
-                {'id': 1, 'form': {'name': 'n1', 'count': 10}},
-                {'id': 2, 'form': {'name': 'f2', 'count': 'abc'}}
+                {'id': 1, 'name': 'n1', 'count': 10},
+                {'id': 2, 'name': 'f2', 'count': 'abc'}
             ]
         ),
     ],
 })
 
+
+class MockCheckpointingClient(CommCareHqClient):
+    """Mock client that uses the main client for iteration but overrides the data request
+    to return mocked data.
+
+    Note this client needs to be re-initialized after use."""
+    def __init__(self, mock_data):
+        self.mock_data = {
+            resource: {
+                _params_to_url(params): result
+                for params, result in resource_results
+            }
+            for resource, resource_results in mock_data.items()
+        }
+        self.totals = {
+            resource: sum(len(results) for _, results in resource_results)
+            for resource, resource_results in mock_data.items()
+        }
+
+    def get(self, resource, params=None):
+        mock_requests = self.mock_data[resource]
+        key = _params_to_url(params)
+        objects = mock_requests.pop(key)
+        if objects:
+            return {'meta': {'limit': len(objects), 'next': bool(mock_requests),
+                             'offset': 0, 'previous': None,
+                             'total_count': self.totals[resource]},
+                    'objects': objects}
+        else:
+            return None
+
+
+def get_conflicting_types_checkpoint_client():
+    return MockCheckpointingClient({
+        'case': [
+            (
+                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on'},
+                [
+                    {'id': "doc 1", 'name': 'n1', 'count': 10, 'indexed_on': '2012-04-23T05:13:01.000000Z'},
+                    {'id': "doc 2", 'name': 'f2', 'count': 123, 'indexed_on': '2012-04-24T05:13:01.000000Z'}
+                ]
+            ),
+            (
+                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on', 'indexed_on_start': '2012-04-24T05:13:01'},
+                [
+                    {'id': "doc 3", 'name': 'n1', 'count': 10, 'indexed_on': '2012-04-25T05:13:01.000000Z'},
+                    {'id': "doc 4", 'name': 'f2', 'count': 'abc', 'indexed_on': '2012-04-26T05:13:01.000000Z'}
+                ]
+            ),
+        ],
+    })
+
+
 @pytest.fixture(scope='class')
 def strict_writer(db_params):
     return SqlTableWriter(db_params['url'], poolclass=sqlalchemy.pool.NullPool, strict_types=True)
+
 
 @pytest.fixture(scope='class')
 def all_db_checkpoint_manager(db_params):
     cm = CheckpointManager(db_params['url'], 'query', '123', 'test', 'hq', poolclass=sqlalchemy.pool.NullPool)
     cm.create_checkpoint_table()
     return cm
+
 
 def _pull_mock_data(writer, checkpoint_manager, api_client, query):
     args = make_args(
@@ -438,6 +497,7 @@ def _pull_mock_data(writer, checkpoint_manager, api_client, query):
     with api_client_patch, writer_patch, checkpoint_patch:
         return main_with_args(args)
 
+
 @pytest.mark.dbtest
 class TestCLIWithDatabaseErrors(object):
     def test_cli_database_error(self, strict_writer, all_db_checkpoint_manager, capfd):
@@ -446,6 +506,25 @@ class TestCLIWithDatabaseErrors(object):
 
         expected_re = re.compile('Stopping because of database error')
         assert re.search(expected_re, out)
+
+    def test_cli_database_error_checkpoint(self, strict_writer, all_db_checkpoint_manager, capfd):
+        _pull_mock_data(
+            strict_writer, all_db_checkpoint_manager,
+            get_conflicting_types_checkpoint_client(), 'tests/013_ConflictingTypes.xlsx'
+        )
+        out, err = capfd.readouterr()
+
+        expected_re = re.compile('Stopping because of database error')
+        assert re.search(expected_re, out), out
+
+        # expect checkpoint to have the date from the first batch and not the 2nd
+        runs = list(strict_writer.engine.execute(
+            sqlalchemy.text('SELECT table_name, since_param, last_doc_id from commcare_export_runs where query_file_name = :fn'),
+            fn='tests/013_ConflictingTypes.xlsx'
+        ))
+        assert runs == [
+            ('Case', '2012-04-24T05:13:01', 'doc 2'),
+        ]
 
 
 # An input where missing fields should be added due to declared data types.
@@ -461,13 +540,14 @@ DATA_TYPES_CLIENT = MockCommCareHqClient({
     ],
 })
 
+
 @pytest.mark.dbtest
 class TestCLIWithDataTypes(object):
     def test_cli_data_types_add_columns(self, strict_writer, all_db_checkpoint_manager, capfd):
         _pull_mock_data(strict_writer, all_db_checkpoint_manager, CONFLICTING_TYPES_CLIENT, 'tests/014_ExportWithDataTypes.xlsx')
 
-        metadata = sqlalchemy.schema.MetaData(bind=strict_writer.engine,
-                                              reflect=True)
+        metadata = sqlalchemy.schema.MetaData(bind=strict_writer.engine)
+        metadata.reflect()
 
         cols = metadata.tables['forms'].c
         assert sorted([c.name for c in cols]) == sorted([u'id', u'a_bool', u'an_int', u'a_date', u'a_datetime', u'a_text'])

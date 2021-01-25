@@ -406,6 +406,27 @@ def attachment_url(val):
     )
 
 
+@unwrap('val')
+def form_url(val):
+    return _doc_url('form_data')
+
+
+@unwrap('val')
+def case_url(val):
+    return _doc_url('case_data')
+
+
+def _doc_url(url_path):
+    from commcare_export.minilinq import Apply, Reference, Literal
+    return Apply(
+        Reference('template'),
+        Literal('{}/a/{}/reports/'+ url_path + '/{}/'),
+        Reference('commcarehq_base_url'),
+        Reference('$.domain'),
+        Reference('$.id'),
+    )
+
+
 def template(format_template, *args):
     args = [unwrap_val(arg) for arg in args]
     return format_template.format(*args)
@@ -470,6 +491,8 @@ class BuiltInEnv(DictEnv):
             'join': join,
             'default': default,
             'template': template,
+            'form_url': form_url,
+            'case_url': case_url,
             'attachment_url': attachment_url,
             'filter_empty': _not_val,
             'or': _or,
