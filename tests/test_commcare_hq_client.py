@@ -12,7 +12,8 @@ import pytest
 
 from commcare_export.checkpoint import CheckpointManagerWithSince
 from commcare_export.commcare_hq_client import CommCareHqClient, ResourceRepeatException
-from commcare_export.commcare_minilinq import SimplePaginator, DatePaginator, resource_since_params, get_paginator
+from commcare_export.commcare_minilinq import SimplePaginator, DatePaginator, get_paginator, \
+    DATE_PARAMS
 
 
 class FakeSession(object):
@@ -46,7 +47,7 @@ class FakeDateCaseSession(FakeSession):
                 'objects': [{'id': 1, 'foo': 1, 'indexed_on': '2017-01-01T15:36:22Z'}]
             }
         else:
-            since_query_param =resource_since_params['case'].start_param
+            since_query_param = DATE_PARAMS['indexed_on'].start_param
             assert params[since_query_param] == '2017-01-01T15:36:22'
             # include ID=1 again to make sure it gets filtered out
             return {
@@ -67,7 +68,7 @@ class FakeRepeatedDateCaseSession(FakeSession):
                             {'id': 2, 'foo': 2, 'indexed_on': '2017-01-01T15:36:22Z'}]
             }
         else:
-            since_query_param = resource_since_params['case'].start_param
+            since_query_param = DATE_PARAMS['indexed_on'].start_param
             assert params[since_query_param] == '2017-01-01T15:36:22'
             return {
                 'meta': { 'next': '?offset=1', 'offset': 0, 'limit': 2, 'total_count': 4},
@@ -86,7 +87,7 @@ class FakeDateFormSession(FakeSession):
                 'objects': [{'id': 1, 'foo': 1, 'indexed_on': '{}Z'.format(since1)}]
             }
         else:
-            since_query_param = resource_since_params['form'].start_param
+            since_query_param = DATE_PARAMS['indexed_on'].start_param
             indexed_on = params[since_query_param]
             if indexed_on == since1:
                 # include ID=1 again to make sure it gets filtered out
@@ -136,26 +137,27 @@ class TestDatePaginator(unittest.TestCase):
         pass
 
     def test_empty_batch(self):
-        self.assertIsNone(DatePaginator('fake', 'since').next_page_params_from_batch({'objects': []}))
+        self.assertIsNone(DatePaginator('since', params=SimplePaginator()).next_page_params_from_batch({'objects': []}))
 
     def test_bad_date(self):
-        self.assertIsNone(DatePaginator('fake', 'since').next_page_params_from_batch({'objects': [{
+        self.assertIsNone(DatePaginator('since', params=SimplePaginator()).next_page_params_from_batch({'objects': [{
             'since': 'not a date'
         }]}))
 
     def test_multi_field_sort(self):
         d1 = '2017-01-01T15:36:22Z'
         d2 = '2017-01-01T18:36:22Z'
-        self.assertEqual(DatePaginator('fake', ['s1', 's2']).get_since_date({'objects': [{
+        paginator = DatePaginator(['s1', 's2'], params=SimplePaginator())
+        self.assertEqual(paginator.get_since_date({'objects': [{
             's1': d1,
             's2': d2
         }]}), datetime.strptime(d1, '%Y-%m-%dT%H:%M:%SZ'))
 
-        self.assertEqual(DatePaginator('fake', ['s1', 's2']).get_since_date({'objects': [{
+        self.assertEqual(paginator.get_since_date({'objects': [{
             's2': d2
         }]}), datetime.strptime(d2, '%Y-%m-%dT%H:%M:%SZ'))
 
-        self.assertEqual(DatePaginator('fake', ['s1', 's2']).get_since_date({'objects': [{
+        self.assertEqual(paginator.get_since_date({'objects': [{
             's1': None,
             's2': d2
         }]}), datetime.strptime(d2, '%Y-%m-%dT%H:%M:%SZ'))
