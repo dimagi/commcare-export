@@ -87,7 +87,11 @@ class TestExcelQuery(unittest.TestCase):
 
         test_cases = [
             ('001_JustDataSource.xlsx', SheetParts(
-                name='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')), body=None),
+                name='Forms',
+                headings=[],
+                source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')),
+                body=None,
+                data_source="form"),
             ),
             #('001a_JustDataSource_LibreOffice.xlsx', Emit(table='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form")))),
             
@@ -104,7 +108,8 @@ class TestExcelQuery(unittest.TestCase):
                          'type': 'intake',
                      })
                  ),
-                 body=None
+                 body=None,
+                 data_source="form"
              )),
 
             ('003_DataSourceAndEmitColumns.xlsx',
@@ -134,7 +139,8 @@ class TestExcelQuery(unittest.TestCase):
                      Literal('Error: both substr arguments must be non-negative integers: substr(a, b)'),
                      Literal('Error: both substr arguments must be non-negative integers: substr(-1, 10)'),
                      Literal('Error: both substr arguments must be non-negative integers: substr(3, -4)')
-                 ])
+                 ]),
+                 data_source="form"
              )),
 
             ('005_DataSourcePath.xlsx',
@@ -143,7 +149,8 @@ class TestExcelQuery(unittest.TestCase):
                  headings = [],
                  source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')),
                  body=None,
-                 root_expr=Reference('form.delivery_information.child_questions.[*]')
+                 root_expr=Reference('form.delivery_information.child_questions.[*]'),
+                 data_source="form"
              )),
 
             ('006_IncludeReferencedItems.xlsx',
@@ -157,12 +164,17 @@ class TestExcelQuery(unittest.TestCase):
                      Literal(None),
                      Literal(['foo', 'bar', 'bizzle'])
                  ),
-                 body=None
+                 body=None,
+                 data_source="form"
              )),
 
             ('010_JustDataSourceTableName.xlsx', SheetParts(
-                name='my_table', headings=[], source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')), body=None),
-            ),
+                name='my_table',
+                headings=[],
+                source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')),
+                body=None,
+                data_source="form"
+            )),
         ]
 
         for filename, minilinq in test_cases:
@@ -182,8 +194,18 @@ class TestExcelQuery(unittest.TestCase):
         test_cases = [
             ('004_TwoDataSources.xlsx', 
              [
-                SheetParts(name='Forms', headings=[], source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')), body=None),
-                SheetParts(name='Cases', headings=[], source=Apply(Reference("api_data"), Literal("case"), Reference('checkpoint_manager')), body=None)
+                SheetParts(
+                    name='Forms',
+                    headings=[],
+                    source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')),
+                    body=None,
+                    data_source="form"),
+                SheetParts(
+                    name='Cases',
+                    headings=[],
+                    source=Apply(Reference("api_data"), Literal("case"), Reference('checkpoint_manager')),
+                    body=None,
+                    data_source="case")
              ]),
             ('007_Mappings.xlsx',
              [
@@ -192,6 +214,7 @@ class TestExcelQuery(unittest.TestCase):
                      headings=[Literal('Form Type')],
                      source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')),
                      body=List([compile_mapped_field(field_mappings, Reference("type"))]),
+                     data_source="form"
                  )
              ]),
 
@@ -221,7 +244,7 @@ class TestExcelQuery(unittest.TestCase):
         assert list(expression.eval(env)) == []
 
     def test_get_queries_from_excel(self):
-        minilinq = Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal(["Forms"])),
+        minilinq = Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal("form"), Literal(["Forms"])),
             Emit(
             table='Forms',
             missing_value='---',
@@ -259,7 +282,7 @@ class TestExcelQuery(unittest.TestCase):
     def test_alternate_source_fields(self):
         minilinq = List([
             # First sheet uses a CSV column and also tests combining "Map Via"
-            Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal(["Forms"])),
+            Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal("form"), Literal(["Forms"])),
                 Emit(
                     table='Forms', missing_value='---',
                     headings =[
@@ -280,7 +303,7 @@ class TestExcelQuery(unittest.TestCase):
             ),
 
             # Second sheet uses multiple alternate source field columns (listed out of order)
-            Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal(["Forms1"])),
+            Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal("form"), Literal(["Forms1"])),
                 Emit(
                     table='Forms1', missing_value='---',
                     headings=[
@@ -302,7 +325,7 @@ class TestExcelQuery(unittest.TestCase):
         self._compare_minilinq_to_compiled(minilinq, '011_AlternateSourceFields.xlsx')
 
     def test_columns_with_data_types(self):
-        minilinq = Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal(["Forms"])),
+        minilinq = Bind('checkpoint_manager', Apply(Reference('get_checkpoint_manager'), Literal("form"), Literal(["Forms"])),
             Emit(
                 table='Forms',
                 missing_value='---',
@@ -336,7 +359,7 @@ class TestExcelQuery(unittest.TestCase):
 
     def test_multi_emit(self):
         minilinq = List([
-            Bind("checkpoint_manager", Apply(Reference('get_checkpoint_manager'), Literal(["Forms", "Cases"])),
+            Bind("checkpoint_manager", Apply(Reference('get_checkpoint_manager'), Literal("form"), Literal(["Forms", "Cases"])),
                 Filter(
                     predicate=Apply(
                         Reference("filter_empty"),
@@ -374,7 +397,7 @@ class TestExcelQuery(unittest.TestCase):
             ),
             Bind(
                 'checkpoint_manager',
-                Apply(Reference('get_checkpoint_manager'), Literal(["Other cases"])),
+                Apply(Reference('get_checkpoint_manager'), Literal("case"), Literal(["Other cases"])),
                 Emit(
                     table="Other cases",
                     headings=[Literal("id")],
@@ -393,7 +416,7 @@ class TestExcelQuery(unittest.TestCase):
 
     def test_multi_emit_no_combine(self):
         minilinq = List([
-            Bind("checkpoint_manager", Apply(Reference('get_checkpoint_manager'), Literal(["Forms"])),
+            Bind("checkpoint_manager", Apply(Reference('get_checkpoint_manager'), Literal("form"), Literal(["Forms"])),
                  Emit(
                     table="Forms",
                     headings=[Literal("id"), Literal("name")],
@@ -407,7 +430,7 @@ class TestExcelQuery(unittest.TestCase):
                     )
                  )
             ),
-            Bind("checkpoint_manager", Apply(Reference('get_checkpoint_manager'), Literal(["Cases"])),
+            Bind("checkpoint_manager", Apply(Reference('get_checkpoint_manager'), Literal("form"), Literal(["Cases"])),
                 Emit(
                     table="Cases",
                     headings=[Literal("case_id")],
@@ -423,7 +446,7 @@ class TestExcelQuery(unittest.TestCase):
                     )
                 )
             ),
-            Bind("checkpoint_manager", Apply(Reference('get_checkpoint_manager'), Literal(["Other cases"])),
+            Bind("checkpoint_manager", Apply(Reference('get_checkpoint_manager'), Literal("case"), Literal(["Other cases"])),
                 Emit(
                     table="Other cases",
                     headings=[Literal("id")],
@@ -442,7 +465,7 @@ class TestExcelQuery(unittest.TestCase):
 
     def test_multi_emit_with_organization(self):
         minilinq = List([
-            Bind("checkpoint_manager", Apply(Reference('get_checkpoint_manager'), Literal(["Forms", "Cases"])),
+            Bind("checkpoint_manager", Apply(Reference('get_checkpoint_manager'), Literal("form"), Literal(["Forms", "Cases"])),
                 Filter(
                     predicate=Apply(
                         Reference("filter_empty"),
@@ -482,7 +505,7 @@ class TestExcelQuery(unittest.TestCase):
             ),
             Bind(
                 'checkpoint_manager',
-                Apply(Reference('get_checkpoint_manager'), Literal(["Other cases"])),
+                Apply(Reference('get_checkpoint_manager'), Literal("case"), Literal(["Other cases"])),
                 Emit(
                     table="Other cases",
                     headings=[Literal("id"), Literal("commcare_userid")],
