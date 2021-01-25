@@ -5,6 +5,7 @@ To date, this is simply built-ins for querying the
 API directly.
 """
 import json
+from enum import Enum
 
 from commcare_export.env import CannotBind, CannotReplace, DictEnv
 from commcare_export.misc import unwrap
@@ -14,6 +15,16 @@ try:
     from urllib.parse import parse_qs, urlparse
 except ImportError:
     from urlparse import parse_qs, urlparse
+
+
+SUPPORTED_RESOURCES = {
+    'form', 'case', 'user', 'location', 'application', 'web-user'
+}
+
+
+class PaginationMode(Enum):
+    date_indexed = "date_indexed"
+    date_modified = "date_modified"
 
 
 class SimpleSinceParams(object):
@@ -30,24 +41,64 @@ class SimpleSinceParams(object):
         return params
 
 
-SUPPORTED_RESOURCES = {
-    'form', 'case', 'user', 'location', 'application', 'web-user'
-}
+class FormFilterSinceParams(object):
+    def __call__(self, since, until):
+        range_expression = {}
+        if since:
+            range_expression['gte'] = since.isoformat()
+
+        if until:
+            range_expression['lte'] = until.isoformat()
+
+        server_modified_missing = {"missing": {
+            "field": "server_modified_on", "null_value": True, "existence": True}
+        }
+        query = json.dumps({
+            'filter': {
+                "or": [
+                    {
+                        "and": [
+                            {
+                                "not": server_modified_missing
+                            },
+                            {
+                                "range": {
+                                    "server_modified_on": range_expression
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "and": [
+                            server_modified_missing,
+                            {
+                                "range": {
+                                    "received_on": range_expression
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }})
+
+        return {'_search': query}
 
 
 DATE_PARAMS = {
-    'indexed_on': SimpleSinceParams('indexed_on_start', 'indexed_on_end')
+    'indexed_on': SimpleSinceParams('indexed_on_start', 'indexed_on_end'),
+    'server_date_modified': SimpleSinceParams('server_date_modified_start', 'server_date_modified_end')
 }
 
 
-def get_paginator(resource, page_size=1000, pagination_mode='by_date_indexed'):
+def get_paginator(resource, page_size=1000, pagination_mode=PaginationMode.date_indexed):
     return {
-        'by_date_indexed': {
+        PaginationMode.date_indexed: {
             'form': DatePaginator('indexed_on', page_size),
             'case': DatePaginator('indexed_on', page_size),
         },
-        'by_date_modified': {
-
+        PaginationMode.date_modified: {
+            'form': DatePaginator(['server_modified_on', 'received_on'], page_size, params=FormFilterSinceParams()),
+            'case': DatePaginator('server_date_modified', page_size),
         }
     }[pagination_mode].get(resource, SimplePaginator(page_size))
 
@@ -58,7 +109,7 @@ class CommCareHqEnv(DictEnv):
     CommCareHq API.
     """
 
-    def __init__(self, commcare_hq_client, until=None, page_size=1000, pagination_mode='by_date_indexed'):
+    def __init__(self, commcare_hq_client, until=None, page_size=1000, pagination_mode=PaginationMode.date_indexed):
         self.commcare_hq_client = commcare_hq_client
         self.until = until
         self.page_size = page_size
