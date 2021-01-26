@@ -109,11 +109,10 @@ class CommCareHqEnv(DictEnv):
     CommCareHq API.
     """
 
-    def __init__(self, commcare_hq_client, until=None, page_size=1000, pagination_mode=PaginationMode.date_indexed):
+    def __init__(self, commcare_hq_client, until=None, page_size=1000):
         self.commcare_hq_client = commcare_hq_client
         self.until = until
         self.page_size = page_size
-        self.pagination_mode = pagination_mode
         super(CommCareHqEnv, self).__init__({
             'api_data' : self.api_data
         })
@@ -123,7 +122,7 @@ class CommCareHqEnv(DictEnv):
         if resource not in SUPPORTED_RESOURCES:
             raise ValueError('Unknown API resource "%s' % resource)
 
-        paginator = get_paginator(resource, self.page_size, self.pagination_mode)
+        paginator = get_paginator(resource, self.page_size, checkpoint_manager.pagination_mode)
         paginator.init(payload, include_referenced_items, self.until)
         initial_params = paginator.next_page_params_since(checkpoint_manager.since_param)
         return self.commcare_hq_client.iterate(

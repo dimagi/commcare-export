@@ -3,7 +3,7 @@ from itertools import *
 
 from jsonpath_rw import jsonpath
 
-from commcare_export.checkpoint import CheckpointManagerWithSince
+from commcare_export.checkpoint import CheckpointManagerWithDetails
 from commcare_export.minilinq import *
 from commcare_export.env import *
 from commcare_export.commcare_hq_client import MockCommCareHqClient
@@ -78,9 +78,9 @@ class TestCommCareMiniLinq(unittest.TestCase):
             ]
         })
 
-        env = BuiltInEnv() | CommCareHqEnv(client, pagination_mode=pagination_mode) | JsonPathEnv({}) # {'form': api_client.iterate('form')})
+        env = BuiltInEnv() | CommCareHqEnv(client) | JsonPathEnv({}) # {'form': api_client.iterate('form')})
 
-        checkpoint_manager = CheckpointManagerWithSince(None, None)
+        checkpoint_manager = CheckpointManagerWithDetails(None, None, pagination_mode)
         assert list(Apply(Reference('api_data'),
                           Literal('form'),
                           Literal(checkpoint_manager),
