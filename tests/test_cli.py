@@ -10,11 +10,13 @@ import pytest
 import sqlalchemy
 from mock import mock
 
-from commcare_export.checkpoint import CheckpointManager
+from commcare_export.checkpoint import CheckpointManager, session_scope, Checkpoint
 from commcare_export.cli import CLI_ARGS, EXIT_STATUS_ERROR, main_with_args
 from commcare_export.commcare_hq_client import MockCommCareHqClient, CommCareHqClient, _params_to_url
+from commcare_export.commcare_minilinq import PaginationMode
 from commcare_export.specs import TableSpec
 from commcare_export.writers import JValueTableWriter, SqlTableWriter
+from tests.utils import SqlWriterWithTearDown
 
 CLI_ARGS_BY_NAME = {
     arg.name: arg
@@ -287,12 +289,14 @@ class TestCli(unittest.TestCase):
                        get_expected_locations_results(True))
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope='function')
 def writer(pg_db_params):
-    return SqlTableWriter(pg_db_params['url'], poolclass=sqlalchemy.pool.NullPool)
+    writer = SqlWriterWithTearDown(pg_db_params['url'], poolclass=sqlalchemy.pool.NullPool)
+    yield writer
+    writer.tear_down()
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope='function')
 def checkpoint_manager(pg_db_params):
     cm = CheckpointManager(pg_db_params['url'], 'query', '123', 'test', 'hq', poolclass=sqlalchemy.pool.NullPool)
     cm.create_checkpoint_table()
@@ -321,6 +325,24 @@ def _pull_data(writer, checkpoint_manager, query, since, until, batch_size=10):
     checkpoint_patch = mock.patch('commcare_export.cli._get_checkpoint_manager', return_value=checkpoint_manager)
     with writer_patch, checkpoint_patch:
         main_with_args(args)
+
+
+def _check_data(writer, expected, table_name, columns):
+    actual = [
+        list(row) for row in
+        writer.engine.execute(f'SELECT {", ".join(columns)} FROM "{table_name}"')
+    ]
+
+    message = ''
+    if actual != expected:
+        message += 'Data not equal to expected:\n'
+        if len(actual) != len(expected):
+            message += '    {} rows compared to {} expected\n'.format(len(actual), len(expected))
+        message += 'Diff:\n'
+        for i, rows in enumerate(zip_longest(actual, expected)):
+            if rows[0] != rows[1]:
+                message += '{}: {} != {}\n'.format(i, rows[0], rows[1])
+        assert actual == expected, message
 
 
 @pytest.mark.dbtest
@@ -369,21 +391,7 @@ class TestCLIIntegrationTests(object):
         }
 
     def _check_data(self, writer, expected, table_name):
-        actual = [
-            list(row) for row in
-            writer.engine.execute("SELECT id, name, indexed_on FROM {}".format(table_name))
-        ]
-
-        message = ''
-        if actual != expected:
-            message += 'Data not equal to expected:\n'
-            if len(actual) != len(expected):
-                message += '    {} rows compared to {} expected\n'.format(len(actual), len(expected))
-            message += 'Diff:\n'
-            for i, rows in enumerate(zip_longest(actual, expected)):
-                if rows[0] != rows[1]:
-                    message += '{}: {} != {}\n'.format(i, rows[0], rows[1])
-            assert actual == expected, message
+        _check_data(writer, expected, table_name, ['id', 'name', 'indexed_on'])
 
     def _check_checkpoints(self, caplog, expected):
         # Depends on the logging in the CheckpointManager._set_checkpoint method
@@ -421,7 +429,7 @@ class MockCheckpointingClient(CommCareHqClient):
     to return mocked data.
 
     Note this client needs to be re-initialized after use."""
-    def __init__(self, mock_data):
+    def     __init__(self, mock_data):
         self.mock_data = {
             resource: {
                 _params_to_url(params): result
@@ -437,7 +445,11 @@ class MockCheckpointingClient(CommCareHqClient):
     def get(self, resource, params=None):
         mock_requests = self.mock_data[resource]
         key = _params_to_url(params)
-        objects = mock_requests.pop(key)
+        try:
+            objects = mock_requests.pop(key)
+        except KeyError:
+            print(mock_requests.keys())
+            raise
         if objects:
             return {'meta': {'limit': len(objects), 'next': bool(mock_requests),
                              'offset': 0, 'previous': None,
@@ -468,22 +480,28 @@ def get_conflicting_types_checkpoint_client():
     })
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope='function')
 def strict_writer(db_params):
-    return SqlTableWriter(db_params['url'], poolclass=sqlalchemy.pool.NullPool, strict_types=True)
+    writer = SqlWriterWithTearDown(db_params['url'], poolclass=sqlalchemy.pool.NullPool, strict_types=True)
+    yield writer
+    writer.tear_down()
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope='function')
 def all_db_checkpoint_manager(db_params):
     cm = CheckpointManager(db_params['url'], 'query', '123', 'test', 'hq', poolclass=sqlalchemy.pool.NullPool)
     cm.create_checkpoint_table()
-    return cm
+    yield cm
+    with session_scope(cm.Session) as session:
+        session.query(Checkpoint).delete(synchronize_session='fetch')
 
 
-def _pull_mock_data(writer, checkpoint_manager, api_client, query):
+def _pull_mock_data(writer, checkpoint_manager, api_client, query, start_over=None, since=None):
     args = make_args(
         query=query,
         output_format='sql',
+        start_over=start_over,
+        since=since
     )
 
     # set this so that it get's written to the checkpoints
@@ -543,10 +561,10 @@ DATA_TYPES_CLIENT = MockCommCareHqClient({
 
 @pytest.mark.dbtest
 class TestCLIWithDataTypes(object):
-    def test_cli_data_types_add_columns(self, strict_writer, all_db_checkpoint_manager, capfd):
-        _pull_mock_data(strict_writer, all_db_checkpoint_manager, CONFLICTING_TYPES_CLIENT, 'tests/014_ExportWithDataTypes.xlsx')
+    def test_cli_data_types_add_columns(self, writer, all_db_checkpoint_manager, capfd):
+        _pull_mock_data(writer, all_db_checkpoint_manager, CONFLICTING_TYPES_CLIENT, 'tests/014_ExportWithDataTypes.xlsx')
 
-        metadata = sqlalchemy.schema.MetaData(bind=strict_writer.engine)
+        metadata = sqlalchemy.schema.MetaData(bind=writer.engine)
         metadata.reflect()
 
         cols = metadata.tables['forms'].c
@@ -558,8 +576,100 @@ class TestCLIWithDataTypes(object):
 
         values = [
             list(row) for row in
-            strict_writer.engine.execute('SELECT * FROM forms')
+            writer.engine.execute('SELECT * FROM forms')
         ]
 
         assert values == [['1', None, None, None, None, None],
                           ['2', None, None, None, None, None]]
+
+
+def get_indexed_on_client(page):
+    p1 = MockCheckpointingClient({
+        'case': [
+            (
+                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on'},
+                [
+                    {'id': "doc 1", 'name': 'n1', 'indexed_on': '2012-04-23T05:13:01.000000Z'},
+                    {'id': "doc 2", 'name': 'n2', 'indexed_on': '2012-04-24T05:13:01.000000Z'}
+                ]
+            )
+        ]
+    })
+    p2 = MockCheckpointingClient({
+        'case': [
+            (
+                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on', 'indexed_on_start': '2012-04-24T05:13:01'},
+                [
+                    {'id': "doc 3", 'name': 'n3', 'indexed_on': '2012-04-25T05:13:01.000000Z'},
+                    {'id': "doc 4", 'name': 'n4', 'indexed_on': '2012-04-26T05:13:01.000000Z'}
+                ]
+            )
+        ]
+    })
+    return [p1, p2][page]
+
+
+@pytest.mark.dbtest
+class TestCLIPaginationMode(object):
+    def test_cli_pagination_fresh(self, writer, all_db_checkpoint_manager):
+        checkpoint_manager = all_db_checkpoint_manager.for_dataset("case", ["Case"])
+
+        _pull_mock_data(writer, all_db_checkpoint_manager, get_indexed_on_client(0), 'tests/013_ConflictingTypes.xlsx')
+        self._check_data(writer, [["doc 1"], ["doc 2"]], "Case")
+        self._check_checkpoint(checkpoint_manager, '2012-04-24T05:13:01', 'doc 2')
+
+        _pull_mock_data(writer, all_db_checkpoint_manager, get_indexed_on_client(1), 'tests/013_ConflictingTypes.xlsx')
+        self._check_data(writer, [["doc 1"], ["doc 2"], ["doc 3"], ["doc 4"]], "Case")
+        self._check_checkpoint(checkpoint_manager, '2012-04-26T05:13:01', 'doc 4')
+
+    def test_cli_pagination_legacy(self, writer, all_db_checkpoint_manager):
+        """Test that we continue with the same pagination mode as was already in use"""
+
+        checkpoint_manager = all_db_checkpoint_manager.for_dataset("case", ["Case"])
+        # simulate previous run with legacy pagination mode
+        checkpoint_manager.set_checkpoint('2012-04-24T05:13:01', PaginationMode.date_modified, is_final=True)
+
+        client = MockCheckpointingClient({
+            'case': [
+                (
+                    {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'server_date_modified', 'server_date_modified_start': '2012-04-24T05:13:01'},
+                    [
+                        {'id': "doc 1", 'name': 'n1', 'server_date_modified': '2012-04-25T05:13:01.000000Z'},
+                        {'id': "doc 2", 'name': 'n2', 'server_date_modified': '2012-04-26T05:13:01.000000Z'}
+                    ]
+                )
+            ]
+        })
+
+        _pull_mock_data(writer, all_db_checkpoint_manager, client, 'tests/013_ConflictingTypes.xlsx')
+        self._check_data(writer, [["doc 1"], ["doc 2"]], "Case")
+        self._check_checkpoint(checkpoint_manager, '2012-04-26T05:13:01', 'doc 2', PaginationMode.date_modified.name)
+
+    def test_cli_pagination_start_over(self, writer, all_db_checkpoint_manager):
+        """Test that we switch to the new pagination mode when using 'start_over'"""
+        checkpoint_manager = all_db_checkpoint_manager.for_dataset("case", ["Case"])
+        # simulate previous run with legacy pagination mode
+        checkpoint_manager.set_checkpoint('2012-04-24T05:13:01', PaginationMode.date_modified, is_final=True)
+
+        _pull_mock_data(writer, all_db_checkpoint_manager, get_indexed_on_client(0), 'tests/013_ConflictingTypes.xlsx', start_over=True)
+        self._check_data(writer, [["doc 1"], ["doc 2"]], "Case")
+        self._check_checkpoint(checkpoint_manager, '2012-04-24T05:13:01', 'doc 2')
+
+    def test_cli_pagination_since(self, writer, all_db_checkpoint_manager):
+        """Test that we use to the new pagination mode when using 'since'"""
+        checkpoint_manager = all_db_checkpoint_manager.for_dataset("case", ["Case"])
+        # simulate previous run with legacy pagination mode
+        checkpoint_manager.set_checkpoint('2012-04-28T05:13:01', PaginationMode.date_modified, is_final=True)
+
+        _pull_mock_data(writer, all_db_checkpoint_manager, get_indexed_on_client(1), 'tests/013_ConflictingTypes.xlsx', since='2012-04-24T05:13:01')
+        self._check_data(writer, [["doc 3"], ["doc 4"]], "Case")
+        self._check_checkpoint(checkpoint_manager, '2012-04-26T05:13:01', 'doc 4')
+
+    def _check_data(self, writer, expected, table_name):
+        _check_data(writer, expected, table_name, ['id'])
+
+    def _check_checkpoint(self, checkpoint_manager, since_param, doc_id, pagination_mode=PaginationMode.date_indexed.name):
+        checkpoint = checkpoint_manager.get_last_checkpoint()
+        assert checkpoint.pagination_mode == pagination_mode
+        assert checkpoint.since_param == since_param
+        assert checkpoint.last_doc_id == doc_id
