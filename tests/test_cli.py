@@ -429,7 +429,7 @@ class MockCheckpointingClient(CommCareHqClient):
     to return mocked data.
 
     Note this client needs to be re-initialized after use."""
-    def     __init__(self, mock_data):
+    def __init__(self, mock_data):
         self.mock_data = {
             resource: {
                 _params_to_url(params): result
