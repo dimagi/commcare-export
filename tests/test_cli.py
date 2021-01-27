@@ -317,8 +317,7 @@ def _pull_data(writer, checkpoint_manager, query, since, until, batch_size=10):
         until=until,
     )
 
-    assert not (checkpoint_manager and since), "'checkpoint_manager' must be None when using 'since'"
-    # set this so that it get's written to the checkpoints
+    # set this so that it gets written to the checkpoints
     checkpoint_manager.query = query
 
     # have to mock these to override the pool class otherwise they hold the db connection open
@@ -504,7 +503,7 @@ def _pull_mock_data(writer, checkpoint_manager, api_client, query, start_over=No
     assert not (checkpoint_manager and since), "'checkpoint_manager' must be None when using 'since'"
 
     if checkpoint_manager:
-        # set this so that it get's written to the checkpoints
+        # set this so that it gets written to the checkpoints
         checkpoint_manager.query = query
 
     # have to mock these to override the pool class otherwise they hold the db connection open
