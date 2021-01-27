@@ -446,11 +446,7 @@ class MockCheckpointingClient(CommCareHqClient):
     def get(self, resource, params=None):
         mock_requests = self.mock_data[resource]
         key = _params_to_url(params)
-        try:
-            objects = mock_requests.pop(key)
-        except KeyError:
-            print(mock_requests.keys())
-            raise
+        objects = mock_requests.pop(key)
         if objects:
             return {'meta': {'limit': len(objects), 'next': bool(mock_requests),
                              'offset': 0, 'previous': None,
