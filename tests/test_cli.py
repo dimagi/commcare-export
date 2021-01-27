@@ -317,6 +317,7 @@ def _pull_data(writer, checkpoint_manager, query, since, until, batch_size=10):
         until=until,
     )
 
+    assert not (checkpoint_manager and since), "'checkpoint_manager' must be None when using 'since'"
     # set this so that it get's written to the checkpoints
     checkpoint_manager.query = query
 
@@ -504,8 +505,11 @@ def _pull_mock_data(writer, checkpoint_manager, api_client, query, start_over=No
         since=since
     )
 
-    # set this so that it get's written to the checkpoints
-    checkpoint_manager.query = query
+    assert not (checkpoint_manager and since), "'checkpoint_manager' must be None when using 'since'"
+
+    if checkpoint_manager:
+        # set this so that it get's written to the checkpoints
+        checkpoint_manager.query = query
 
     # have to mock these to override the pool class otherwise they hold the db connection open
     api_client_patch = mock.patch('commcare_export.cli._get_api_client',
@@ -661,9 +665,9 @@ class TestCLIPaginationMode(object):
         # simulate previous run with legacy pagination mode
         checkpoint_manager.set_checkpoint('2012-04-28T05:13:01', PaginationMode.date_modified, is_final=True)
 
-        _pull_mock_data(writer, all_db_checkpoint_manager, get_indexed_on_client(1), 'tests/013_ConflictingTypes.xlsx', since='2012-04-24T05:13:01')
+        # this will fail if it doesn't use the 'date_indexed' pagination mode due to how the mock client is setup
+        _pull_mock_data(writer, None, get_indexed_on_client(1), 'tests/013_ConflictingTypes.xlsx', since='2012-04-24T05:13:01')
         self._check_data(writer, [["doc 3"], ["doc 4"]], "Case")
-        self._check_checkpoint(checkpoint_manager, '2012-04-26T05:13:01', 'doc 4')
 
     def _check_data(self, writer, expected, table_name):
         _check_data(writer, expected, table_name, ['id'])
