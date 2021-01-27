@@ -378,4 +378,13 @@ class CheckpointManagerProvider(object):
             "Creating checkpoint manager for tables: %s, since: %s, pagination_mode: %s",
             ', '.join(table_names), since, pagination_mode.name
         )
+        if pagination_mode != PaginationMode.date_indexed:
+            logger.warning(
+                "\n====================================\n"
+                "This export is using a deprecated pagination mode which will be removed in future versions.\n"
+                "To switch to the new mode you must re-sync your data using `--start-over`.\n"
+                "For more details see: %s"
+                "\n====================================\n",
+                "https://wiki.commcarehq.org/display/commcarepublic/CommCare+Export+Tool+Release+Notes"
+            )
         return CheckpointManagerWithDetails(manager, since, pagination_mode)
