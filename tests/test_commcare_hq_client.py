@@ -10,9 +10,10 @@ import requests
 
 import pytest
 
-from commcare_export.checkpoint import CheckpointManagerWithSince
+from commcare_export.checkpoint import CheckpointManagerWithDetails
 from commcare_export.commcare_hq_client import CommCareHqClient, ResourceRepeatException
-from commcare_export.commcare_minilinq import SimplePaginator, DatePaginator, resource_since_params, get_paginator
+from commcare_export.commcare_minilinq import SimplePaginator, DatePaginator, get_paginator, \
+    DATE_PARAMS, PaginationMode
 
 
 class FakeSession(object):
@@ -43,10 +44,10 @@ class FakeDateCaseSession(FakeSession):
         if not params:
             return {
                 'meta': {'next': '?offset=1', 'offset': 0, 'limit': 1, 'total_count': 2},
-                'objects': [{'id': 1, 'foo': 1, 'server_date_modified': '2017-01-01T15:36:22Z'}]
+                'objects': [{'id': 1, 'foo': 1, 'indexed_on': '2017-01-01T15:36:22Z'}]
             }
         else:
-            since_query_param =resource_since_params['case'].start_param
+            since_query_param = DATE_PARAMS['indexed_on'].start_param
             assert params[since_query_param] == '2017-01-01T15:36:22'
             # include ID=1 again to make sure it gets filtered out
             return {
@@ -57,22 +58,22 @@ class FakeDateCaseSession(FakeSession):
 
 class FakeRepeatedDateCaseSession(FakeSession):
     # Model the case where there are as many or more cases with the same
-    # server_date_modified than the batch size (2), so the client requests
+    # indexed_on than the batch size (2), so the client requests
     # the same set of cases in a loop.
     def _get_results(self, params):
         if not params:
             return {
                 'meta': {'next': '?offset=1', 'offset': 0, 'limit': 2, 'total_count': 4},
-                'objects': [{'id': 1, 'foo': 1, 'server_date_modified': '2017-01-01T15:36:22Z'},
-                            {'id': 2, 'foo': 2, 'server_date_modified': '2017-01-01T15:36:22Z'}]
+                'objects': [{'id': 1, 'foo': 1, 'indexed_on': '2017-01-01T15:36:22Z'},
+                            {'id': 2, 'foo': 2, 'indexed_on': '2017-01-01T15:36:22Z'}]
             }
         else:
-            since_query_param =resource_since_params['case'].start_param
+            since_query_param = DATE_PARAMS['indexed_on'].start_param
             assert params[since_query_param] == '2017-01-01T15:36:22'
             return {
                 'meta': { 'next': '?offset=1', 'offset': 0, 'limit': 2, 'total_count': 4},
-                'objects': [{'id': 1, 'foo': 1, 'server_date_modified': '2017-01-01T15:36:22Z'},
-                            {'id': 2, 'foo': 2, 'server_date_modified': '2017-01-01T15:36:22Z'}]
+                'objects': [{'id': 1, 'foo': 1, 'indexed_on': '2017-01-01T15:36:22Z'},
+                            {'id': 2, 'foo': 2, 'indexed_on': '2017-01-01T15:36:22Z'}]
             }
 
 
@@ -83,26 +84,24 @@ class FakeDateFormSession(FakeSession):
         if not params:
             return {
                 'meta': {'next': '?offset=1', 'offset': 0, 'limit': 1, 'total_count': 3},
-                'objects': [{'id': 1, 'foo': 1, 'received_on': '{}Z'.format(since1)}]
+                'objects': [{'id': 1, 'foo': 1, 'indexed_on': '{}Z'.format(since1)}]
             }
         else:
-            search = json.loads(params['_search'])
-            _or = search['filter']['or']
-            received_on = _or[1]['and'][1]['range']['received_on']['gte']
-            modified_on = _or[0]['and'][1]['range']['server_modified_on']['gte']
-            if received_on == modified_on == since1:
+            since_query_param = DATE_PARAMS['indexed_on'].start_param
+            indexed_on = params[since_query_param]
+            if indexed_on == since1:
                 # include ID=1 again to make sure it gets filtered out
                 return {
                     'meta': { 'next': '?offset=2', 'offset': 0, 'limit': 1, 'total_count': 3 },
-                    'objects': [{'id': 1, 'foo': 1}, {'id': 2, 'foo': 2, 'server_modified_on': '{}Z'.format(since2)}]
+                    'objects': [{'id': 1, 'foo': 1}, {'id': 2, 'foo': 2, 'indexed_on': '{}Z'.format(since2)}]
                 }
-            elif received_on == modified_on == since2:
+            elif indexed_on == since2:
                 return {
                     'meta': { 'next': None, 'offset': 0, 'limit': 1, 'total_count': 3 },
                     'objects': [{'id': 3, 'foo': 3}]
                 }
             else:
-                raise Exception(modified_on)
+                raise Exception(indexed_on)
 
 
 class TestCommCareHqClient(unittest.TestCase):
@@ -113,7 +112,7 @@ class TestCommCareHqClient(unittest.TestCase):
 
         # Iteration should do two "gets" because the first will have something in the "next" metadata field
         paginator.init()
-        checkpoint_manager = CheckpointManagerWithSince(None, None)
+        checkpoint_manager = CheckpointManagerWithDetails(None, None, PaginationMode.date_indexed)
         results = list(client.iterate('/fake/uri', paginator, checkpoint_manager=checkpoint_manager))
         self.assertEqual(len(results), expected_count)
         self.assertEqual([result['foo'] for result in results], expected_vals)
@@ -138,26 +137,27 @@ class TestDatePaginator(unittest.TestCase):
         pass
 
     def test_empty_batch(self):
-        self.assertIsNone(DatePaginator('fake', 'since').next_page_params_from_batch({'objects': []}))
+        self.assertIsNone(DatePaginator('since', params=SimplePaginator()).next_page_params_from_batch({'objects': []}))
 
     def test_bad_date(self):
-        self.assertIsNone(DatePaginator('fake', 'since').next_page_params_from_batch({'objects': [{
+        self.assertIsNone(DatePaginator('since', params=SimplePaginator()).next_page_params_from_batch({'objects': [{
             'since': 'not a date'
         }]}))
 
     def test_multi_field_sort(self):
         d1 = '2017-01-01T15:36:22Z'
         d2 = '2017-01-01T18:36:22Z'
-        self.assertEqual(DatePaginator('fake', ['s1', 's2']).get_since_date({'objects': [{
+        paginator = DatePaginator(['s1', 's2'], params=SimplePaginator())
+        self.assertEqual(paginator.get_since_date({'objects': [{
             's1': d1,
             's2': d2
         }]}), datetime.strptime(d1, '%Y-%m-%dT%H:%M:%SZ'))
 
-        self.assertEqual(DatePaginator('fake', ['s1', 's2']).get_since_date({'objects': [{
+        self.assertEqual(paginator.get_since_date({'objects': [{
             's2': d2
         }]}), datetime.strptime(d2, '%Y-%m-%dT%H:%M:%SZ'))
 
-        self.assertEqual(DatePaginator('fake', ['s1', 's2']).get_since_date({'objects': [{
+        self.assertEqual(paginator.get_since_date({'objects': [{
             's1': None,
             's2': d2
         }]}), datetime.strptime(d2, '%Y-%m-%dT%H:%M:%SZ'))
