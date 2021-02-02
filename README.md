@@ -503,7 +503,7 @@ Ensure that the archive (`dist/commcare-export-X.YY.0.tar.gz`) has the correct v
 
 ```
 $ pip install twine
-$ twine upload dist/commcare-export-X.YY.0.tar.gz
+$ twine upload -u dimagi dist/commcare-export-X.YY.0.tar.gz
 ```
 
 4\. Verify upload
