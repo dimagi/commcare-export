@@ -290,7 +290,7 @@ class TestSQLWriters(object):
             assert dict(row) == expected[id]
 
 
-    def test_json_type(self, strict_writer):
+    def test_json_type(self, writer):
         complex_object = {
             'poke1': {
                 'name': 'snorlax',
@@ -320,8 +320,8 @@ class TestSQLWriters(object):
                 ],
             },
         }
-        with strict_writer:
-            strict_writer.write_table(TableSpec(**{
+        with writer:
+            writer.write_table(TableSpec(**{
                 'name': 'foo_with_json',
                 'headings': ['id', 'json_col'],
                 'rows': [
@@ -336,8 +336,8 @@ class TestSQLWriters(object):
             }))
 
         # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
-        with strict_writer:
-            result = dict([(row['id'], row) for row in strict_writer.connection.execute(
+        with writer:
+            result = dict([(row['id'], row) for row in writer.connection.execute(
                 'SELECT id, json_col FROM foo_with_json'
             )])
 
