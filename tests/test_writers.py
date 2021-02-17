@@ -321,6 +321,8 @@ class TestSQLWriters(object):
             },
         }
         with writer:
+            if not writer.is_postgres:
+                return
             writer.write_table(TableSpec(**{
                 'name': 'foo_with_json',
                 'headings': ['id', 'json_col'],
