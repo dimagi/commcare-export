@@ -417,6 +417,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
         # add dialect specific types
         try:
+            compatibility[sqlalchemy.JSON] = (sqlalchemy.dialects.postgresql.json.JSON,)
+        except AttributeError:
+            pass
+        try:
             compatibility[sqlalchemy.Boolean] += (sqlalchemy.dialects.mssql.base.BIT,)
         except AttributeError:
             pass
