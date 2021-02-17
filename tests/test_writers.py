@@ -320,7 +320,7 @@ class TestSQLWriters(object):
 
     def test_mssql_nvarchar_length_upsize(self, writer):
         with writer:
-            if 'odbc' not in writer.connection.engine.driver:
+            if not writer.is_mssql:
                 return
 
             # Initialize a table with columns where we expect the "some_data"
@@ -356,7 +356,7 @@ class TestSQLWriters(object):
 
     def test_mssql_nvarchar_length_downsize(self, writer):
         with writer:
-            if 'odbc' not in writer.connection.engine.driver:
+            if writer.is_mssql:
                 return
 
             # Initialize a table with NVARCHAR(max), and make sure smaller data
