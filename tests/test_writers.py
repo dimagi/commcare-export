@@ -290,6 +290,64 @@ class TestSQLWriters(object):
             assert dict(row) == expected[id]
 
 
+    def test_json_type(self, writer):
+        complex_object = {
+            'poke1': {
+                'name': 'snorlax',
+                'color': 'blue',
+                'attributes': {
+                    'strength': 10,
+                    'endurance': 10,
+                    'speed': 4,
+                },
+                'friends': [
+                    'pikachu',
+                    'charmander',
+                ],
+            },
+            'poke2': {
+                'name': 'pikachu',
+                'color': 'yellow',
+                'attributes': {
+                    'strength': 2,
+                    'endurance': 2,
+                    'speed': 8,
+                    'cuteness': 10,
+                },
+                'friends': [
+                    'snorlax',
+                    'charmander',
+                ],
+            },
+        }
+        with writer:
+            if not writer.is_postgres:
+                return
+            writer.write_table(TableSpec(**{
+                'name': 'foo_with_json',
+                'headings': ['id', 'json_col'],
+                'rows': [
+                    ['simple', {'k1': 'v1', 'k2': 'v2'}],
+                    ['with_lists', {'l1': ['i1', 'i2']}],
+                    ['complex', complex_object],
+                ],
+                'data_types': [
+                    'text',
+                    'json',
+                ]
+            }))
+
+        # We can use raw SQL instead of SqlAlchemy expressions because we built the DB above
+        with writer:
+            result = dict([(row['id'], row) for row in writer.connection.execute(
+                'SELECT id, json_col FROM foo_with_json'
+            )])
+
+        assert len(result) == 3
+        assert dict(result['simple']) == {'id': 'simple', 'json_col': {'k1': 'v1', 'k2': 'v2'}}
+        assert dict(result['with_lists']) == {'id': 'with_lists', 'json_col': {'l1': ['i1', 'i2']}}
+        assert dict(result['complex']) == {'id': 'complex', 'json_col': complex_object}
+
     def test_explicit_types(self, strict_writer):
         with strict_writer:
             strict_writer.write_table(TableSpec(**{
