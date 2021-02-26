@@ -385,6 +385,6 @@ class CheckpointManagerProvider(object):
                 "To switch to the new mode you must re-sync your data using `--start-over`.\n"
                 "For more details see: %s"
                 "\n====================================\n",
-                "https://wiki.commcarehq.org/display/commcarepublic/CommCare+Export+Tool+Release+Notes"
+                "https://github.com/dimagi/commcare-export/releases/tag/1.5.0"
             )
         return CheckpointManagerWithDetails(manager, since, pagination_mode)
