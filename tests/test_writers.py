@@ -439,6 +439,16 @@ class TestSQLWriters(object):
             result = self._get_column_lengths(writer.connection, 'mssql_nvarchar_length_downsize')
             assert result['some_data'] == ('some_data', 'nvarchar', -1)
 
+    def test_big_lump_of_poo(self, writer):
+        with writer:
+            writer.write_table(TableSpec(**{
+                'name': 'foo_with_emoji',
+                'headings': ['id', 'fun_to_be_had'],
+                'rows': [
+                    ['A steaming poo', '💩'],
+                    ['2020', '😷'],
+                ],
+            }))
 
     def _get_column_lengths(self, connection, table_name):
         return {
