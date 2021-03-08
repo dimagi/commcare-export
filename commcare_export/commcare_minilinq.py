@@ -18,7 +18,7 @@ except ImportError:
 
 
 SUPPORTED_RESOURCES = {
-    'form', 'case', 'user', 'location', 'application', 'web-user'
+    'form', 'case', 'user', 'location', 'application', 'web-user', 'messaging-event'
 }
 
 
