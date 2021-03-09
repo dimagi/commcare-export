@@ -18,7 +18,7 @@ except ImportError:
 
 
 SUPPORTED_RESOURCES = {
-    'form', 'case', 'user', 'location', 'application', 'web-user'
+    'form', 'case', 'user', 'location', 'application', 'web-user', 'messaging-event'
 }
 
 
@@ -86,7 +86,8 @@ class FormFilterSinceParams(object):
 
 DATE_PARAMS = {
     'indexed_on': SimpleSinceParams('indexed_on_start', 'indexed_on_end'),
-    'server_date_modified': SimpleSinceParams('server_date_modified_start', 'server_date_modified_end')
+    'server_date_modified': SimpleSinceParams('server_date_modified_start', 'server_date_modified_end'),
+    'date': SimpleSinceParams('date__gte', 'date__lt'),  # used by messaging-events
 }
 
 
@@ -95,10 +96,12 @@ def get_paginator(resource, page_size=1000, pagination_mode=PaginationMode.date_
         PaginationMode.date_indexed: {
             'form': DatePaginator('indexed_on', page_size),
             'case': DatePaginator('indexed_on', page_size),
+            'messaging-event': DatePaginator('date', page_size),
         },
         PaginationMode.date_modified: {
             'form': DatePaginator(['server_modified_on', 'received_on'], page_size, params=FormFilterSinceParams()),
             'case': DatePaginator('server_date_modified', page_size),
+            'messaging-event': DatePaginator('date', page_size),
         }
     }[pagination_mode].get(resource, SimplePaginator(page_size))
 
