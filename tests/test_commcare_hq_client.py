@@ -77,6 +77,31 @@ class FakeRepeatedDateCaseSession(FakeSession):
             }
 
 
+class FakMessageLogSession(FakeSession):
+    # for message logs, the last batch returns the same results in a loop, because
+    # we use a non-counting paginator in tastypie that can't know if it's "finished"
+    # We will gracefully treat this as success under the conditions where:
+    #  - total_count is absent
+    #  - the number of returned rows is fewer than the limit
+    #  - the contents of the batch are the same
+    def _get_results(self, params):
+        obj_1 = {'id': 1, 'foo': 1, 'date': '2017-01-01T15:36:22Z'}
+        obj_2 = {'id': 2, 'foo': 2, 'date': '2017-01-01T15:37:22Z'}
+        if not params:
+            return {
+                'meta': {'next': '?offset=2', 'offset': 0, 'limit': 2, 'total_count': None},
+                'objects': [obj_1, obj_2]
+            }
+        else:
+            since_query_param = DATE_PARAMS['date'].start_param
+            print(params)
+            assert params[since_query_param] == '2017-01-01T15:37:22'
+            return {
+                'meta': { 'next': '?offset=1', 'offset': 0, 'limit': 2, 'total_count': None},
+                'objects': [obj_2]
+            }
+
+
 class FakeDateFormSession(FakeSession):
     def _get_results(self, params):
         since1 = '2017-01-01T15:36:22'
@@ -128,6 +153,9 @@ class TestCommCareHqClient(unittest.TestCase):
         with pytest.raises(ResourceRepeatException,
                            match="Requested resource '/fake/uri' 10 times with same parameters"):
             self._test_iterate(FakeRepeatedDateCaseSession(), get_paginator('case', 2), 2, [1, 2])
+
+    def test_message_log(self):
+        self._test_iterate(FakMessageLogSession(), get_paginator('messaging-event', 2), 2, [1, 2])
 
 
 class TestDatePaginator(unittest.TestCase):
