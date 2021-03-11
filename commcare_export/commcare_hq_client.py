@@ -146,13 +146,14 @@ class CommCareHqClient(object):
 
                 fetched += len(batch['objects'])
                 logger.debug('Received %s of %s', fetched, total_count)
-                
                 if not batch['objects']:
                     more_to_fetch = False
                 else:
+                    got_new_data = False
                     for obj in batch['objects']:
                         if obj['id'] not in last_batch_ids:
                             yield obj
+                            got_new_data = True
 
                     if batch['meta']['next']:
                         last_batch_ids = {obj['id'] for obj in batch['objects']}
@@ -160,6 +161,15 @@ class CommCareHqClient(object):
                         if not params:
                             more_to_fetch = False
                     else:
+                        more_to_fetch = False
+
+                    limit = batch['meta'].get('limit')
+                    repeated_last_page_of_non_counting_resource = (
+                        not got_new_data
+                        and total_count == 'unknown'
+                        and (limit and len(batch['objects']) < limit)
+                    )
+                    if more_to_fetch and repeated_last_page_of_non_counting_resource:
                         more_to_fetch = False
 
                     self.checkpoint(checkpoint_manager, paginator, batch, not more_to_fetch)
