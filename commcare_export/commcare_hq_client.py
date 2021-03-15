@@ -165,13 +165,13 @@ class CommCareHqClient(object):
                         more_to_fetch = False
 
                     limit = batch['meta'].get('limit')
-                    repeated_last_page_of_non_counting_resource = (
-                        not got_new_data
-                        and total_count == UNKNOWN_COUNT
-                        and (limit and len(batch['objects']) < limit)
-                    )
-                    if more_to_fetch and repeated_last_page_of_non_counting_resource:
-                        more_to_fetch = False
+                    if more_to_fetch:
+                        repeated_last_page_of_non_counting_resource = (
+                            not got_new_data
+                            and total_count == UNKNOWN_COUNT
+                            and (limit and len(batch['objects']) < limit)
+                        )
+                        more_to_fetch = not repeated_last_page_of_non_counting_resource
 
                     self.checkpoint(checkpoint_manager, paginator, batch, not more_to_fetch)
                 
