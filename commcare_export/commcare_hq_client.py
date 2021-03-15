@@ -121,6 +121,7 @@ class CommCareHqClient(object):
         Assumes the endpoint is a list endpoint, and iterates over it
         making a lot of assumptions that it is like a tastypie endpoint.
         """
+        UNKNOWN_COUNT = 'unknown'
         params = dict(params or {})
         def iterate_resource(resource=resource, params=params):
             more_to_fetch = True
@@ -140,19 +141,20 @@ class CommCareHqClient(object):
 
                 batch = self.get(resource, params)
                 last_params = copy.copy(params)
-                if not total_count or total_count == 'unknown' or fetched >= total_count:
-                    total_count = int(batch['meta']['total_count']) if batch['meta']['total_count'] else 'unknown'
+                if not total_count or total_count == UNKNOWN_COUNT or fetched >= total_count:
+                    total_count = int(batch['meta']['total_count']) if batch['meta']['total_count'] else UNKNOWN_COUNT
                     fetched = 0
 
                 fetched += len(batch['objects'])
                 logger.debug('Received %s of %s', fetched, total_count)
-                
                 if not batch['objects']:
                     more_to_fetch = False
                 else:
+                    got_new_data = False
                     for obj in batch['objects']:
                         if obj['id'] not in last_batch_ids:
                             yield obj
+                            got_new_data = True
 
                     if batch['meta']['next']:
                         last_batch_ids = {obj['id'] for obj in batch['objects']}
@@ -161,6 +163,15 @@ class CommCareHqClient(object):
                             more_to_fetch = False
                     else:
                         more_to_fetch = False
+
+                    limit = batch['meta'].get('limit')
+                    if more_to_fetch:
+                        repeated_last_page_of_non_counting_resource = (
+                            not got_new_data
+                            and total_count == UNKNOWN_COUNT
+                            and (limit and len(batch['objects']) < limit)
+                        )
+                        more_to_fetch = not repeated_last_page_of_non_counting_resource
 
                     self.checkpoint(checkpoint_manager, paginator, batch, not more_to_fetch)
                 
