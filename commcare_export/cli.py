@@ -259,7 +259,7 @@ def evaluate_query(env, query):
             force_lazy_result(lazy_result)
             return 0
         except requests.exceptions.RequestException as e:
-            if e.response.status_code == 401:
+            if e.response and e.response.status_code == 401:
                 print("\nAuthentication failed. Please check your credentials.", file=sys.stderr)
                 return EXIT_STATUS_ERROR
             else:

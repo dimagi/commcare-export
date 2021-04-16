@@ -210,9 +210,9 @@ class JValueTableWriter(TableWriter):
         else:
             assert self.tables[table.name].headings == list(table.headings)
 
-        self.tables[table.name].rows.extend(
+        self.tables[table.name].rows = list(self.tables[table.name].rows) + [
             [to_jvalue(v) for v in row] for row in table.rows
-        )
+        ]
 
 
 class StreamingMarkdownTableWriter(TableWriter):
@@ -378,7 +378,13 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 else:
                     return sqlalchemy.UnicodeText(collation=self.collation)
             elif self.is_mssql:
-                return sqlalchemy.NVARCHAR(collation=self.collation)
+                # MSSQL (pre 2016) doesn't allow indices on columns longer than 900 bytes
+                # - https://docs.microsoft.com/en-us/sql/t-sql/statements/create-index-transact-sql
+                # If any of our data is bigger than this, then set the column to NVARCHAR(max)
+                # `length` here is the size in bytes - https://docs.sqlalchemy.org/en/13/core/type_basics.html#sqlalchemy.types.String.params.length
+                length_in_bytes = len(val.encode('utf-8'))
+                column_length_in_bytes = None if length_in_bytes > 900 else 900
+                return sqlalchemy.NVARCHAR(length=column_length_in_bytes, collation=self.collation)
             if self.is_oracle:
                 return sqlalchemy.Unicode(4000, collation=self.collation)
             else:
@@ -413,6 +419,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
         }
 
         # add dialect specific types
+        try:
+            compatibility[sqlalchemy.JSON] = (sqlalchemy.dialects.postgresql.json.JSON,)
+        except AttributeError:
+            pass
         try:
             compatibility[sqlalchemy.Boolean] += (sqlalchemy.dialects.mssql.base.BIT,)
         except AttributeError:
