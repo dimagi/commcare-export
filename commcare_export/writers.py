@@ -262,7 +262,7 @@ class SqlMixin(object):
 
     def __init__(self, db_url, poolclass=None, engine=None):
         self.db_url = db_url
-        self.collation = 'utf8_bin' if 'mysql' in db_url else None
+        self.collation = 'utf8mb4_unicode_ci' if 'mysql' in db_url else None
         self.engine = engine or sqlalchemy.create_engine(db_url, poolclass=poolclass)
 
     def __enter__(self):

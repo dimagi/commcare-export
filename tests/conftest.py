@@ -66,7 +66,7 @@ mssql_base = os.environ.get('MSSQL_URL', 'mssql+pyodbc://SA:Password@123@localho
         'admin_db': 'postgres'
     }, marks=pytest.mark.postgres),
     pytest.param({
-        'url': '{}%s?charset=utf8'.format(mysql_base),
+        'url': '{}%s?charset=utf8mb4'.format(mysql_base),
     }, marks=pytest.mark.mysql),
     pytest.param({
         'url': '{}%s?driver=ODBC+Driver+17+for+SQL+Server'.format(mssql_base),
