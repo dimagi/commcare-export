@@ -11,7 +11,7 @@ addons:
       - unixodbc-dev
 env:
   global:
-    - MSSQL_SA_PASSWORD=Password@123
+    - MSSQL_SA_PASSWORD=Password-123
     # HQ_USERNAME and HQ_API_KEY
     - secure: etv02uWtyy5P4DfyuHjFm5RDFc6WBHLsnIMC75VjDk8kxDgwV/lDbPYMh/hzfPHyskgA1EQbc8IfHlbZWFVV8jOTy+wvrVir/mw95AEyNyAL/TTSWvYfTvdCsxOSbY6vcGlJNfy6rc+y0h6QyuIknY0OhU8sTaRcQnvbFPnOz28=
     - secure: aLj1bKtUF2CnAwG+yjiAjo39cKi9WHaonIwqsuhOx4McsD/xSz4QHv/6/XhXZ5KxKyxw1+PBl/mWo6gyrT5iHDRBPk5iJXqZAgQFS2ukZSv/tUBGL7bWzoO9YfoLuWllA33DCr3PiXAhkH53dTcor16UN9wXeCprBBSGjhpAxRQ=
