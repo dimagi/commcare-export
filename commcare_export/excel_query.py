@@ -380,7 +380,11 @@ def parse_workbook(workbook, column_enforcer=None):
         try:
             sheet_parts = parse_sheet(workbook[sheet], mappings, column_enforcer)
         except Exception as e:
-            logger.warning('Ignoring sheet "{}": {}'.format(sheet, str(e)))
+            msg = 'Ignoring sheet "{}": {}'.format(sheet, str(e))
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.exception(msg)
+            else:
+                logger.warning(msg)
             continue
 
         parsed_sheets.append(sheet_parts)
