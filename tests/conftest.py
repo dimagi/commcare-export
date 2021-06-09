@@ -57,7 +57,7 @@ def _db_params(request, db_name):
 
 postgres_base = os.environ.get('POSTGRES_URL', 'postgresql://postgres@localhost/')
 mysql_base = os.environ.get('MYSQL_URL', 'mysql+pymysql://travis@/')
-mssql_base = os.environ.get('MSSQL_URL', 'mssql+pyodbc://SA:Password@123@localhost/')
+mssql_base = os.environ.get('MSSQL_URL', 'mssql+pyodbc://SA:Password-123@localhost/')
 
 
 @pytest.fixture(scope="class", params=[
