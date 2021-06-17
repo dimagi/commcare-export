@@ -209,6 +209,12 @@ def _get_writer(output_format, output, strict_types):
     elif output_format == 'sql':
         # Output should be a connection URL
         # Writer had bizarre issues so we use a full connection instead of passing in a URL or engine
+        if output.startswith('mysql'):
+            charset_split = output.split('charset=')
+            if len(charset_split) > 1 and charset_split[1] != 'utf8mb4':
+                raise Exception(f"The charset '{charset_split[1]}' might cause problems with the export. "
+                                f"It is recommended that you use 'utf8mb4' instead.")
+
         return writers.SqlTableWriter(output, strict_types)
     else:
         raise Exception("Unknown output format: {}".format(output_format))
