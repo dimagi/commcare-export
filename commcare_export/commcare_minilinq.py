@@ -87,7 +87,7 @@ class FormFilterSinceParams(object):
 DATE_PARAMS = {
     'indexed_on': SimpleSinceParams('indexed_on_start', 'indexed_on_end'),
     'server_date_modified': SimpleSinceParams('server_date_modified_start', 'server_date_modified_end'),
-    'date': SimpleSinceParams('date__gte', 'date__lt'),  # used by messaging-events
+    'date': SimpleSinceParams('date.gte', 'date.lt'),  # used by messaging-events
 }
 
 
