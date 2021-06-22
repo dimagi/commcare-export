@@ -87,18 +87,24 @@ class FakMessageLogSession(FakeSession):
     def _get_results(self, params):
         obj_1 = {'id': 1, 'foo': 1, 'date': '2017-01-01T15:36:22Z'}
         obj_2 = {'id': 2, 'foo': 2, 'date': '2017-01-01T15:37:22Z'}
+        obj_3 = {'id': 3, 'foo': 3, 'date': '2017-01-01T15:38:22Z'}
         if not params:
             return {
-                'meta': {'next': '?offset=2', 'offset': 0, 'limit': 2},
+                'meta': {'next': '?cursor=xyz', 'limit': 2},
                 'objects': [obj_1, obj_2]
             }
         else:
             since_query_param = DATE_PARAMS['date'].start_param
-            assert params[since_query_param] == '2017-01-01T15:37:22'
-            return {
-                'meta': { 'next': '?offset=1', 'offset': 0, 'limit': 2},
-                'objects': [obj_2]
-            }
+            since = params[since_query_param]
+            if since == '2017-01-01T15:37:22':
+                return {
+                    'meta': {'next': '?cursor=xyz', 'limit': 2},
+                    'objects': [obj_3]
+                }
+            if since == '2017-01-01T15:38:22':
+                return {'meta': {'next': None, 'limit': 2}, 'objects': []}
+
+            raise Exception(since)
 
 
 class FakeDateFormSession(FakeSession):
@@ -154,7 +160,7 @@ class TestCommCareHqClient(unittest.TestCase):
             self._test_iterate(FakeRepeatedDateCaseSession(), get_paginator('case', 2), 2, [1, 2])
 
     def test_message_log(self):
-        self._test_iterate(FakMessageLogSession(), get_paginator('messaging-event', 2), 2, [1, 2])
+        self._test_iterate(FakMessageLogSession(), get_paginator('messaging-event', 2), 3, [1, 2, 3])
 
 
 class TestDatePaginator(unittest.TestCase):
