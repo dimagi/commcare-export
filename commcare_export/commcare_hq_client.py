@@ -171,6 +171,7 @@ class CommCareHqClient(object):
 
                     limit = batch_meta.get('limit')
                     if more_to_fetch:
+                        # Handle the case where API is 'non-counting' and repeats the last batch
                         repeated_last_page_of_non_counting_resource = (
                             not got_new_data
                             and total_count == UNKNOWN_COUNT

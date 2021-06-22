@@ -78,12 +78,6 @@ class FakeRepeatedDateCaseSession(FakeSession):
 
 
 class FakMessageLogSession(FakeSession):
-    # for message logs, the last batch returns the same results in a loop, because
-    # we use a non-counting paginator in tastypie that can't know if it's "finished"
-    # We will gracefully treat this as success under the conditions where:
-    #  - total_count is absent
-    #  - the number of returned rows is fewer than the limit
-    #  - the contents of the batch are the same
     def _get_results(self, params):
         obj_1 = {'id': 1, 'foo': 1, 'date': '2017-01-01T15:36:22Z'}
         obj_2 = {'id': 2, 'foo': 2, 'date': '2017-01-01T15:37:22Z'}
