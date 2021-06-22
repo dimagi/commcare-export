@@ -126,7 +126,7 @@ class CommCareHqClient(object):
         def iterate_resource(resource=resource, params=params):
             more_to_fetch = True
             last_batch_ids = set()
-            total_count = None
+            total_count = UNKNOWN_COUNT
             fetched = 0
             repeat_counter = 0
             last_params = None
@@ -142,7 +142,7 @@ class CommCareHqClient(object):
                 batch = self.get(resource, params)
                 last_params = copy.copy(params)
                 batch_meta = batch['meta']
-                if not total_count or total_count == UNKNOWN_COUNT or fetched >= total_count:
+                if total_count == UNKNOWN_COUNT or fetched >= total_count:
                     if batch_meta.get('total_count'):
                         total_count = int(batch_meta['total_count'])
                     else:
