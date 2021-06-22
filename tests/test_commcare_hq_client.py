@@ -77,7 +77,7 @@ class FakeRepeatedDateCaseSession(FakeSession):
             }
 
 
-class FakMessageLogSession(FakeSession):
+class FakeMessageLogSession(FakeSession):
     def _get_results(self, params):
         obj_1 = {'id': 1, 'foo': 1, 'date': '2017-01-01T15:36:22Z'}
         obj_2 = {'id': 2, 'foo': 2, 'date': '2017-01-01T15:37:22Z'}
@@ -154,7 +154,7 @@ class TestCommCareHqClient(unittest.TestCase):
             self._test_iterate(FakeRepeatedDateCaseSession(), get_paginator('case', 2), 2, [1, 2])
 
     def test_message_log(self):
-        self._test_iterate(FakMessageLogSession(), get_paginator('messaging-event', 2), 3, [1, 2, 3])
+        self._test_iterate(FakeMessageLogSession(), get_paginator('messaging-event', 2), 3, [1, 2, 3])
 
 
 class TestDatePaginator(unittest.TestCase):
