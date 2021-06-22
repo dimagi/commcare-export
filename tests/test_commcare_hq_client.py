@@ -89,14 +89,14 @@ class FakMessageLogSession(FakeSession):
         obj_2 = {'id': 2, 'foo': 2, 'date': '2017-01-01T15:37:22Z'}
         if not params:
             return {
-                'meta': {'next': '?offset=2', 'offset': 0, 'limit': 2, 'total_count': None},
+                'meta': {'next': '?offset=2', 'offset': 0, 'limit': 2},
                 'objects': [obj_1, obj_2]
             }
         else:
             since_query_param = DATE_PARAMS['date'].start_param
             assert params[since_query_param] == '2017-01-01T15:37:22'
             return {
-                'meta': { 'next': '?offset=1', 'offset': 0, 'limit': 2, 'total_count': None},
+                'meta': { 'next': '?offset=1', 'offset': 0, 'limit': 2},
                 'objects': [obj_2]
             }
 
