@@ -143,7 +143,10 @@ class CommCareHqClient(object):
                 last_params = copy.copy(params)
                 batch_meta = batch['meta']
                 if not total_count or total_count == UNKNOWN_COUNT or fetched >= total_count:
-                    total_count = int(batch_meta['total_count']) if batch_meta.get('total_count') else UNKNOWN_COUNT
+                    if batch_meta.get('total_count'):
+                        total_count = int(batch_meta['total_count'])
+                    else:
+                        total_count = UNKNOWN_COUNT
                     fetched = 0
 
                 batch_objects = batch['objects']
