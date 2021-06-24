@@ -204,7 +204,7 @@ def split_leftmost(jsonpath_expr):
         return (jsonpath_expr, jsonpath.This())
 
 
-def compile_source(worksheet):
+def compile_source(worksheet, value_or_root=False):
     """
     Compiles just the part of the Excel Spreadsheet that
     indicates the API endpoint to hit along with optional filters
@@ -260,7 +260,21 @@ def compile_source(worksheet):
     if data_source_jsonpath is None or isinstance(data_source_jsonpath, jsonpath.This) or isinstance(data_source_jsonpath, jsonpath.Root):
         return data_source, api_query, None
     else:
-        return data_source, api_query, Reference(str(data_source_jsonpath))
+        if value_or_root:
+            # if the jsonpath doesn't not yield a value yield the root document
+            expr = get_value_or_root_expression(data_source_jsonpath)
+        else:
+            expr = Reference(str(data_source_jsonpath))
+        return data_source, api_query, expr
+
+
+def get_value_or_root_expression(value_expression):
+    """Return expression used when iterating over a nested document but also wanting
+    a record if the value expression returns an empty result."""
+    return Apply(
+        Reference('_or_raw'), Reference(str(value_expression)), Reference("$")
+    )
+
 
 # If the source is expected to provide a column, then require that it is
 # already present or can be added without conflicting with an existing
@@ -296,9 +310,9 @@ def require_column_in_sheet(sheet_name, data_source, table_name, output_headings
 
     return (headings, body)
 
-def parse_sheet(worksheet, mappings=None, column_enforcer=None):
+def parse_sheet(worksheet, mappings=None, column_enforcer=None, value_or_root=False):
     mappings = mappings or {}
-    data_source, source_expr, root_doc_expr = compile_source(worksheet)
+    data_source, source_expr, root_doc_expr = compile_source(worksheet, value_or_root)
 
     table_name_column = get_column_by_name(worksheet, 'table name')
     if table_name_column:
@@ -355,7 +369,7 @@ class SheetParts(namedtuple('SheetParts', 'name headings source body root_expr d
         ]
 
 
-def parse_workbook(workbook, column_enforcer=None):
+def parse_workbook(workbook, column_enforcer=None, value_or_root=False):
     """
     Returns a MiniLinq corresponding to the Excel configuration, which
     consists of the following sheets:
@@ -378,7 +392,7 @@ def parse_workbook(workbook, column_enforcer=None):
     parsed_sheets = []
     for sheet in emit_sheets:
         try:
-            sheet_parts = parse_sheet(workbook[sheet], mappings, column_enforcer)
+            sheet_parts = parse_sheet(workbook[sheet], mappings, column_enforcer, value_or_root)
         except Exception as e:
             msg = 'Ignoring sheet "{}": {}'.format(sheet, str(e))
             if logger.isEnabledFor(logging.DEBUG):
@@ -509,14 +523,18 @@ def check_columns(parsed_sheets, columns):
     if errors_by_sheet:
         raise MissingColumnException(errors_by_sheet)
 
+
 blacklisted_tables = []
+
+
 def blacklist(table_name):
     blacklisted_tables.append(table_name)
 
+
 def get_queries_from_excel(workbook, missing_value=None, combine_emits=False,
                            max_column_length=None, required_columns=None,
-                           column_enforcer=None):
-    parsed_sheets = parse_workbook(workbook, column_enforcer)
+                           column_enforcer=None, value_or_root=False):
+    parsed_sheets = parse_workbook(workbook, column_enforcer, value_or_root)
     for sheet in parsed_sheets:
         if sheet.name in blacklisted_tables:
             raise ReservedTableNameException(sheet.name)

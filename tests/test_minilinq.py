@@ -7,6 +7,7 @@ import pytest
 from six.moves import xrange
 
 from commcare_export.env import *
+from commcare_export.excel_query import get_value_or_root_expression
 from commcare_export.minilinq import *
 from commcare_export.writers import JValueTableWriter
 
@@ -96,9 +97,7 @@ class TestMiniLinq(unittest.TestCase):
             # {"id": 4, "foo": {'id': 'bid', 'name': 'map'}, "bar": None},  # fails with TypeError from jsonpath
             {"id": 5, "foo": {'id': 'bid', 'name': 'mop'}},
         ]
-        value_or_root = Apply(
-            Reference('_or_raw'), Reference(str('bar.[*]')), Reference("$")
-        )
+        value_or_root = get_value_or_root_expression('bar.[*]')
         flatmap = FlatMap(source=Literal(data), body=value_or_root)
         mmap = Map(source=flatmap, body=List([
             Reference("id"), Reference('baz'), Reference('$.id'), Reference('$.foo.id'), Reference('$.foo.name')
