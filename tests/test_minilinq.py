@@ -76,6 +76,18 @@ class TestMiniLinq(unittest.TestCase):
             ['1.bar.bazzer', 'a2', '1', '1.bid', 'bob']
         ])
 
+        # Without the additional auto id field added in JsonPathEnv the result for Reference("id") changes
+        # as follows:
+        #   '1.bar.1.bar.[0]' -> '1.bar.[0]'
+
+        # With the change above AND a change to jsonpath_rw to prevent converting IDs that exist into
+        # auto IDs we get the following:
+        #   Reference("id"):
+        #       '1.bar.bazzer' -> 'bazzer'
+        #
+        #   Reference('$.foo.id'):
+        #       '1.bid' -> 'bid'
+
     def test_eval_collapsed_list(self):
         """
         Special case to handle XML -> JSON conversion where there just happened to be a single value at save time
