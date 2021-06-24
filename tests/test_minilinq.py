@@ -1,22 +1,19 @@
 # -*- coding: utf-8 -*-
-import inspect
 import types
 import unittest
 from itertools import *
 
 import pytest
-from six.moves import map, xrange
+from six.moves import xrange
 
-from jsonpath_rw import jsonpath
-
-from commcare_export.minilinq import *
-from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.env import *
+from commcare_export.minilinq import *
 from commcare_export.writers import JValueTableWriter
 
 
 class LazinessException(Exception): pass
 def die(msg): raise LazinessException(msg) # Hack: since "raise" is a statement not an expression, need a funcall wrapping it
+
 
 class TestMiniLinq(unittest.TestCase):
 
@@ -88,6 +85,33 @@ class TestMiniLinq(unittest.TestCase):
         #   Reference('$.foo.id'):
         #       '1.bid' -> 'bid'
 
+    def test_flatmap_value_or_root(self):
+        """Low level test case for 'value-or-root' use case"""
+        env = BuiltInEnv() | JsonPathEnv({})
+
+        data = [
+            {"id": 1, "foo": {'id': 'bid', 'name': 'zip'}, "bar": [{'baz': 'a1'}, {'baz': 'a2', 'id': 'bazzer'}]},
+            {"id": 2, "foo": {'id': 'bid', 'name': 'zap'}, "bar": []},
+            {"id": 3, "foo": {'id': 'bid', 'name': 'mip'}, "bar": {}},
+            # {"id": 4, "foo": {'id': 'bid', 'name': 'map'}, "bar": None},  # fails with TypeError from jsonpath
+            {"id": 5, "foo": {'id': 'bid', 'name': 'mop'}},
+        ]
+        value_or_root = Apply(
+            Reference('_or_raw'), Reference(str('bar.[*]')), Reference("$")
+        )
+        flatmap = FlatMap(source=Literal(data), body=value_or_root)
+        mmap = Map(source=flatmap, body=List([
+            Reference("id"), Reference('baz'), Reference('$.id'), Reference('$.foo.id'), Reference('$.foo.name')
+        ]))
+        self.check_case(mmap.eval(env), [
+            ['1.bar.1.bar.[0]', 'a1', '1', '1.bid', 'zip'],
+            ['1.bar.bazzer', 'a2', '1', '1.bid', 'zip'],
+            ['2', [], '2', '2.bid', 'zap'],
+            ['3.bar.3.bar.[0]', [], '3', '3.bid', 'mip'],
+            # ['4.bar.[0]', [], '4', '4.bid', 'map'],
+            ['5', [], '5', '5.bid', 'mop'],
+        ])
+
     def test_eval_collapsed_list(self):
         """
         Special case to handle XML -> JSON conversion where there just happened to be a single value at save time
@@ -146,6 +170,14 @@ class TestMiniLinq(unittest.TestCase):
         env = env | JsonPathEnv({'a': {'c': 'c val'}})
         assert Apply(Reference("or"), Reference('a.b'), Reference('a.c')).eval(env) == 'c val'
         assert Apply(Reference("or"), Reference('a.b'), Reference('a.d')).eval(env) is None
+
+        env = env.replace({'a': [], 'b': [1, 2], 'c': 2})
+        self.check_case(Apply(Reference("or"), Reference('a.[*]'), Reference('b')).eval(env), [1, 2])
+        self.check_case(Apply(Reference("or"), Reference('b.[*]'), Reference('c')).eval(env), [1, 2])
+        self.check_case(
+            Apply(Reference("or"), Reference('a.[*]'), Reference('$')).eval(env),
+            {'a': [], 'b': [1, 2], 'c': 2, 'id': '$'}
+        )
 
     def test_attachment_url(self):
         env = BuiltInEnv({'commcarehq_base_url': 'https://www.commcarehq.org'}) | JsonPathEnv({'id': '123', 'domain': 'd1', 'photo': 'a.jpg'})

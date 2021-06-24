@@ -433,7 +433,20 @@ def template(format_template, *args):
 
 
 def _or(*args):
-    unwrapped_args = (unwrap_val(arg) for arg in args)
+    return _or_impl(unwrap_val, *args)
+
+
+def _or_raw(*args):
+    def unwrap_iter(arg):
+        if isinstance(arg, RepeatableIterator):
+            return list(arg)
+        return arg
+
+    return _or_impl(unwrap_iter, *args)
+
+
+def _or_impl(_unwrap, *args):
+    unwrapped_args = (_unwrap(arg) for arg in args)
     vals = (val for val in unwrapped_args if val is not None and val != [])
     try:
         return next(vals)
@@ -498,6 +511,7 @@ class BuiltInEnv(DictEnv):
             'or': _or,
             'sha1': sha1,
             'substr': substr,
+            '_or_raw': _or_raw,  # for internal use
         })
         return super(BuiltInEnv, self).__init__(d)
 
