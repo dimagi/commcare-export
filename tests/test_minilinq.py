@@ -26,7 +26,9 @@ class TestMiniLinq(unittest.TestCase):
 
     def check_case(self, val, expected):
         if isinstance(expected, list):
-            assert [datum.value if isinstance(datum, jsonpath.DatumInContext) else datum for datum in val] == expected
+            assert [unwrap_val(datum) for datum in val] == expected
+        else:
+            assert val == expected
 
     def test_eval_literal(self):
         env = BuiltInEnv()
@@ -52,6 +54,27 @@ class TestMiniLinq(unittest.TestCase):
 
         # When auto id is on, this always becomes a string. Sorry!
         self.check_case(Reference("foo.id").eval(JsonPathEnv({'foo': {'id': 2}})), ['2'])
+
+    def test_eval_auto_id_reference_nested(self):
+        # this test is documentation of existing (weird) functionality
+        # that results from a combination of jsonpath_rw auto_id feature and
+        # JsonPathEnv.lookup (which adds an additional auto ID for some reason).
+        env = JsonPathEnv({})
+
+        flatmap = FlatMap(source=Literal([{
+            "id": 1,
+            "foo": {'id': 'bid', 'name': 'bob'},
+            "bar": [
+                {'baz': 'a1'}, {'baz': 'a2', 'id': 'bazzer'}
+            ]
+        }]), body=Reference('bar.[*]'))
+        mmap = Map(source=flatmap, body=List([
+            Reference("id"), Reference('baz'), Reference('$.id'), Reference('$.foo.id'), Reference('$.foo.name')
+        ]))
+        self.check_case(mmap.eval(env), [
+            ['1.bar.1.bar.[0]', 'a1', '1', '1.bid', 'bob'],
+            ['1.bar.bazzer', 'a2', '1', '1.bid', 'bob']
+        ])
 
     def test_eval_collapsed_list(self):
         """
