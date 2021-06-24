@@ -72,15 +72,11 @@ class TestMiniLinq(unittest.TestCase):
             Reference("id"), Reference('baz'), Reference('$.id'), Reference('$.foo.id'), Reference('$.foo.name')
         ]))
         self.check_case(mmap.eval(env), [
-            ['1.bar.1.bar.[0]', 'a1', '1', '1.bid', 'bob'],
+            ['1.bar.[0]', 'a1', '1', '1.bid', 'bob'],
             ['1.bar.bazzer', 'a2', '1', '1.bid', 'bob']
         ])
 
-        # Without the additional auto id field added in JsonPathEnv the result for Reference("id") changes
-        # as follows:
-        #   '1.bar.1.bar.[0]' -> '1.bar.[0]'
-
-        # With the change above AND a change to jsonpath_rw to prevent converting IDs that exist into
+        # With a change to jsonpath_rw to prevent converting IDs that exist into
         # auto IDs (see https://github.com/kennknowles/python-jsonpath-rw/pull/96) we get the following:
         #   Reference("id"):
         #       '1.bar.bazzer' -> 'bazzer'

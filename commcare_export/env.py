@@ -200,10 +200,6 @@ class JsonPathEnv(Env):
 
         def iter(jsonpath_expr=jsonpath_expr): # Capture closure
             for datum in jsonpath_expr.find(self.__bindings):
-                # HACK: The auto id from jsonpath_rw is good, but we lose it when we do .value here,
-                # so just slap it on if not present
-                if isinstance(datum.value, dict) and 'id' not in datum.value:
-                    datum.value['id'] = jsonpath.AutoIdForDatum(datum).value
                 yield datum
         return RepeatableIterator(iter)
 
