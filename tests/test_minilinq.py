@@ -81,7 +81,7 @@ class TestMiniLinq(unittest.TestCase):
         #   '1.bar.1.bar.[0]' -> '1.bar.[0]'
 
         # With the change above AND a change to jsonpath_rw to prevent converting IDs that exist into
-        # auto IDs we get the following:
+        # auto IDs (see https://github.com/kennknowles/python-jsonpath-rw/pull/96) we get the following:
         #   Reference("id"):
         #       '1.bar.bazzer' -> 'bazzer'
         #
