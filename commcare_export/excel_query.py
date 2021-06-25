@@ -2,6 +2,7 @@ from __future__ import unicode_literals, print_function, absolute_import, divisi
 
 from collections import defaultdict, namedtuple
 
+import openpyxl
 from jsonpath_rw.lexer import JsonPathLexerError
 from six.moves import xrange
 

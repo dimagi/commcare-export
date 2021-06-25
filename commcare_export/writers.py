@@ -1,14 +1,15 @@
 import datetime
 import io
 import logging
+import sys
 import zipfile
-from six.moves import zip_longest
 
 import alembic
 import csv342 as csv
 import six
 import sqlalchemy
 from six import u
+from six.moves import zip_longest
 
 from commcare_export.data_types import UnknownDataType, get_sqlalchemy_type
 from commcare_export.specs import TableSpec
@@ -44,6 +45,7 @@ def to_jvalue(v):
     else:
         return u(str(v))
 
+
 class TableWriter(object):
     """
     Interface for export writers: Usable in a "with"
@@ -52,6 +54,8 @@ class TableWriter(object):
     If the implementing class does not actually need any
     set up, no-op defaults have been provided
     """
+    name = None
+    subtype = None
     max_column_length = None
     support_checkpoints = False
 
@@ -72,6 +76,7 @@ class TableWriter(object):
 
 
 class CsvTableWriter(TableWriter):
+    name = "csv"
     supports_multi_table_write = False
 
     def __init__(self, file, max_column_size=MAX_COLUMN_SIZE):
@@ -112,6 +117,7 @@ class CsvTableWriter(TableWriter):
 
 
 class Excel2007TableWriter(TableWriter):
+    name = "xlsx"
     max_table_name_size = 31
     
     def __init__(self, file):
@@ -149,6 +155,7 @@ class Excel2007TableWriter(TableWriter):
 
 
 class Excel2003TableWriter(TableWriter):
+    name = "xls"
     max_table_name_size = 31
 
     def __init__(self, file):
@@ -196,6 +203,7 @@ class JValueTableWriter(TableWriter):
     """
     Write tables to JSON-friendly in-memory values
     """
+    name = "json"
 
     def __init__(self):
         self.tables = {}
@@ -219,12 +227,13 @@ class StreamingMarkdownTableWriter(TableWriter):
     """
     Writes markdown to an output stream, where each table just comes one after the other
     """
+    name = "markdown"
     supports_multi_table_write = False
 
     def __init__(self, output_stream, compute_widths=False):
         self.output_stream = output_stream
         self.compute_widths = compute_widths
-    
+
     def write_table(self, table, ):
         col_widths = None
         if self.compute_widths:
@@ -331,12 +340,22 @@ class SqlTableWriter(SqlMixin, TableWriter):
     Write tables to a database specified by URL
     (TODO) with "upsert" based on primary key.
     """
+    name = "sql"
     support_checkpoints = True
     required_columns = ['id']
 
     def __init__(self, db_url, strict_types=False, poolclass=None):
         super(SqlTableWriter, self).__init__(db_url, poolclass=poolclass)
         self.strict_types = strict_types
+
+    @property
+    def subtype(self):
+        try:
+            url = sqlalchemy.engine.make_url(self.db_url)
+        except Exception:
+            return 'unknown'
+        else:
+            return url.drivername
 
     def get_data_type(self, explicit_type, val):
         if explicit_type:

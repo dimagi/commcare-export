@@ -13,20 +13,20 @@ import requests
 import sqlalchemy
 from six.moves import input
 
+from commcare_export import builtin_queries
 from commcare_export import excel_query
 from commcare_export import writers
 from commcare_export.checkpoint import CheckpointManagerProvider
-from commcare_export.misc import default_to_json
-from commcare_export.utils import get_checkpoint_manager
 from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION, ResourceRepeatException
 from commcare_export.commcare_minilinq import CommCareHqEnv
 from commcare_export.env import BuiltInEnv, JsonPathEnv, EmitterEnv
-from commcare_export.exceptions import LongFieldsException, DataExportException, MissingQueryFileException
-from commcare_export.minilinq import MiniLinq, List
-from commcare_export.repeatable_iterator import RepeatableIterator
-from commcare_export.version import __version__
-from commcare_export import builtin_queries
+from commcare_export.exceptions import DataExportException, MissingQueryFileException
 from commcare_export.location_info_provider import LocationInfoProvider
+from commcare_export.minilinq import MiniLinq, List
+from commcare_export.misc import default_to_json
+from commcare_export.repeatable_iterator import RepeatableIterator
+from commcare_export.utils import get_checkpoint_manager, send_reporting_payload
+from commcare_export.version import __version__
 
 EXIT_STATUS_ERROR = 1
 
@@ -156,6 +156,7 @@ def _get_query(args, writer, column_enforcer=None):
         writer.required_columns,
         column_enforcer
     )
+
 
 def _get_query_from_file(query_arg, missing_value, combine_emits,
                          max_column_length, required_columns, column_enforcer):
@@ -308,6 +309,8 @@ def main_with_args(args):
     if args.dump_query:
         print(json.dumps(query.to_jvalue(), indent=4))
         return
+
+    send_reporting_payload(args, query, writer, api_client)
 
     checkpoint_manager = None
     if writer.support_checkpoints:

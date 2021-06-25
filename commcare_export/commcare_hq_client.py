@@ -115,7 +115,13 @@ class CommCareHqClient(object):
         response = self.session.get(resource_url, params=params, auth=self.__auth, timeout=60)
         response.raise_for_status()
         return response.json()
-            
+
+    def post(self, resource, data):
+        resource_url = '%s/%s/' % (self.api_url, resource)
+        response = self.session.post(resource_url, json=data, auth=self.__auth)
+        response.raise_for_status()
+        return response.json()
+
     def iterate(self, resource, paginator, params=None, checkpoint_manager=None):
         """
         Assumes the endpoint is a list endpoint, and iterates over it
