@@ -86,32 +86,81 @@ class TestMiniLinq(unittest.TestCase):
         #   Reference('$.foo.id'):
         #       '1.bid' -> 'bid'
 
-    def test_flatmap_value_or_root(self):
-        """Low level test case for 'value-or-root' use case"""
-        env = BuiltInEnv() | JsonPathEnv({})
-
-        data = [
-            {"id": 1, "foo": {'id': 'bid', 'name': 'zip'}, "bar": [{'baz': 'a1'}, {'baz': 'a2', 'id': 'bazzer'}]},
-            {"id": 2, "foo": {'id': 'bid', 'name': 'zap'}, "bar": []},
-            {"id": 3, "foo": {'id': 'bid', 'name': 'mip'}, "bar": {}},
-            # {"id": 4, "foo": {'id': 'bid', 'name': 'map'}, "bar": None},  # fails with TypeError from jsonpath
-            {"id": 5, "foo": {'id': 'bid', 'name': 'mop'}},
-            {"id": 6, "foo": {'id': 'bid', 'name': 'mop'}, "baz": "root_bazz"},
-        ]
-        value_or_root = get_value_or_root_expression('bar.[*]')
-        flatmap = FlatMap(source=Literal(data), body=value_or_root)
-        mmap = Map(source=flatmap, body=List([
-            Reference("id"), Reference('baz'), Reference('$.id'), Reference('$.foo.id'), Reference('$.foo.name')
-        ]))
-        self.check_case(mmap.eval(env), [
-            ['1.bar.1.bar.[0]', 'a1', '1', '1.bid', 'zip'],
-            ['1.bar.bazzer', 'a2', '1', '1.bid', 'zip'],
-            ['2', [], '2', '2.bid', 'zap'],
-            ['3.bar.3.bar.[0]', [], '3', '3.bid', 'mip'],
-            # ['4.bar.[0]', [], '4', '4.bid', 'map'],
-            ['5', [], '5', '5.bid', 'mop'],
-            ['6', [], '6', '6.bid', 'mop'],
+    def test_value_or_root(self):
+        """Test that when accessing a child object the child data is used if it exists (normal case)."""
+        data = {
+            "id": 1,
+            "bar": [
+                {'baz': 'a1'}, {'baz': 'a2'}
+            ]
+        }
+        self._test_value_or_root([Reference('id'), Reference('baz')], data, [
+            ['1.bar.1.bar.[0]', 'a1'],
+            ['1.bar.1.bar.[1]', 'a2'],
         ])
+
+    def test_value_or_root_empty_list(self):
+        """Should use the root object if the child is an empty list"""
+        data = {
+            "id": 1,
+            "foo": "I am foo",
+            "bar": [],
+        }
+        self._test_value_or_root([Reference('id'), Reference('baz'), Reference('$.foo')], data, [
+            ['1', [], "I am foo"],
+        ])
+
+    def test_value_or_root_empty_dict(self):
+        """Should use the root object if the child is an empty dict"""
+        data = {
+            "id": 1,
+            "foo": "I am foo",
+            "bar": {},
+        }
+        self._test_value_or_root([Reference('id'), Reference('baz'), Reference('$.foo')], data, [
+            ['1.bar.1.bar.[0]', [], "I am foo"],  # weird ID here due to bug in jsonpath
+        ])
+
+    @pytest.mark.skip(reason="fails with TypeError from jsonpath")
+    def test_value_or_root_None(self):
+        """Should use the root object if the child is None"""
+        data = {
+            "id": 1,
+            "bar": None,
+        }
+        self._test_value_or_root([Reference('id'), Reference('baz')], data, [
+            ['1.bar.[0]', []],  # weird ID here due to bug in jsonpath
+        ])
+
+    def test_value_or_root_missing(self):
+        """Should use the root object if the child does not exist"""
+        data = {
+            "id": 1,
+            "foo": "I am foo",
+            # 'bar' is missing
+        }
+        self._test_value_or_root([Reference('id'), Reference('baz'), Reference('$.foo')], data, [
+            ['1', [], 'I am foo'],
+        ])
+
+    def test_value_or_root_ignore_field_in_root(self):
+        """Test that a child reference is ignored if we are using the root doc even if there is a field
+        wit that name. (this doesn't apply to 'id')"""
+        data = {
+            "id": 1,
+            "foo": "I am foo",
+        }
+        self._test_value_or_root([Reference('id'), Reference('foo')], data, [
+            ['1', []],
+        ])
+
+    def _test_value_or_root(self, columns, data, expected):
+        """Low level test case for 'value-or-root'"""
+        env = BuiltInEnv() | JsonPathEnv({})
+        value_or_root = get_value_or_root_expression('bar.[*]')
+        flatmap = FlatMap(source=Literal([data]), body=value_or_root)
+        mmap = Map(source=flatmap, body=List(columns))
+        self.check_case(mmap.eval(env), expected)
 
     def test_eval_collapsed_list(self):
         """
