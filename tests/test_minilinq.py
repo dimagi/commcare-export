@@ -1,22 +1,20 @@
 # -*- coding: utf-8 -*-
-import inspect
 import types
 import unittest
 from itertools import *
 
 import pytest
-from six.moves import map, xrange
+from six.moves import xrange
 
-from jsonpath_rw import jsonpath
-
-from commcare_export.minilinq import *
-from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.env import *
+from commcare_export.excel_query import get_value_or_root_expression
+from commcare_export.minilinq import *
 from commcare_export.writers import JValueTableWriter
 
 
 class LazinessException(Exception): pass
 def die(msg): raise LazinessException(msg) # Hack: since "raise" is a statement not an expression, need a funcall wrapping it
+
 
 class TestMiniLinq(unittest.TestCase):
 
@@ -88,6 +86,82 @@ class TestMiniLinq(unittest.TestCase):
         #   Reference('$.foo.id'):
         #       '1.bid' -> 'bid'
 
+    def test_value_or_root(self):
+        """Test that when accessing a child object the child data is used if it exists (normal case)."""
+        data = {
+            "id": 1,
+            "bar": [
+                {'baz': 'a1'}, {'baz': 'a2'}
+            ]
+        }
+        self._test_value_or_root([Reference('id'), Reference('baz')], data, [
+            ['1.bar.1.bar.[0]', 'a1'],
+            ['1.bar.1.bar.[1]', 'a2'],
+        ])
+
+    def test_value_or_root_empty_list(self):
+        """Should use the root object if the child is an empty list"""
+        data = {
+            "id": 1,
+            "foo": "I am foo",
+            "bar": [],
+        }
+        self._test_value_or_root([Reference('id'), Reference('baz'), Reference('$.foo')], data, [
+            ['1', [], "I am foo"],
+        ])
+
+    def test_value_or_root_empty_dict(self):
+        """Should use the root object if the child is an empty dict"""
+        data = {
+            "id": 1,
+            "foo": "I am foo",
+            "bar": {},
+        }
+        self._test_value_or_root([Reference('id'), Reference('baz'), Reference('$.foo')], data, [
+            ['1.bar.1.bar.[0]', [], "I am foo"],  # weird ID here due to bug in jsonpath
+        ])
+
+    @pytest.mark.skip(reason="fails with TypeError from jsonpath")
+    def test_value_or_root_None(self):
+        """Should use the root object if the child is None"""
+        data = {
+            "id": 1,
+            "bar": None,
+        }
+        self._test_value_or_root([Reference('id'), Reference('baz')], data, [
+            ['1.bar.[0]', []],  # weird ID here due to bug in jsonpath
+        ])
+
+    def test_value_or_root_missing(self):
+        """Should use the root object if the child does not exist"""
+        data = {
+            "id": 1,
+            "foo": "I am foo",
+            # 'bar' is missing
+        }
+        self._test_value_or_root([Reference('id'), Reference('baz'), Reference('$.foo')], data, [
+            ['1', [], 'I am foo'],
+        ])
+
+    def test_value_or_root_ignore_field_in_root(self):
+        """Test that a child reference is ignored if we are using the root doc even if there is a field
+        wit that name. (this doesn't apply to 'id')"""
+        data = {
+            "id": 1,
+            "foo": "I am foo",
+        }
+        self._test_value_or_root([Reference('id'), Reference('foo')], data, [
+            ['1', []],
+        ])
+
+    def _test_value_or_root(self, columns, data, expected):
+        """Low level test case for 'value-or-root'"""
+        env = BuiltInEnv() | JsonPathEnv({})
+        value_or_root = get_value_or_root_expression('bar.[*]')
+        flatmap = FlatMap(source=Literal([data]), body=value_or_root)
+        mmap = Map(source=flatmap, body=List(columns))
+        self.check_case(mmap.eval(env), expected)
+
     def test_eval_collapsed_list(self):
         """
         Special case to handle XML -> JSON conversion where there just happened to be a single value at save time
@@ -146,6 +220,14 @@ class TestMiniLinq(unittest.TestCase):
         env = env | JsonPathEnv({'a': {'c': 'c val'}})
         assert Apply(Reference("or"), Reference('a.b'), Reference('a.c')).eval(env) == 'c val'
         assert Apply(Reference("or"), Reference('a.b'), Reference('a.d')).eval(env) is None
+
+        env = env.replace({'a': [], 'b': [1, 2], 'c': 2})
+        self.check_case(Apply(Reference("or"), Reference('a.[*]'), Reference('b')).eval(env), [1, 2])
+        self.check_case(Apply(Reference("or"), Reference('b.[*]'), Reference('c')).eval(env), [1, 2])
+        self.check_case(
+            Apply(Reference("or"), Reference('a.[*]'), Reference('$')).eval(env),
+            {'a': [], 'b': [1, 2], 'c': 2, 'id': '$'}
+        )
 
     def test_attachment_url(self):
         env = BuiltInEnv({'commcarehq_base_url': 'https://www.commcarehq.org'}) | JsonPathEnv({'id': '123', 'domain': 'd1', 'photo': 'a.jpg'})

@@ -91,6 +91,9 @@ CLI_ARGS = [
                  help="Export tables containing mobile worker data and "
                       "location data and add a commcare_userid field to any "
                       "exported form or case"),
+        Argument('export-root-if-no-subdocument', default=False, action='store_true', help=(
+            "Use this when you are exporting a nested document e.g. form.form..case, messaging-event.messages.[*]"
+            " And you want to have a record exported even if the nested document does not exist or is empty."))
     ]
 
 
@@ -154,18 +157,22 @@ def _get_query(args, writer, column_enforcer=None):
         writer.supports_multi_table_write,
         writer.max_column_length,
         writer.required_columns,
-        column_enforcer
+        column_enforcer,
+        args.export_root_if_no_subdocument
     )
 
+
 def _get_query_from_file(query_arg, missing_value, combine_emits,
-                         max_column_length, required_columns, column_enforcer):
+                         max_column_length, required_columns, column_enforcer,
+                         value_or_root):
     if os.path.exists(query_arg):
         if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
             import openpyxl
             workbook = openpyxl.load_workbook(query_arg)
             return excel_query.get_queries_from_excel(
                 workbook, missing_value, combine_emits,
-                max_column_length, required_columns, column_enforcer
+                max_column_length, required_columns, column_enforcer,
+                value_or_root
             )
         else:
             with io.open(query_arg, encoding='utf-8') as fh:

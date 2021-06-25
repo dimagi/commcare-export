@@ -412,7 +412,7 @@ class TestExcelQuery(unittest.TestCase):
             )
         ])
 
-        self._compare_minilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=True)
+        self._compare_minilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine_emits=True)
 
     def test_multi_emit_no_combine(self):
         minilinq = List([
@@ -461,7 +461,7 @@ class TestExcelQuery(unittest.TestCase):
             )
         ])
 
-        self._compare_minilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=False)
+        self._compare_minilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine_emits=False)
 
     def test_multi_emit_with_organization(self):
         minilinq = List([
@@ -522,11 +522,67 @@ class TestExcelQuery(unittest.TestCase):
         ])
 
         column_enforcer = ColumnEnforcer()
-        self._compare_minilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine=True,
+        self._compare_minilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine_emits=True,
                                            column_enforcer=column_enforcer)
 
-    def _compare_minilinq_to_compiled(self, minilinq, filename, combine=False, column_enforcer=None):
+    def test_value_or_root(self):
+        minilinq = List([
+            Bind("checkpoint_manager",
+                 Apply(Reference('get_checkpoint_manager'), Literal("form"), Literal(["Forms"])),
+                 Emit(
+                     table="Forms",
+                     headings=[Literal("id"), Literal("name")],
+                     missing_value='---',
+                     source=Map(
+                         source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager')),
+                         body=List([
+                             Reference("id"),
+                             Reference("form.name"),
+                         ]),
+                     )
+                 )
+                 ),
+            Bind("checkpoint_manager",
+                 Apply(Reference('get_checkpoint_manager'), Literal("form"), Literal(["Cases"])),
+                 Emit(
+                     table="Cases",
+                     headings=[Literal("case_id")],
+                     missing_value='---',
+                     source=Map(
+                         source=FlatMap(
+                             body=Apply(
+                                 Reference("_or_raw"),
+                                 Reference("form..case"),
+                                 Bind("__root_only", Literal(True), Reference("$"))
+                             ),
+                             source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager'))
+                         ),
+                         body=List([
+                             Reference("@case_id"),
+                         ]),
+                     )
+                 )
+                 ),
+            Bind("checkpoint_manager",
+                 Apply(Reference('get_checkpoint_manager'), Literal("case"), Literal(["Other cases"])),
+                 Emit(
+                     table="Other cases",
+                     headings=[Literal("id")],
+                     missing_value='---',
+                     source=Map(
+                         source=Apply(Reference("api_data"), Literal("case"), Reference('checkpoint_manager')),
+                         body=List([
+                             Reference("id")
+                         ])
+                     )
+                 )
+                 )
+        ])
+
+        self._compare_minilinq_to_compiled(minilinq, '008_multiple-tables.xlsx', combine_emits=False, value_or_root=True)
+
+    def _compare_minilinq_to_compiled(self, minilinq, filename, **kwargs):
         print("Parsing {}".format(filename))
         abs_path = os.path.join(os.path.dirname(__file__), filename)
-        compiled = get_queries_from_excel(openpyxl.load_workbook(abs_path), missing_value='---', combine_emits=combine, column_enforcer=column_enforcer)
+        compiled = get_queries_from_excel(openpyxl.load_workbook(abs_path), missing_value='---', **kwargs)
         assert compiled.to_jvalue() == minilinq.to_jvalue(), filename
