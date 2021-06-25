@@ -96,6 +96,7 @@ class TestMiniLinq(unittest.TestCase):
             {"id": 3, "foo": {'id': 'bid', 'name': 'mip'}, "bar": {}},
             # {"id": 4, "foo": {'id': 'bid', 'name': 'map'}, "bar": None},  # fails with TypeError from jsonpath
             {"id": 5, "foo": {'id': 'bid', 'name': 'mop'}},
+            {"id": 6, "foo": {'id': 'bid', 'name': 'mop'}, "baz": "root_bazz"},
         ]
         value_or_root = get_value_or_root_expression('bar.[*]')
         flatmap = FlatMap(source=Literal(data), body=value_or_root)
@@ -109,6 +110,7 @@ class TestMiniLinq(unittest.TestCase):
             ['3.bar.3.bar.[0]', [], '3', '3.bid', 'mip'],
             # ['4.bar.[0]', [], '4', '4.bid', 'map'],
             ['5', [], '5', '5.bid', 'mop'],
+            ['6', [], '6', '6.bid', 'mop'],
         ])
 
     def test_eval_collapsed_list(self):

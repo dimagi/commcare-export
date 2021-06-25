@@ -11,6 +11,8 @@ from itertools import chain
 
 from jsonpath_rw import jsonpath
 from jsonpath_rw.parser import parse as parse_jsonpath
+
+from commcare_export.jsonpath_utils import split_leftmost
 from commcare_export.misc import unwrap, unwrap_val
 
 from commcare_export.repeatable_iterator import RepeatableIterator
@@ -179,7 +181,8 @@ class JsonPathEnv(Env):
     """
     def __init__(self, bindings=None):
         self.__bindings = bindings or {}
-        
+        self.__restrict_to_root = bool(jsonpath.Fields("__root_only").find(self.__bindings))
+
         # Currently hardcoded because it is a global is jsonpath-rw
         # Probably not widely used, but will require refactor if so
         jsonpath.auto_id_field = "id"
@@ -198,14 +201,19 @@ class JsonPathEnv(Env):
         else:
             raise NotFound(unwrap_val(name))
 
-        def iter(jsonpath_expr=jsonpath_expr): # Capture closure
+        if self.__restrict_to_root and str(jsonpath_expr) != 'id':  # special case for 'id'
+            expr, _ = split_leftmost(jsonpath_expr)
+            if not isinstance(expr, jsonpath.Root):
+                return RepeatableIterator(lambda : iter(()))
+
+        def iterator(jsonpath_expr=jsonpath_expr): # Capture closure
             for datum in jsonpath_expr.find(self.__bindings):
                 # HACK: The auto id from jsonpath_rw is good, but we lose it when we do .value here,
                 # so just slap it on if not present
                 if isinstance(datum.value, dict) and 'id' not in datum.value:
                     datum.value['id'] = jsonpath.AutoIdForDatum(datum).value
                 yield datum
-        return RepeatableIterator(iter)
+        return RepeatableIterator(iterator)
 
     def bind(self, *args):
         "(str, ??) -> Env | ({str: ??}) -> Env"

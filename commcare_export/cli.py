@@ -93,7 +93,7 @@ CLI_ARGS = [
                       "exported form or case"),
         Argument('export-root-if-no-subdocument', default=False, action='store_true', help=(
             "Use this when you are exporting a nested document e.g. form.form..case, messaging-event.messages.[*]"
-            "And you want to have a record exported even if the nested document does not exist or is empty."))
+            " And you want to have a record exported even if the nested document does not exist or is empty."))
     ]
 
 

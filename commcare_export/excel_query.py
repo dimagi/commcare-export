@@ -9,6 +9,7 @@ from jsonpath_rw import jsonpath
 from jsonpath_rw.parser import parse as parse_jsonpath
 
 from commcare_export.exceptions import LongFieldsException, MissingColumnException, ReservedTableNameException
+from commcare_export.jsonpath_utils import split_leftmost
 from commcare_export.map_format import compile_map_format_via
 from commcare_export.minilinq import *
 
@@ -193,16 +194,6 @@ def compile_fields(worksheet, mappings=None):
         for field, source_field, alt_source_fields, map_via, format_via in args
     ]
 
-def split_leftmost(jsonpath_expr):
-    if isinstance(jsonpath_expr, jsonpath.Child):
-        further_leftmost, rest = split_leftmost(jsonpath_expr.left)
-        return further_leftmost, rest.child(jsonpath_expr.right)
-    elif isinstance(jsonpath_expr, jsonpath.Descendants):
-        further_leftmost, rest = split_leftmost(jsonpath_expr.left)
-        return further_leftmost, jsonpath.Descendants(rest, jsonpath_expr.right)
-    else:
-        return (jsonpath_expr, jsonpath.This())
-
 
 def compile_source(worksheet, value_or_root=False):
     """
@@ -271,8 +262,13 @@ def compile_source(worksheet, value_or_root=False):
 def get_value_or_root_expression(value_expression):
     """Return expression used when iterating over a nested document but also wanting
     a record if the value expression returns an empty result."""
+
+    # We add a bind here so that in JsonPathEnv we can restrict expressions to only those that reference
+    # the root. That prevents us from mistakenly getting values from the root that happen to have the
+    # same name as those in the child.
+    root_expr = Bind("__root_only", Literal(True), Reference("$"))
     return Apply(
-        Reference('_or_raw'), Reference(str(value_expression)), Reference("$")
+        Reference('_or_raw'), Reference(str(value_expression)), root_expr
     )
 
 
