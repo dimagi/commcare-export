@@ -3,7 +3,7 @@ import functools
 import hashlib
 import inspect
 import io
-from jsonpath_rw import jsonpath
+from jsonpath_ng import jsonpath
 from commcare_export.repeatable_iterator import RepeatableIterator
 
 

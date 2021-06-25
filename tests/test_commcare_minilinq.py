@@ -1,7 +1,7 @@
 import unittest
 from itertools import *
 
-from jsonpath_rw import jsonpath
+from jsonpath_ng import jsonpath
 
 from commcare_export.checkpoint import CheckpointManagerWithDetails
 from commcare_export.minilinq import *
