@@ -550,7 +550,11 @@ class TestExcelQuery(unittest.TestCase):
                      missing_value='---',
                      source=Map(
                          source=FlatMap(
-                             body=Apply(Reference("_or_raw"), Reference("form..case"), Reference("$")),
+                             body=Apply(
+                                 Reference("_or_raw"),
+                                 Reference("form..case"),
+                                 Bind("__root_only", Literal(True), Reference("$"))
+                             ),
                              source=Apply(Reference("api_data"), Literal("form"), Reference('checkpoint_manager'))
                          ),
                          body=List([
