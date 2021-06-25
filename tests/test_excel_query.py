@@ -4,13 +4,11 @@ import os.path
 import pprint
 import unittest
 
-import openpyxl
-
+from commcare_export.builtin_queries import ColumnEnforcer
 from commcare_export.env import BuiltInEnv
 from commcare_export.env import JsonPathEnv
 from commcare_export.excel_query import *
 from commcare_export.excel_query import _get_safe_source_field
-from commcare_export.builtin_queries import ColumnEnforcer
 
 
 class TestExcelQuery(unittest.TestCase):
@@ -223,7 +221,7 @@ class TestExcelQuery(unittest.TestCase):
         for filename, minilinq in test_cases:
             print('Compiling workbook %s' % filename) # This output will be captured by pytest and printed in case of failure; helpful to isolate which test case
             abs_path = os.path.join(os.path.dirname(__file__), filename)
-            compiled = parse_workbook(openpyxl.load_workbook(abs_path))
+            compiled = parse_workbook(abs_path)
             # Print will be suppressed by pytest unless it fails
             if not (compiled == minilinq):
                 print('In %s:' % filename)
@@ -528,5 +526,5 @@ class TestExcelQuery(unittest.TestCase):
     def _compare_minilinq_to_compiled(self, minilinq, filename, combine=False, column_enforcer=None):
         print("Parsing {}".format(filename))
         abs_path = os.path.join(os.path.dirname(__file__), filename)
-        compiled = get_queries_from_excel(openpyxl.load_workbook(abs_path), missing_value='---', combine_emits=combine, column_enforcer=column_enforcer)
+        compiled = get_queries_from_excel(abs_path, missing_value='---', combine_emits=combine, column_enforcer=column_enforcer)
         assert compiled.to_jvalue() == minilinq.to_jvalue(), filename

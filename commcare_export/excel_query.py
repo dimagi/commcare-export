@@ -1,5 +1,5 @@
 from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
-import re
+
 from collections import defaultdict, namedtuple
 
 from jsonpath_rw.lexer import JsonPathLexerError
@@ -11,6 +11,7 @@ from jsonpath_rw.parser import parse as parse_jsonpath
 from commcare_export.exceptions import LongFieldsException, MissingColumnException, ReservedTableNameException
 from commcare_export.map_format import compile_map_format_via
 from commcare_export.minilinq import *
+
 
 def take_while(pred, iterator):
     for v in iterator:
@@ -355,7 +356,7 @@ class SheetParts(namedtuple('SheetParts', 'name headings source body root_expr d
         ]
 
 
-def parse_workbook(workbook, column_enforcer=None):
+def parse_workbook(file_path, column_enforcer=None):
     """
     Returns a MiniLinq corresponding to the Excel configuration, which
     consists of the following sheets:
@@ -367,6 +368,7 @@ def parse_workbook(workbook, column_enforcer=None):
 
     2. Each other sheet represents one data table to emit
     """
+    workbook = openpyxl.load_workbook(file_path)
     try:
         mappings_sheet = workbook['Mappings']
     except KeyError:
@@ -509,14 +511,18 @@ def check_columns(parsed_sheets, columns):
     if errors_by_sheet:
         raise MissingColumnException(errors_by_sheet)
 
+
 blacklisted_tables = []
+
+
 def blacklist(table_name):
     blacklisted_tables.append(table_name)
 
-def get_queries_from_excel(workbook, missing_value=None, combine_emits=False,
+
+def get_queries_from_excel(file_path, missing_value=None, combine_emits=False,
                            max_column_length=None, required_columns=None,
                            column_enforcer=None):
-    parsed_sheets = parse_workbook(workbook, column_enforcer)
+    parsed_sheets = parse_workbook(file_path, column_enforcer)
     for sheet in parsed_sheets:
         if sheet.name in blacklisted_tables:
             raise ReservedTableNameException(sheet.name)

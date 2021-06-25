@@ -161,15 +161,14 @@ def _get_query_from_file(query_arg, missing_value, combine_emits,
                          max_column_length, required_columns, column_enforcer):
     if os.path.exists(query_arg):
         if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
-            import openpyxl
-            workbook = openpyxl.load_workbook(query_arg)
             return excel_query.get_queries_from_excel(
-                workbook, missing_value, combine_emits,
+                query_arg, missing_value, combine_emits,
                 max_column_length, required_columns, column_enforcer
             )
         else:
             with io.open(query_arg, encoding='utf-8') as fh:
                 return MiniLinq.from_jvalue(json.loads(fh.read()))
+
 
 def get_queries(args, writer, lp, column_enforcer=None):
     query_list = []
