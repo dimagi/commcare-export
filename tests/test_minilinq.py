@@ -118,10 +118,9 @@ class TestMiniLinq(unittest.TestCase):
             "bar": {},
         }
         self._test_value_or_root([Reference('id'), Reference('baz'), Reference('$.foo')], data, [
-            ['1.bar.1.bar.[0]', [], "I am foo"],  # weird ID here due to bug in jsonpath
+            ['1', [], "I am foo"],
         ])
 
-    @pytest.mark.skip(reason="fails with TypeError from jsonpath")
     def test_value_or_root_None(self):
         """Should use the root object if the child is None"""
         data = {
@@ -129,7 +128,7 @@ class TestMiniLinq(unittest.TestCase):
             "bar": None,
         }
         self._test_value_or_root([Reference('id'), Reference('baz')], data, [
-            ['1.bar.[0]', []],  # weird ID here due to bug in jsonpath
+            ['1', []],
         ])
 
     def test_value_or_root_missing(self):
