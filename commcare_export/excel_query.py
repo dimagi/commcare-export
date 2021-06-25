@@ -252,7 +252,7 @@ def compile_source(worksheet, value_or_root=False):
         return data_source, api_query, None
     else:
         if value_or_root:
-            # if the jsonpath doesn't not yield a value yield the root document
+            # if the jsonpath doesn't yield a value yield the root document
             expr = get_value_or_root_expression(data_source_jsonpath)
         else:
             expr = Reference(str(data_source_jsonpath))
