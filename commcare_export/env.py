@@ -9,8 +9,8 @@ import pytz
 import six
 from itertools import chain
 
-from jsonpath_rw import jsonpath
-from jsonpath_rw.parser import parse as parse_jsonpath
+from jsonpath_ng import jsonpath
+from jsonpath_ng.parser import parse as parse_jsonpath
 
 from commcare_export.jsonpath_utils import split_leftmost
 from commcare_export.misc import unwrap, unwrap_val
@@ -183,7 +183,7 @@ class JsonPathEnv(Env):
         self.__bindings = bindings or {}
         self.__restrict_to_root = bool(jsonpath.Fields("__root_only").find(self.__bindings))
 
-        # Currently hardcoded because it is a global is jsonpath-rw
+        # Currently hardcoded because it is a global is jsonpath-ng
         # Probably not widely used, but will require refactor if so
         jsonpath.auto_id_field = "id"
 
@@ -208,7 +208,7 @@ class JsonPathEnv(Env):
 
         def iterator(jsonpath_expr=jsonpath_expr): # Capture closure
             for datum in jsonpath_expr.find(self.__bindings):
-                # HACK: The auto id from jsonpath_rw is good, but we lose it when we do .value here,
+                # HACK: The auto id from jsonpath_ng is good, but we lose it when we do .value here,
                 # so just slap it on if not present
                 if isinstance(datum.value, dict) and 'id' not in datum.value:
                     datum.value['id'] = jsonpath.AutoIdForDatum(datum).value

@@ -45,7 +45,7 @@ class TestMiniLinq(unittest.TestCase):
         self.check_case(Reference("foo.$.baz").eval(JsonPathEnv({'foo': [2], 'baz': 3})), [3])
 
     def test_eval_auto_id_reference(self):
-        "Test that we have turned on the jsonpath_rw.jsonpath.auto_id field properly"
+        "Test that we have turned on the jsonpath_ng.jsonpath.auto_id field properly"
         env = BuiltInEnv()
 
         self.check_case(Reference("foo.id").eval(JsonPathEnv({'foo': [2]})), ['foo'])
@@ -55,7 +55,7 @@ class TestMiniLinq(unittest.TestCase):
 
     def test_eval_auto_id_reference_nested(self):
         # this test is documentation of existing (weird) functionality
-        # that results from a combination of jsonpath_rw auto_id feature and
+        # that results from a combination of jsonpath_ng auto_id feature and
         # JsonPathEnv.lookup (which adds an additional auto ID for some reason).
         env = JsonPathEnv({})
 
@@ -78,7 +78,7 @@ class TestMiniLinq(unittest.TestCase):
         # as follows:
         #   '1.bar.1.bar.[0]' -> '1.bar.[0]'
 
-        # With the change above AND a change to jsonpath_rw to prevent converting IDs that exist into
+        # With the change above AND a change to jsonpath_ng to prevent converting IDs that exist into
         # auto IDs (see https://github.com/kennknowles/python-jsonpath-rw/pull/96) we get the following:
         #   Reference("id"):
         #       '1.bar.bazzer' -> 'bazzer'
@@ -118,10 +118,9 @@ class TestMiniLinq(unittest.TestCase):
             "bar": {},
         }
         self._test_value_or_root([Reference('id'), Reference('baz'), Reference('$.foo')], data, [
-            ['1.bar.1.bar.[0]', [], "I am foo"],  # weird ID here due to bug in jsonpath
+            ['1', [], "I am foo"],
         ])
 
-    @pytest.mark.skip(reason="fails with TypeError from jsonpath")
     def test_value_or_root_None(self):
         """Should use the root object if the child is None"""
         data = {
@@ -129,7 +128,7 @@ class TestMiniLinq(unittest.TestCase):
             "bar": None,
         }
         self._test_value_or_root([Reference('id'), Reference('baz')], data, [
-            ['1.bar.[0]', []],  # weird ID here due to bug in jsonpath
+            ['1', []],
         ])
 
     def test_value_or_root_missing(self):

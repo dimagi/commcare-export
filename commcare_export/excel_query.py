@@ -2,11 +2,11 @@ from __future__ import unicode_literals, print_function, absolute_import, divisi
 import re
 from collections import defaultdict, namedtuple
 
-from jsonpath_rw.lexer import JsonPathLexerError
+from jsonpath_ng.lexer import JsonPathLexerError
 from six.moves import xrange
 
-from jsonpath_rw import jsonpath
-from jsonpath_rw.parser import parse as parse_jsonpath
+from jsonpath_ng import jsonpath
+from jsonpath_ng.parser import parse as parse_jsonpath
 
 from commcare_export.exceptions import LongFieldsException, MissingColumnException, ReservedTableNameException
 from commcare_export.jsonpath_utils import split_leftmost

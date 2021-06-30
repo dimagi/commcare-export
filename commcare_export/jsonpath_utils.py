@@ -1,4 +1,4 @@
-from jsonpath_rw import jsonpath
+from jsonpath_ng import jsonpath
 
 
 def split_leftmost(jsonpath_expr):
