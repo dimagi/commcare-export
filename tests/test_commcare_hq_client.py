@@ -79,16 +79,16 @@ class FakeRepeatedDateCaseSession(FakeSession):
 
 class FakeMessageLogSession(FakeSession):
     def _get_results(self, params):
-        obj_1 = {'id': 1, 'foo': 1, 'date': '2017-01-01T15:36:22Z'}
-        obj_2 = {'id': 2, 'foo': 2, 'date': '2017-01-01T15:37:22Z'}
-        obj_3 = {'id': 3, 'foo': 3, 'date': '2017-01-01T15:38:22Z'}
+        obj_1 = {'id': 1, 'foo': 1, 'date_last_activity': '2017-01-01T15:36:22Z'}
+        obj_2 = {'id': 2, 'foo': 2, 'date_last_activity': '2017-01-01T15:37:22Z'}
+        obj_3 = {'id': 3, 'foo': 3, 'date_last_activity': '2017-01-01T15:38:22Z'}
         if not params:
             return {
                 'meta': {'next': '?cursor=xyz', 'limit': 2},
                 'objects': [obj_1, obj_2]
             }
         else:
-            since_query_param = DATE_PARAMS['date'].start_param
+            since_query_param = DATE_PARAMS['date_last_activity'].start_param
             since = params[since_query_param]
             if since == '2017-01-01T15:37:22':
                 return {
