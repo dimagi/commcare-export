@@ -261,6 +261,11 @@ class TestMiniLinq(unittest.TestCase):
         expected = 'https://www.commcarehq.org/a/d1/reports/case_data/123/'
         assert Apply(Reference('case_url'), Reference('id')).eval(env) == expected
 
+    def test_unique(self):
+        env = BuiltInEnv() | JsonPathEnv(
+            {"list": [{"a": 1}, {"a": 2}, {"a": 3}, {"a": 2}]})
+        assert Apply(Reference('unique'), Reference('list[*].a')).eval(env) == [1, 2, 3]
+
     def test_template(self):
         env = BuiltInEnv() | JsonPathEnv({'a': '1', 'b': '2'})
         assert Apply(Reference('template'), Literal('{}.{}'), Reference('a'), Reference('b')).eval(env) == '1.2'
