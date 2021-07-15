@@ -475,6 +475,13 @@ def substr(val, start, end):
     return val[start:end]
 
 
+@unwrap('val')
+def unique(val):
+    if isinstance(val, list):
+        return list(set(val))
+    return val
+
+
 class BuiltInEnv(DictEnv):
     """
     A built-in environment of operators and functions
@@ -519,7 +526,8 @@ class BuiltInEnv(DictEnv):
             'or': _or,
             'sha1': sha1,
             'substr': substr,
-            '_or_raw': _or_raw,  # for internal use
+            '_or_raw': _or_raw,  # for internal use,
+            'unique': unique
         })
         return super(BuiltInEnv, self).__init__(d)
 
