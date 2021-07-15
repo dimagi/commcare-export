@@ -397,6 +397,7 @@ List of builtin functions:
 | attachment_url               | Convert an attachment name into it's download URL                              |                                  |
 | form_url                     | Output the URL to the form view on CommCare HQ                                 |                                  |
 | case_url                     | Output the URL to the case view on CommCare HQ                                 |                                  |
+| unique                       | Ouptut only unique values in a list                                            |                                  |
 
 Output Formats
 --------------
