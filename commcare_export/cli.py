@@ -300,6 +300,13 @@ def main_with_args(args):
               '--query, --users, --locations', file=sys.stderr)
         return EXIT_STATUS_ERROR
 
+    if not args.username:
+        args.username = input('Please provide a username: ')
+
+    if not args.password:
+        # Windows getpass does not accept unicode
+        args.password = getpass.getpass()
+
     column_enforcer = None
     if args.with_organization:
         column_enforcer = builtin_queries.ColumnEnforcer()
@@ -320,13 +327,6 @@ def main_with_args(args):
     checkpoint_manager = None
     if writer.support_checkpoints:
         checkpoint_manager = _get_checkpoint_manager(args)
-
-    if not args.username:
-        args.username = input('Please provide a username: ')
-
-    if not args.password:
-        # Windows getpass does not accept unicode
-        args.password = getpass.getpass()
 
     since, until = get_date_params(args)
     if args.start_over:
