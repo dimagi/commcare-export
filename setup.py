@@ -67,7 +67,7 @@ setuptools.setup(
     include_package_data=True,
     license = 'MIT',
     install_requires = [
-        'alembic',
+        'alembic==1.6.5',
         'argparse',
         'jsonpath-ng~=1.5',
         'openpyxl==2.5.12',
