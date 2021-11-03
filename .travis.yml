@@ -13,8 +13,8 @@ env:
   global:
     - MSSQL_SA_PASSWORD=Password-123
     # HQ_USERNAME and HQ_API_KEY
-    - secure: etv02uWtyy5P4DfyuHjFm5RDFc6WBHLsnIMC75VjDk8kxDgwV/lDbPYMh/hzfPHyskgA1EQbc8IfHlbZWFVV8jOTy+wvrVir/mw95AEyNyAL/TTSWvYfTvdCsxOSbY6vcGlJNfy6rc+y0h6QyuIknY0OhU8sTaRcQnvbFPnOz28=
-    - secure: aLj1bKtUF2CnAwG+yjiAjo39cKi9WHaonIwqsuhOx4McsD/xSz4QHv/6/XhXZ5KxKyxw1+PBl/mWo6gyrT5iHDRBPk5iJXqZAgQFS2ukZSv/tUBGL7bWzoO9YfoLuWllA33DCr3PiXAhkH53dTcor16UN9wXeCprBBSGjhpAxRQ=
+    - secure: "AhNARIXHCKJhDpDHNT97h4WThW/eyofBpp4rI80i+DA8whlfKucHrfDaJ190tRblY8viBiC8FhucFxYVX6oSS2MaPN3X1bF8WzdMYiBzMJ05ODIRQ3pPjRsGD3e14MhpRriaHfa1w90/WdnU2QWXY6J8zitXlwXV5PRBdsk7raQ="
+    - secure: "hJqnvpMEgiiU8AT21T4dPRLqA+n4BSsWk9yVYV7DrfsZIIFN0Ioao7bg8MMh/XZ6mGMEjxtgFZ307ApuoQdfGpct9Yg2uxj/vx6n7VHdEzvoWfzhDEPn9mTG7QBxPkZJlz444m7hVW/jW8Pqr2LEdR+ORjGfe8FlwCU2MauOmIc="
 before_install:
  - docker pull microsoft/mssql-server-linux:2017-latest
  - docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=$MSSQL_SA_PASSWORD" -p 1433:1433 --name mssql1 -d microsoft/mssql-server-linux:2017-latest
