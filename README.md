@@ -15,7 +15,7 @@ A command-line tool (and Python library) to generate customized exports from the
 Installation & Quick Start
 --------------------------
 
-0a\. Install [Python 3](https://www.python.org/downloads/) and `pip`. This tool is [tested with Python 3.6, 3.7, and 3.8](https://app.travis-ci.com/dimagi/commcare-export).
+0a\. Install [Python 3](https://www.python.org/downloads/). This tool is [tested with Python 3.6, 3.7, and 3.8](https://app.travis-ci.com/dimagi/commcare-export).
 
 0b\. Sign up for [CommCareHQ](https://www.commcarehq.org/) if you have not already.
 
