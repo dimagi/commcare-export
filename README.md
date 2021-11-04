@@ -15,14 +15,15 @@ A command-line tool (and Python library) to generate customized exports from the
 Installation & Quick Start
 --------------------------
 
-0a\. Install Python and `pip`. This tool is [tested with Python 2.7, 3.6 and 3.7](https://travis-ci.com/dimagi/commcare-export).
+0a\. Install [Python 3](https://www.python.org/downloads/) and `pip`. This tool is [tested with Python 3.6, 3.7, and 3.8](https://app.travis-ci.com/dimagi/commcare-export).
 
 0b\. Sign up for [CommCareHQ](https://www.commcarehq.org/) if you have not already.
 
 1\. Install CommCare Export via `pip`
 
 ```
-$ pip install commcare-export
+$ python3 -m pip install wheel
+$ python3 -m pip install commcare-export
 ```
 
 2\. Create a project space and application.
