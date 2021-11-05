@@ -578,7 +578,7 @@ mysql> GRANT ALL PRIVILEGES ON *.* TO 'travis'@'%';
 MSSQL
 =====
 ```
-$ docker pull microsoft/mssql-server-linux:2017-latest
+$ docker pull mcr.microsoft.com/mssql/server:2017-latest 
 $ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=Password@123" -p 1433:1433 --name mssql1 -d microsoft/mssql-server-linux:2017-latest
 
 # install driver
@@ -593,7 +593,7 @@ $ odbcinst -q -d
 MSSQL for Mac OS
 ==========
 ```
-$ docker pull microsoft/mssql-server-linux:2017-latest
+$ docker pull mcr.microsoft.com/mssql/server:2017-latest 
 $ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=Password@123" -p 1433:1433 --name mssql1 -d microsoft/mssql-server-linux:2017-latest
 
 # Install driver
