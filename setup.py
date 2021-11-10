@@ -1,10 +1,9 @@
-from __future__ import print_function
-import os.path
-import sys
 import glob
-import re
 import io
-import subprocess
+import os.path
+import re
+import sys
+
 import setuptools
 from setuptools.command.test import test as TestCommand
 
