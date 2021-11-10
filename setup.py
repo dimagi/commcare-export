@@ -46,6 +46,10 @@ class PyTest(TestCommand):
 
 
 test_deps = ['pytest', 'psycopg2', 'mock']
+base_sql_deps = ["SQLAlchemy", "alembic<1.7"]
+postgres = ["psycopg2"]
+mysql = ["pymysql"]
+odbc = ["pyodbc"]
 
 setuptools.setup(
     name="commcare-export",
@@ -75,7 +79,15 @@ setuptools.setup(
         'python-dateutil', 'requests', 'ndg-httpsclient', 'simplejson', 'six',
         'sqlalchemy', 'pytz', 'sqlalchemy-migrate', 'backoff', 'csv342'
     ],
-    tests_require=test_deps,
+    extras_require={
+        'test': test_deps,
+        'base_sql': base_sql_deps,
+        'postgres': base_sql_deps + postgres,
+        'mysql': base_sql_deps + mysql,
+        'odbc': base_sql_deps + odbc,
+        'xlsx': ["openpyxl"],
+        'xls': ["xlwt"],
+    },
     cmdclass={'test': PyTest},
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -95,5 +107,5 @@ setuptools.setup(
         'Topic :: Software Development :: Interpreters',
         'Topic :: System :: Archiving',
         'Topic :: System :: Distributed Computing',
-    ],
-    extras_require={'test': test_deps})
+    ]
+)
