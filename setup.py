@@ -5,10 +5,10 @@ import glob
 import re
 import io
 import subprocess
-import setuptools 
+import setuptools
 from setuptools.command.test import test as TestCommand
 
-VERSION_PATH='commcare_export/VERSION'
+VERSION_PATH = 'commcare_export/VERSION'
 
 # Overwrite VERSION if we are actually building for a distribution to pypi
 # This code path requires dependencies, etc, to be available
@@ -19,16 +19,19 @@ if 'sdist' in sys.argv:
 
 # This import requires either commcare_export/VERSION or to be in a git clone (as does the package in general)
 import commcare_export
+
 version = commcare_export.version.version()
 
 # Crash if the VERSION is not a simple version and it is going to register or upload
 if 'register' in sys.argv or 'upload' in sys.argv:
     version = commcare_export.version.stored_version()
     if not version or not re.match('\d+\.\d+\.\d+', version):
-        print('Version %s is not an appropriate version for publicizing!' % version)
+        print('Version %s is not an appropriate version for publicizing!' %
+              version)
         sys.exit(1)
 
 readme = 'README.md'
+
 
 class PyTest(TestCommand):
     def finalize_options(self):
@@ -45,46 +48,37 @@ class PyTest(TestCommand):
 
 test_deps = ['pytest', 'psycopg2', 'mock']
 
-setuptools.setup(   
-    name = "commcare-export",
-    version = version,
-    description = 'A command-line tool (and Python library) to extract data from CommCareHQ into a SQL database or Excel workbook',
-    long_description = io.open(readme, encoding='utf-8').read(),
-    long_description_content_type = 'text/markdown',
-    author = 'Dimagi',
-    author_email = 'information@dimagi.com',
-    url = "https://github.com/dimagi/commcare-export",
-    entry_points = {
+setuptools.setup(
+    name="commcare-export",
+    version=version,
+    description='A command-line tool (and Python library) to extract data from '
+    'CommCareHQ into a SQL database or Excel workbook',
+    long_description=io.open(readme, encoding='utf-8').read(),
+    long_description_content_type='text/markdown',
+    author='Dimagi',
+    author_email='information@dimagi.com',
+    url="https://github.com/dimagi/commcare-export",
+    entry_points={
         'console_scripts': [
             'commcare-export = commcare_export.cli:entry_point',
             'commcare-export-utils = commcare_export.utils_cli:entry_point'
         ]
     },
-    packages = setuptools.find_packages(exclude=['tests*']),
-    data_files = [
-        (os.path.join('share', 'commcare-export', 'examples'), glob.glob('examples/*.json') + glob.glob('examples/*.xlsx')),
+    packages=setuptools.find_packages(exclude=['tests*']),
+    data_files=[
+        (os.path.join('share', 'commcare-export', 'examples'),
+         glob.glob('examples/*.json') + glob.glob('examples/*.xlsx')),
     ],
     include_package_data=True,
-    license = 'MIT',
-    install_requires = [
-        'alembic<1.7',
-        'argparse',
-        'jsonpath-ng~=1.5',
-        'openpyxl==2.5.12',
-        'python-dateutil',
-        'requests',
-        'ndg-httpsclient',
-        'simplejson',
-        'six',
-        'sqlalchemy',
-        'pytz',
-        'sqlalchemy-migrate',
-        'backoff',
-        'csv342'
+    license='MIT',
+    install_requires=[
+        'alembic<1.7', 'argparse', 'jsonpath-ng~=1.5', 'openpyxl==2.5.12',
+        'python-dateutil', 'requests', 'ndg-httpsclient', 'simplejson', 'six',
+        'sqlalchemy', 'pytz', 'sqlalchemy-migrate', 'backoff', 'csv342'
     ],
-    tests_require = test_deps,
-    cmdclass = {'test': PyTest},
-    classifiers = [
+    tests_require=test_deps,
+    cmdclass={'test': PyTest},
+    classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
         'Intended Audience :: Developers',
@@ -103,5 +97,4 @@ setuptools.setup(
         'Topic :: System :: Archiving',
         'Topic :: System :: Distributed Computing',
     ],
-    extras_require={'test': test_deps}
-)
+    extras_require={'test': test_deps})
