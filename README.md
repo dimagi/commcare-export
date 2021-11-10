@@ -435,7 +435,7 @@ $ pip install openpyxl
 $ pip install xlwt
 
 # To sync with a SQL database
-$ pip install SQLAlchemy alembic psycopg2 pymysql pyodbc
+$ pip install SQLAlchemy "alembic<1.7" psycopg2 pymysql pyodbc
 ```
 
 Contributing
