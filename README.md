@@ -429,22 +429,22 @@ are optional. Here is how you might install them:
 
 ```
 # To export "xlsx"
-$ pip install commcare-export[xlsx]
+$ pip install "commcare-export[xlsx]"
 
 # To export "xls"
-$ pip install commcare-export[xls]
+$ pip install "commcare-export[xls]"
 
 # To sync with a Postgres database
-$ pip install commcare-export[postgres]
+$ pip install "commcare-export[postgres]"
 
 # To sync with a mysql database
-$ pip install commcare-export[mysql]
+$ pip install "commcare-export[mysql]"
 
 # To sync with a database which uses odbc (e.g. mssql)
-$ pip install commcare-export[odbc]
+$ pip install "commcare-export[odbc]"
 
 # To sync with another SQL database supported by SQLAlchemy
-$ pip install commcare-export[base_sql]
+$ pip install "commcare-export[base_sql]"
 # Then install the python package for your database
 ```
 
