@@ -74,6 +74,7 @@ setuptools.setup(
     ],
     include_package_data=True,
     license='MIT',
+    python_requires=">=3.6",
     install_requires=[
         'alembic<1.7', 'argparse', 'jsonpath-ng~=1.5', 'openpyxl==2.5.12',
         'python-dateutil', 'requests', 'ndg-httpsclient', 'simplejson', 'six',
