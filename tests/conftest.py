@@ -1,13 +1,21 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
 
 import logging
 import os
 import uuid
 
-import pytest
 import sqlalchemy
 from sqlalchemy.exc import DBAPIError
+
+import pytest
 
 TEST_DB = 'test_commcare_export_%s' % uuid.uuid4().hex
 
@@ -85,4 +93,3 @@ def db_params(request):
 ], ids=['postgres'])
 def pg_db_params(request):
     return _db_params(request, 'test_commcare_export_%s' % uuid.uuid4().hex)
-

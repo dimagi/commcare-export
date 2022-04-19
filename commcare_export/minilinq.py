@@ -1,13 +1,19 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
+
 import logging
 
 import six
 from six.moves import map
 
 from commcare_export.misc import unwrap, unwrap_val
-
 from commcare_export.repeatable_iterator import RepeatableIterator
-
 from commcare_export.specs import TableSpec
 
 logger = logging.getLogger(__name__)

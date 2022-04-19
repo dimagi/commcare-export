@@ -2,15 +2,15 @@ import datetime
 import io
 import logging
 import zipfile
-from six.moves import zip_longest
 
-from alembic.migration import MigrationContext
-from alembic.operations import Operations
-import csv342 as csv
 import six
 import sqlalchemy
 from six import u
+from six.moves import zip_longest
 
+import csv342 as csv
+from alembic.migration import MigrationContext
+from alembic.operations import Operations
 from commcare_export.data_types import UnknownDataType, get_sqlalchemy_type
 from commcare_export.specs import TableSpec
 

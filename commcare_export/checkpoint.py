@@ -1,16 +1,22 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
 
 import datetime
 import logging
-import uuid
-
 import os
+import uuid
 from contextlib import contextmanager
 from operator import attrgetter
 
 import dateutil.parser
 import six
-from sqlalchemy import Column, String, Boolean, func, and_
+from sqlalchemy import Boolean, Column, String, and_, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 

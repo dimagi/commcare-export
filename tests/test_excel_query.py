@@ -1,4 +1,11 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
 
 import os.path
 import pprint
@@ -6,11 +13,10 @@ import unittest
 
 import openpyxl
 
-from commcare_export.env import BuiltInEnv
-from commcare_export.env import JsonPathEnv
+from commcare_export.builtin_queries import ColumnEnforcer
+from commcare_export.env import BuiltInEnv, JsonPathEnv
 from commcare_export.excel_query import *
 from commcare_export.excel_query import _get_safe_source_field
-from commcare_export.builtin_queries import ColumnEnforcer
 
 
 class TestExcelQuery(unittest.TestCase):

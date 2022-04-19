@@ -1,9 +1,17 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
-import unittest
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
+
 import hashlib
-import tempfile
 import struct
+import tempfile
+import unittest
 
 from commcare_export import misc
 

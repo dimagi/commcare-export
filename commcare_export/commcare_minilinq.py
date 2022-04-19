@@ -7,9 +7,10 @@ API directly.
 import json
 from enum import Enum
 
+from dateutil.parser import ParserError, parse
+
 from commcare_export.env import CannotBind, CannotReplace, DictEnv
 from commcare_export.misc import unwrap
-from dateutil.parser import ParserError, parse
 
 try:
     from urllib.parse import parse_qs, urlparse

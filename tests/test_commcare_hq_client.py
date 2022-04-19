@@ -1,19 +1,31 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
 
-import json
 import unittest
 from datetime import datetime
 
+import requests
 import simplejson
 
-import requests
-
 import pytest
-
 from commcare_export.checkpoint import CheckpointManagerWithDetails
-from commcare_export.commcare_hq_client import CommCareHqClient, ResourceRepeatException
-from commcare_export.commcare_minilinq import SimplePaginator, DatePaginator, get_paginator, \
-    DATE_PARAMS, PaginationMode
+from commcare_export.commcare_hq_client import (
+    CommCareHqClient,
+    ResourceRepeatException,
+)
+from commcare_export.commcare_minilinq import (
+    DATE_PARAMS,
+    DatePaginator,
+    PaginationMode,
+    SimplePaginator,
+    get_paginator,
+)
 
 
 class FakeSession(object):
@@ -188,4 +200,3 @@ class TestDatePaginator(unittest.TestCase):
             's1': None,
             's2': d2
         }]}), datetime.strptime(d2, '%Y-%m-%dT%H:%M:%SZ'))
-

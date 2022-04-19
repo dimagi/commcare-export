@@ -1,21 +1,25 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
 
 import hashlib
 import json
-import uuid
-from datetime import datetime
 import operator
+import uuid
+
 import pytz
 import six
-from itertools import chain
-
-from jsonpath_ng import jsonpath
-from jsonpath_ng.parser import parse as parse_jsonpath
 
 from commcare_export.jsonpath_utils import split_leftmost
 from commcare_export.misc import unwrap, unwrap_val
-
 from commcare_export.repeatable_iterator import RepeatableIterator
+from jsonpath_ng import jsonpath
+from jsonpath_ng.parser import parse as parse_jsonpath
 
 JSONPATH_CACHE = {}
 

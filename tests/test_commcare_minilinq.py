@@ -1,13 +1,13 @@
 import unittest
 from itertools import *
 
-from jsonpath_ng import jsonpath
-
 from commcare_export.checkpoint import CheckpointManagerWithDetails
-from commcare_export.minilinq import *
-from commcare_export.env import *
 from commcare_export.commcare_hq_client import MockCommCareHqClient
 from commcare_export.commcare_minilinq import *
+from commcare_export.env import *
+from commcare_export.minilinq import *
+from jsonpath_ng import jsonpath
+
 
 class TestCommCareMiniLinq(unittest.TestCase):
 

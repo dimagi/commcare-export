@@ -1,18 +1,30 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
 
-import csv342 as csv
 import datetime
 import io
 import tempfile
 import zipfile
 
 import openpyxl
-import pytest
 import sqlalchemy
 
+import csv342 as csv
+import pytest
 from commcare_export.specs import TableSpec
-from commcare_export.writers import SqlTableWriter, JValueTableWriter, Excel2007TableWriter, CsvTableWriter
+from commcare_export.writers import (
+    CsvTableWriter,
+    Excel2007TableWriter,
+    JValueTableWriter,
+    SqlTableWriter,
+)
 
 
 @pytest.fixture()

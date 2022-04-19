@@ -1,13 +1,22 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
 
 import copy
 import logging
 from collections import OrderedDict
 
-import backoff
 import requests
-from requests.auth import AuthBase
-from requests.auth import HTTPDigestAuth
+from requests.auth import AuthBase, HTTPDigestAuth
+
+import backoff
+import commcare_export
+from commcare_export.repeatable_iterator import RepeatableIterator
 
 AUTH_MODE_PASSWORD = 'password'
 AUTH_MODE_APIKEY = 'apikey'
@@ -19,8 +28,6 @@ except ImportError:
     from urlparse import urlparse, parse_qs
     from urllib import urlopen, urlencode
 
-import commcare_export
-from commcare_export.repeatable_iterator import RepeatableIterator
 
 logger = logging.getLogger(__name__)
 
@@ -266,4 +273,3 @@ class ApiKeyAuth(AuthBase):
     def __call__(self, r):
         r.headers['Authorization'] = 'apikey %s:%s' % (self.username, self.apikey)
         return r
-

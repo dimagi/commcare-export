@@ -1,13 +1,25 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
 
 import datetime
 import uuid
 
-import pytest
 import sqlalchemy
 
-from commcare_export.checkpoint import CheckpointManager, Checkpoint, session_scope, CheckpointManagerProvider
+import pytest
+from commcare_export.checkpoint import (
+    Checkpoint,
+    CheckpointManager,
+    CheckpointManagerProvider,
+    session_scope,
+)
 from commcare_export.commcare_minilinq import PaginationMode
 
 

@@ -1,17 +1,27 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
-import re
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
+
 from collections import defaultdict, namedtuple
 
-from jsonpath_ng.lexer import JsonPathLexerError
 from six.moves import xrange
 
-from jsonpath_ng import jsonpath
-from jsonpath_ng.parser import parse as parse_jsonpath
-
-from commcare_export.exceptions import LongFieldsException, MissingColumnException, ReservedTableNameException
+from commcare_export.exceptions import (
+    LongFieldsException,
+    MissingColumnException,
+    ReservedTableNameException,
+)
 from commcare_export.jsonpath_utils import split_leftmost
 from commcare_export.map_format import compile_map_format_via
 from commcare_export.minilinq import *
+from jsonpath_ng import jsonpath
+from jsonpath_ng.parser import parse as parse_jsonpath
+
 
 def take_while(pred, iterator):
     for v in iterator:

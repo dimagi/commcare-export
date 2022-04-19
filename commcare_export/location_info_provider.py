@@ -1,7 +1,7 @@
 import logging
 
-from commcare_export.misc import unwrap_val
 from commcare_export.commcare_minilinq import SimplePaginator
+from commcare_export.misc import unwrap_val
 
 logger = logging.getLogger(__name__)
 
@@ -90,5 +90,3 @@ class LocationInfoProvider:
                 loc_uri = loc_data['parent']
             ancestors[resource_uri] = type_code_to_id
         return ancestors
-
-

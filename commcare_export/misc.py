@@ -1,10 +1,19 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
+
 import functools
 import hashlib
 import inspect
 import io
-from jsonpath_ng import jsonpath
+
 from commcare_export.repeatable_iterator import RepeatableIterator
+from jsonpath_ng import jsonpath
 
 
 def digest_file(path):

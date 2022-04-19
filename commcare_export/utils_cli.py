@@ -1,4 +1,11 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
 
 import argparse
 import inspect
@@ -6,7 +13,7 @@ import logging
 import sys
 
 from commcare_export.cli import CLI_ARGS
-from commcare_export.utils import get_checkpoint_manager, confirm, print_runs
+from commcare_export.utils import confirm, get_checkpoint_manager, print_runs
 
 EXIT_STATUS_ERROR = 1
 

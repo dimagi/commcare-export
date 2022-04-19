@@ -1,22 +1,30 @@
 # -*- coding: utf-8 -*-
-import csv342 as csv
 import os
 import re
 import unittest
 from argparse import Namespace
 from copy import copy
+from unittest import mock
 
-import pytest
 import sqlalchemy
-from mock import mock
+from tests.utils import SqlWriterWithTearDown
 
-from commcare_export.checkpoint import CheckpointManager, session_scope, Checkpoint
-from commcare_export.cli import CLI_ARGS, EXIT_STATUS_ERROR, main_with_args
-from commcare_export.commcare_hq_client import MockCommCareHqClient, CommCareHqClient, _params_to_url
+import csv342 as csv
+import pytest
+from commcare_export.checkpoint import (
+    Checkpoint,
+    CheckpointManager,
+    session_scope,
+)
+from commcare_export.cli import CLI_ARGS, main_with_args
+from commcare_export.commcare_hq_client import (
+    CommCareHqClient,
+    MockCommCareHqClient,
+    _params_to_url,
+)
 from commcare_export.commcare_minilinq import PaginationMode
 from commcare_export.specs import TableSpec
-from commcare_export.writers import JValueTableWriter, SqlTableWriter
-from tests.utils import SqlWriterWithTearDown
+from commcare_export.writers import JValueTableWriter
 
 CLI_ARGS_BY_NAME = {
     arg.name: arg

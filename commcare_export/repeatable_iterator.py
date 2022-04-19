@@ -1,4 +1,3 @@
-from types import GeneratorType
 
 
 class RepeatableIterator(object):
