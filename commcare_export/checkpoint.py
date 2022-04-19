@@ -1,16 +1,12 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
-
 import datetime
 import logging
-import uuid
-
 import os
+import uuid
 from contextlib import contextmanager
 from operator import attrgetter
 
 import dateutil.parser
-import six
-from sqlalchemy import Column, String, Boolean, func, and_
+from sqlalchemy import Boolean, Column, String, and_, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -124,7 +120,7 @@ class CheckpointManager(SqlMixin):
             raise DataExportException('Tried to set an empty checkpoint. This is not allowed.')
         self._validate_tables()
 
-        if isinstance(checkpoint_time, six.text_type):
+        if isinstance(checkpoint_time, str):
             since_param = checkpoint_time
         else:
             since_param = checkpoint_time.isoformat()

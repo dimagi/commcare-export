@@ -2,15 +2,13 @@ import datetime
 import io
 import logging
 import zipfile
-from six.moves import zip_longest
+from itertools import zip_longest
 
+import sqlalchemy
+
+import csv342 as csv
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-import csv342 as csv
-import six
-import sqlalchemy
-from six import u
-
 from commcare_export.data_types import UnknownDataType, get_sqlalchemy_type
 from commcare_export.specs import TableSpec
 
@@ -23,27 +21,29 @@ def ensure_text(v, convert_none=False):
     if v is None:
         return '' if convert_none else v
 
-    if isinstance(v, six.text_type):
+    if isinstance(v, str):
         return v
-    elif isinstance(v, six.binary_type):
-        return u(v)
+    elif isinstance(v, bytes):
+        return v
     elif isinstance(v, datetime.datetime):
         return v.strftime('%Y-%m-%d %H:%M:%S')
     elif isinstance(v, datetime.date):
         return v.isoformat()
     else:
-        return u(str(v))
+        return str(v)
+
 
 def to_jvalue(v):
     if v is None:
         return None
 
-    if isinstance(v, (six.text_type,) + six.integer_types):
+    if isinstance(v, (str, int)):
         return v
-    elif isinstance(v, six.binary_type):
-        return u(v)
+    elif isinstance(v, bytes):
+        return v
     else:
-        return u(str(v))
+        return str(v)
+
 
 class TableWriter(object):
     """
@@ -364,7 +364,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
         if isinstance(val, int):
             return sqlalchemy.Integer()
-        elif isinstance(val, six.string_types):
+        elif isinstance(val, str):
             if self.is_postgres:
                 # PostgreSQL is the best; you can use TEXT everywhere and it works like a charm.
                 return sqlalchemy.UnicodeText(collation=self.collation)
@@ -436,7 +436,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 return  # Can't do anything
             elif dest_type.length is None:
                 return  # already a TEXT column
-            elif isinstance(val, six.string_types) and dest_type.length >= len(val):
+            elif isinstance(val, str) and dest_type.length >= len(val):
                 return  # no need to upgrade to TEXT column
             elif source_type.length is None:
                 return sqlalchemy.UnicodeText(collation=self.collation)

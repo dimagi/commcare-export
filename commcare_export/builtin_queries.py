@@ -133,4 +133,3 @@ class ColumnEnforcer():
             return ColumnEnforcer.columns_to_require[data_source]
         else:
             return None
-

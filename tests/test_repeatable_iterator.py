@@ -1,8 +1,8 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
-from itertools import *
 import unittest
+from itertools import *
 
 from commcare_export.repeatable_iterator import RepeatableIterator
+
 
 class TestRepeatableIterator(unittest.TestCase):
 

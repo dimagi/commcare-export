@@ -1,13 +1,7 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
-
 import unittest
 
-from commcare_export.map_format import (
-    parse_template,
-    parse_function_arg,
-)
-from commcare_export.minilinq import Apply, Reference, Literal
+from commcare_export.map_format import parse_function_arg, parse_template
+from commcare_export.minilinq import Apply, Literal, Reference
 
 
 class TestMapFormats(unittest.TestCase):

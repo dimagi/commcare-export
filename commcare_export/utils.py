@@ -1,11 +1,7 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
-
 import sys
 
 from commcare_export import misc
 from commcare_export.checkpoint import CheckpointManager
-from six.moves import input
-
 from commcare_export.writers import StreamingMarkdownTableWriter
 
 

@@ -1,6 +1,6 @@
 import re
 
-from commcare_export.minilinq import Literal, Apply, Reference
+from commcare_export.minilinq import Apply, Literal, Reference
 
 SELECTED_AT = 'selected-at'
 SELECTED = 'selected'

@@ -1,31 +1,33 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
+from __future__ import (
+    absolute_import,
+    division,
+    generators,
+    nested_scopes,
+    print_function,
+    unicode_literals,
+)
 
 import copy
 import logging
 from collections import OrderedDict
+from urllib.parse import urlencode
+
+import requests
+from requests.auth import AuthBase, HTTPDigestAuth
 
 import backoff
-import requests
-from requests.auth import AuthBase
-from requests.auth import HTTPDigestAuth
+import commcare_export
+from commcare_export.repeatable_iterator import RepeatableIterator
 
 AUTH_MODE_PASSWORD = 'password'
 AUTH_MODE_APIKEY = 'apikey'
 
-try:
-    from urllib.request import urlopen
-    from urllib.parse import urlparse, urlencode, parse_qs
-except ImportError:
-    from urlparse import urlparse, parse_qs
-    from urllib import urlopen, urlencode
-
-import commcare_export
-from commcare_export.repeatable_iterator import RepeatableIterator
 
 logger = logging.getLogger(__name__)
 
 LATEST_KNOWN_VERSION='0.5'
 RESOURCE_REPEAT_LIMIT=10
+
 
 def on_backoff(details):
     _log_backoff(details, 'Waiting for retry.')
@@ -266,4 +268,3 @@ class ApiKeyAuth(AuthBase):
     def __call__(self, r):
         r.headers['Authorization'] = 'apikey %s:%s' % (self.username, self.apikey)
         return r
-
