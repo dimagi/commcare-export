@@ -4,7 +4,8 @@ import logging
 import zipfile
 from six.moves import zip_longest
 
-import alembic
+from alembic.migration import MigrationContext
+from alembic.operations import Operations
 import csv342 as csv
 import six
 import sqlalchemy
@@ -453,8 +454,8 @@ class SqlTableWriter(SqlMixin, TableWriter):
         return sqlalchemy.UnicodeText(collation=self.collation)
 
     def make_table_compatible(self, table_name, row_dict, data_type_dict):
-        ctx = alembic.migration.MigrationContext.configure(self.connection)
-        op = alembic.operations.Operations(ctx)
+        ctx = MigrationContext.configure(self.connection)
+        op = Operations(ctx)
 
         if not table_name in self.metadata.tables:
             if self.strict_types:
