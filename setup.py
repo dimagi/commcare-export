@@ -46,7 +46,7 @@ class PyTest(TestCommand):
 
 
 test_deps = ['pytest', 'psycopg2', 'mock']
-base_sql_deps = ["SQLAlchemy", "alembic<1.7"]
+base_sql_deps = ["SQLAlchemy", "alembic"]
 postgres = ["psycopg2"]
 mysql = ["pymysql"]
 odbc = ["pyodbc"]
@@ -76,9 +76,20 @@ setuptools.setup(
     license='MIT',
     python_requires=">=3.6",
     install_requires=[
-        'alembic<1.7', 'argparse', 'jsonpath-ng~=1.5', 'openpyxl==2.5.12',
-        'python-dateutil', 'requests', 'ndg-httpsclient', 'simplejson', 'six',
-        'sqlalchemy', 'pytz', 'sqlalchemy-migrate', 'backoff', 'csv342'
+        'alembic',
+        'argparse',
+        'backoff',
+        'csv342',
+        'jsonpath-ng~=1.5',
+        'ndg-httpsclient',
+        'openpyxl==2.5.12',
+        'python-dateutil',
+        'pytz',
+        'requests',
+        'simplejson',
+        'six',
+        'sqlalchemy',
+        'sqlalchemy-migrate'
     ],
     extras_require={
         'test': test_deps,

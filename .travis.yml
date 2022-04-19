@@ -1,6 +1,6 @@
 language: python
 sudo: required
-dist: "xenial"
+dist: "bionic"
 python:
  - "3.6"
  - "3.7"
@@ -19,7 +19,7 @@ before_install:
  - docker pull mcr.microsoft.com/mssql/server:2017-latest
  - docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=$MSSQL_SA_PASSWORD" -p 1433:1433 --name mssql1 -d mcr.microsoft.com/mssql/server:2017-latest
  - curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
- - echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/14.04/prod trusty main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+ - curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
  - sudo apt-get update -qq
 install:
  - sudo apt-get install pandoc
