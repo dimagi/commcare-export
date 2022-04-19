@@ -11,7 +11,8 @@ def digest_file(path):
     with io.open(path, 'rb') as filehandle:
         digest = hashlib.md5()
         while True:
-            chunk = filehandle.read(4096) # Arbitrary choice of size to be ~filesystem block size friendly
+            # Arbitrary choice of size to be ~filesystem block size friendly
+            chunk = filehandle.read(4096)
             if not chunk:
                 break
             digest.update(chunk)
@@ -19,7 +20,6 @@ def digest_file(path):
 
 
 def unwrap(arg_name):
-
     def unwrapper(fn):
         @functools.wraps(fn)
         def _inner(*args):

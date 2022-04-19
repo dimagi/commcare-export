@@ -25,8 +25,8 @@ AUTH_MODE_APIKEY = 'apikey'
 
 logger = logging.getLogger(__name__)
 
-LATEST_KNOWN_VERSION='0.5'
-RESOURCE_REPEAT_LIMIT=10
+LATEST_KNOWN_VERSION = '0.5'
+RESOURCE_REPEAT_LIMIT = 10
 
 
 def on_backoff(details):
@@ -39,7 +39,10 @@ def on_giveup(details):
 
 def _log_backoff(details, action_message):
     details['__suffix'] = action_message
-    logger.warning("Request failed after {tries} attempts ({elapsed:.1f}s). {__suffix}".format(**details))
+    logger.warning(
+        "Request failed after {tries} attempts ({elapsed:.1f}s). "
+        "{__suffix}".format(**details)
+    )
 
 
 def is_client_error(ex):
@@ -62,11 +65,20 @@ class ResourceRepeatException(Exception):
 
 class CommCareHqClient(object):
     """
-    A connection to CommCareHQ for a particular version, project, and user.
+    A connection to CommCareHQ for a particular version, project, and
+    user.
     """
 
-    def __init__(self, url, project, username, password,
-                 auth_mode=AUTH_MODE_PASSWORD, version=LATEST_KNOWN_VERSION, checkpoint_manager=None):
+    def __init__(
+        self,
+        url,
+        project,
+        username,
+        password,
+        auth_mode=AUTH_MODE_PASSWORD,
+        version=LATEST_KNOWN_VERSION,
+        checkpoint_manager=None,
+    ):
         self.version = version
         self.url = url
         self.project = project
@@ -85,9 +97,12 @@ class CommCareHqClient(object):
     def session(self):
         if self.__session == None:
             self.__session = requests.Session()
-            self.__session.headers.update({
-                'User-Agent': 'commcare-export/%s' % commcare_export.__version__
-            })
+            self.__session.headers.update(
+                {
+                    'User-Agent': 'commcare-export/%s'
+                    % commcare_export.__version__
+                }
+            )
         return self.__session
 
     @session.setter
@@ -100,31 +115,39 @@ class CommCareHqClient(object):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
 
     @backoff.on_exception(
-        backoff.expo, requests.exceptions.RequestException,
-        max_time=300, giveup=is_client_error,
-        on_backoff=on_backoff, on_giveup=on_giveup
+        backoff.expo,
+        requests.exceptions.RequestException,
+        max_time=300,
+        giveup=is_client_error,
+        on_backoff=on_backoff,
+        on_giveup=on_giveup,
     )
     def get(self, resource, params=None):
         """
         Gets the named resource.
 
-        Currently a bit of a vulnerable stub that works
-        for this particular use case in the hands of a trusted user; would likely
+        Currently a bit of a vulnerable stub that works for this
+        particular use case in the hands of a trusted user; would likely
         want this to work like (or via) slumber.
         """
         logger.debug("Fetching '%s' batch: %s", resource, params)
         resource_url = '%s/%s/' % (self.api_url, resource)
-        response = self.session.get(resource_url, params=params, auth=self.__auth, timeout=60)
+        response = self.session.get(
+            resource_url, params=params, auth=self.__auth, timeout=60
+        )
         response.raise_for_status()
         return response.json()
-            
-    def iterate(self, resource, paginator, params=None, checkpoint_manager=None):
+
+    def iterate(
+        self, resource, paginator, params=None, checkpoint_manager=None
+    ):
         """
         Assumes the endpoint is a list endpoint, and iterates over it
         making a lot of assumptions that it is like a tastypie endpoint.
         """
         UNKNOWN_COUNT = 'unknown'
         params = dict(params or {})
+
         def iterate_resource(resource=resource, params=params):
             more_to_fetch = True
             last_batch_ids = set()
@@ -139,7 +162,10 @@ class CommCareHqClient(object):
                 else:
                     repeat_counter = 0
                 if repeat_counter >= RESOURCE_REPEAT_LIMIT:
-                    raise ResourceRepeatException("Requested resource '{}' {} times with same parameters".format(resource, repeat_counter))
+                    raise ResourceRepeatException(
+                        "Requested resource '{}' {} times with same "
+                        "parameters".format(resource, repeat_counter)
+                    )
 
                 batch = self.get(resource, params)
                 last_params = copy.copy(params)
@@ -173,20 +199,26 @@ class CommCareHqClient(object):
 
                     limit = batch_meta.get('limit')
                     if more_to_fetch:
-                        # Handle the case where API is 'non-counting' and repeats the last batch
+                        # Handle the case where API is 'non-counting'
+                        # and repeats the last batch
                         repeated_last_page_of_non_counting_resource = (
                             not got_new_data
                             and total_count == UNKNOWN_COUNT
                             and (limit and len(batch_objects) < limit)
                         )
-                        more_to_fetch = not repeated_last_page_of_non_counting_resource
+                        more_to_fetch = (
+                            not repeated_last_page_of_non_counting_resource
+                        )
 
-                    self.checkpoint(checkpoint_manager, paginator, batch, not more_to_fetch)
-                
+                    self.checkpoint(
+                        checkpoint_manager, paginator, batch, not more_to_fetch
+                    )
+
         return RepeatableIterator(iterate_resource)
 
     def checkpoint(self, checkpoint_manager, paginator, batch, is_final):
         from commcare_export.commcare_minilinq import DatePaginator
+
         if isinstance(paginator, DatePaginator):
             since_date = paginator.get_since_date(batch)
             if since_date:
@@ -194,9 +226,13 @@ class CommCareHqClient(object):
                     last_obj = batch['objects'][-1]
                 except IndexError:
                     last_obj = {}
-                checkpoint_manager.set_checkpoint(since_date, is_final, doc_id=last_obj.get("id", None))
+                checkpoint_manager.set_checkpoint(
+                    since_date, is_final, doc_id=last_obj.get("id", None)
+                )
             else:
-                logger.warning('Failed to get a checkpoint date from a batch of data.')
+                logger.warning(
+                    'Failed to get a checkpoint date from a batch of data.'
+                )
 
 
 class MockCommCareHqClient(object):
@@ -218,7 +254,8 @@ class MockCommCareHqClient(object):
             ),
         ]
     })
-    """    
+    """
+
     def __init__(self, mock_data):
         self.mock_data = {
             resource: {
@@ -228,18 +265,30 @@ class MockCommCareHqClient(object):
             for resource, resource_results in mock_data.items()
         }
 
-    def iterate(self, resource, paginator, params=None, checkpoint_manager=None):
-        logger.debug('Mock client call to resource "%s" with params "%s"', resource, params)
+    def iterate(
+        self, resource, paginator, params=None, checkpoint_manager=None
+    ):
+        logger.debug(
+            'Mock client call to resource "%s" with params "%s"',
+            resource,
+            params,
+        )
         return self.mock_data[resource][_params_to_url(params)]
 
     def get(self, resource):
         logger.debug('Mock client call to get resource "%s"', resource)
         objects = self.mock_data[resource][_params_to_url({'get': True})]
         if objects:
-            return {'meta': {'limit': len(objects), 'next': None,
-                             'offset': 0, 'previous': None,
-                             'total_count': len(objects)},
-                    'objects': objects}
+            return {
+                'meta': {
+                    'limit': len(objects),
+                    'next': None,
+                    'offset': 0,
+                    'previous': None,
+                    'total_count': len(objects),
+                },
+                'objects': objects,
+            }
         else:
             return None
 
@@ -254,10 +303,12 @@ class ApiKeyAuth(AuthBase):
         self.apikey = apikey
 
     def __eq__(self, other):
-        return all([
-            self.username == getattr(other, 'username', None),
-            self.apikey == getattr(other, 'apikey', None)
-        ])
+        return all(
+            [
+                self.username == getattr(other, 'username', None),
+                self.apikey == getattr(other, 'apikey', None),
+            ]
+        )
 
     def __hash__(self):
         return hash((self.username, self.apikey))
@@ -266,5 +317,8 @@ class ApiKeyAuth(AuthBase):
         return not self == other
 
     def __call__(self, r):
-        r.headers['Authorization'] = 'apikey %s:%s' % (self.username, self.apikey)
+        r.headers['Authorization'] = 'apikey %s:%s' % (
+            self.username,
+            self.apikey,
+        )
         return r

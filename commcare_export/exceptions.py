@@ -12,13 +12,16 @@ class LongFieldsException(DataExportException):
         message = ''
         for table, headers in self.long_fields.items():
             message += (
-                'Table "{}" has field names longer than the maximum allowed for this database ({}):\n'.format(
-                table, self.max_length
-            ))
+                f'Table "{table}" has field names longer than the maximum '
+                f'allowed for this database ({self.max_length}):\n'
+            )
             for header in headers:
                 message += '    {}\n'.format(header)
 
-        message += '\nPlease adjust field names to be within the maximum length limit of {}'.format(self.max_length)
+        message += (
+            '\nPlease adjust field names to be within the maximum length '
+            f'limit of {self.max_length}'
+        )
         return message
 
 
@@ -29,9 +32,11 @@ class MissingColumnException(DataExportException):
     @property
     def message(self):
         lines = [
-            'Sheet "{}" is missing definitions for required fields: "{}"'.format(
-                sheet, '", "'.join(missing_cols)
-            ) for sheet, missing_cols in self.errors_by_sheet.items()
+            (
+                'Sheet "{}" is missing definitions for required fields: '
+                '"{}"'.format(sheet, '", "'.join(missing_cols))
+            )
+            for sheet, missing_cols in self.errors_by_sheet.items()
         ]
         return '\n'.join(lines)
 
@@ -51,4 +56,7 @@ class ReservedTableNameException(DataExportException):
 
     @property
     def message(self):
-        return 'Table name "{}" conflicts with an internal table name. Please export to a different table.'.format(self.conflicting_name)
+        return (
+            f'Table name "{self.conflicting_name}" conflicts with an internal '
+            'table name. Please export to a different table.'
+        )

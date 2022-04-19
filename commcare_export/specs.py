@@ -1,7 +1,4 @@
-
-
 class TableSpec:
-
     def __init__(self, name, headings, rows, data_types=None):
         self.name = name
         self.headings = headings

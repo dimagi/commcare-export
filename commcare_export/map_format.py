@@ -25,7 +25,9 @@ def parse_function_arg(slug, expr_string):
     matches = re.match(regex, expr_string)
 
     if not matches:
-        raise ParsingException('Error: Unable to parse: {}'.format(expr_string))
+        raise ParsingException(
+            'Error: Unable to parse: {}'.format(expr_string)
+        )
 
     return matches.groups()[0]
 
@@ -35,7 +37,11 @@ def parse_selected_at(value_expr, selected_at_expr_string):
     try:
         index = int(index)
     except ValueError:
-        return Literal('Error: selected-at index must be an integer: {}'.format(selected_at_expr_string))
+        return Literal(
+            'Error: selected-at index must be an integer: {}'.format(
+                selected_at_expr_string
+            )
+        )
 
     return Apply(Reference(SELECTED_AT), value_expr, Literal(index))
 
@@ -49,7 +55,10 @@ def parse_template(value_expr, format_expr_string):
     args_string = parse_function_arg(TEMPLATE, format_expr_string)
     args = [arg.strip() for arg in args_string.split(',') if arg.strip()]
     if len(args) < 1:
-        return Literal('Error: template function requires the format template: {}'.format(format_expr_string))
+        return Literal(
+            'Error: template function requires the format template: '
+            f'{format_expr_string}'
+        )
     template = args.pop(0)
     if args:
         args = [Reference(arg) for arg in args]
@@ -63,7 +72,10 @@ def parse_substr(value_expr, substr_expr_string):
     regex = r'^\s*(\d+)\s*,\s*(\d+)\s*$'
     matches = re.match(regex, args_string)
     if not matches or len(matches.groups()) != 2:
-        raise ParsingException('Error: both substr arguments must be non-negative integers: {}'.format(substr_expr_string))
+        raise ParsingException(
+            f'Error: both substr arguments must be non-negative integers: '
+            f'{substr_expr_string}'
+        )
 
     # These conversions should always succeed after a pattern match.
     start = int(matches.groups()[0])

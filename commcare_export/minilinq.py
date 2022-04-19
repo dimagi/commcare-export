@@ -19,7 +19,7 @@ class MiniLinq(object):
     def eval(self, env):
         "( env: object(bindings: {str: ??}, writer: Writer) )-> ??"
         raise NotImplementedError()
-    
+
     #### Factory methods ####
 
     _node_classes = {}
@@ -31,21 +31,23 @@ class MiniLinq(object):
     @classmethod
     def from_jvalue(cls, jvalue):
         """
-        The term `jvalue` is code for "the output of a JSON deserialization". This 
-        module does not actually care about JSON, which is concrete syntax, but 
-        only the corresponding data model of lists and string-indexed dictionaries.
+        The term `jvalue` is code for "the output of a JSON
+        deserialization". This module does not actually care about JSON,
+        which is concrete syntax, but only the corresponding data model
+        of lists and string-indexed dictionaries.
 
-        (since this data might never actually be a string, that layer is handled elsewhere)
+        (since this data might never actually be a string, that layer is
+        handled elsewhere)
         """
 
-        # This is a bit wonky, but this method really should not be inherited.
-        # So if we end up here from a subclass, it is broken.
+        # This is a bit wonky, but this method really should not be
+        # inherited. So if we end up here from a subclass, it is broken.
         if not issubclass(MiniLinq, cls):
             raise NotImplementedError()
-    
+
         if isinstance(jvalue, str):
             return jvalue
-    
+
         elif isinstance(jvalue, list):
             # Leverage for literal lists of data in the code
             return [MiniLinq.from_jvalue(v) for v in jvalue]
@@ -54,11 +56,17 @@ class MiniLinq(object):
             # Dictionaries are reserved; they must always have exactly
             # one entry and it must be the AST node class
             if len(jvalue.values()) != 1:
-                raise ValueError('JValue serialization of AST contains dict with number of slugs != 1')
+                raise ValueError(
+                    'JValue serialization of AST contains dict with number of '
+                    'slugs != 1'
+                )
             slug = list(jvalue.keys())[0]
 
             if slug not in cls._node_classes:
-                raise ValueError('JValue serialization of AST contains unknown node type: %s' % slug)
+                raise ValueError(
+                    f'JValue serialization of AST contains unknown node type: '
+                    f'{slug!r}'
+                )
 
             return cls._node_classes[slug].from_jvalue(jvalue)
 
@@ -69,10 +77,11 @@ class Reference(MiniLinq):
     about what the type of the environment is, but it must
     support using these as keys.
     """
+
     def __init__(self, ref):
-        self.ref = ref #parse_jsonpath(ref) #ref
+        self.ref = ref  # parse_jsonpath(ref) #ref
         self.nested = isinstance(self.ref, MiniLinq)
-    
+
     def eval(self, env):
         if self.nested:
             ref = self.ref.eval(env)
@@ -100,9 +109,10 @@ class Literal(MiniLinq):
     contents are left alone, so it can be _used_ with a non-JSON
     encodable value, but cannot be encoded.
     """
+
     def __init__(self, v):
         self.v = v
-    
+
     def eval(self, env):
         return self.v
 
@@ -139,25 +149,46 @@ class Bind(MiniLinq):
         return self.body.eval(env.bind(self.name, self.value.eval(env)))
 
     def __eq__(self, other):
-        return isinstance(other, Bind) and self.name == other.name and self.value == other.value and self.body == other.body
+        return (
+            isinstance(other, Bind)
+            and self.name == other.name
+            and self.value == other.value
+            and self.body == other.body
+        )
 
     def __repr__(self):
-        return '%s(name=%r, value=%r, body=%r)' % (self.__class__.__name__, self.name, self.value, self.body)
+        return '%s(name=%r, value=%r, body=%r)' % (
+            self.__class__.__name__,
+            self.name,
+            self.value,
+            self.body,
+        )
 
     @classmethod
     def from_jvalue(cls, jvalue):
         fields = jvalue['Bind']
-        return cls(name=fields['name'],
-                   value=MiniLinq.from_jvalue(fields['value']),
-                   body=MiniLinq.from_jvalue(fields['body']))
+        return cls(
+            name=fields['name'],
+            value=MiniLinq.from_jvalue(fields['value']),
+            body=MiniLinq.from_jvalue(fields['body']),
+        )
 
     def to_jvalue(self):
-        return {'Bind':{'name': self.name,
-                        'value': self.value.to_jvalue(),
-                        'body': self.body.to_jvalue()}}
+        return {
+            'Bind': {
+                'name': self.name,
+                'value': self.value.to_jvalue(),
+                'body': self.body.to_jvalue(),
+            }
+        }
 
     def __repr__(self):
-        return '%s(name=%r, value=%r, body=%r)' % (self.__class__.__name__, self.name, self.value, self.body)
+        return '%s(name=%r, value=%r, body=%r)' % (
+            self.__class__.__name__,
+            self.name,
+            self.value,
+            self.body,
+        )
 
 
 class Filter(MiniLinq):
@@ -174,7 +205,9 @@ class Filter(MiniLinq):
     def eval(self, env):
         source_result = self.source.eval(env)
 
-        def iterate(env=env, source_result=source_result): # Python closure workaround
+        def iterate(
+            env=env, source_result=source_result
+        ):  # Python closure workaround
             if self.name:
                 for item in source_result:
                     if self.predicate.eval(env.bind(self.name, item)):
@@ -187,24 +220,40 @@ class Filter(MiniLinq):
         return RepeatableIterator(iterate)
 
     def __eq__(self, other):
-        return isinstance(other, Filter) and self.source == other.source and self.name == other.name and self.predicate == other.predicate
+        return (
+            isinstance(other, Filter)
+            and self.source == other.source
+            and self.name == other.name
+            and self.predicate == other.predicate
+        )
 
     @classmethod
     def from_jvalue(cls, jvalue):
         fields = jvalue['Filter']
 
         # TODO: catch errors and give informative error messages
-        return cls(predicate   = MiniLinq.from_jvalue(fields['predicate']),
-                   source = MiniLinq.from_jvalue(fields['source']),
-                   name   = fields.get('name'))
+        return cls(
+            predicate=MiniLinq.from_jvalue(fields['predicate']),
+            source=MiniLinq.from_jvalue(fields['source']),
+            name=fields.get('name'),
+        )
 
     def to_jvalue(self):
-        return {'Filter': {'predicate': self.predicate.to_jvalue(),
-                           'source': self.source.to_jvalue(),
-                           'name': self.name}}
+        return {
+            'Filter': {
+                'predicate': self.predicate.to_jvalue(),
+                'source': self.source.to_jvalue(),
+                'name': self.name,
+            }
+        }
 
     def __repr__(self):
-        return '%s(source=%r, name=%r, predicate=%r)' % (self.__class__.__name__, self.source, self.name, self.predicate)
+        return '%s(source=%r, name=%r, predicate=%r)' % (
+            self.__class__.__name__,
+            self.source,
+            self.name,
+            self.predicate,
+        )
 
 
 class List(MiniLinq):
@@ -212,9 +261,10 @@ class List(MiniLinq):
     A list of expressions, embeds the [ ... ] syntax into the
     MiniLinq meta-leval
     """
+
     def __init__(self, items):
         self.items = items
-    
+
     def eval(self, env):
         return [item.eval(env) for item in self.items]
 
@@ -249,11 +299,13 @@ class Map(MiniLinq):
         self.source = source
         self.name = name
         self.body = body
-    
+
     def eval(self, env):
         source_result = self.source.eval(env)
 
-        def iterate(env=env, source_result=source_result): # Python closure workaround
+        def iterate(
+            env=env, source_result=source_result
+        ):  # Python closure workaround
             if self.name:
                 for item in source_result:
                     yield self.body.eval(env.bind(self.name, item))
@@ -264,21 +316,32 @@ class Map(MiniLinq):
         return RepeatableIterator(iterate)
 
     def __eq__(self, other):
-        return isinstance(other, Map) and self.name == other.name and self.source == other.source and self.body == other.body
+        return (
+            isinstance(other, Map)
+            and self.name == other.name
+            and self.source == other.source
+            and self.body == other.body
+        )
 
     @classmethod
     def from_jvalue(cls, jvalue):
         fields = jvalue['Map']
 
         # TODO: catch errors and give informative error messages
-        return cls(body   = MiniLinq.from_jvalue(fields['body']),
-                   source = MiniLinq.from_jvalue(fields['source']),
-                   name   = fields.get('name'))
+        return cls(
+            body=MiniLinq.from_jvalue(fields['body']),
+            source=MiniLinq.from_jvalue(fields['source']),
+            name=fields.get('name'),
+        )
 
     def to_jvalue(self):
-        return {'Map': {'body': self.body.to_jvalue(),
-                        'source': self.source.to_jvalue(),
-                        'name': self.name}}
+        return {
+            'Map': {
+                'body': self.body.to_jvalue(),
+                'source': self.source.to_jvalue(),
+                'name': self.name,
+            }
+        }
 
 
 class FlatMap(MiniLinq):
@@ -299,14 +362,19 @@ class FlatMap(MiniLinq):
         self.source = source
         self.name = name
         self.body = body
-    
+
     def eval(self, env):
         source_result = self.source.eval(env)
 
-        def iterate(env=env, source_result=source_result): # Python closure workaround
+        def iterate(
+            env=env,
+            source_result=source_result,
+        ):  # Python closure workaround
             if self.name:
                 for item in source_result:
-                    for result_item in self.body.eval(env.bind(self.name, item)):
+                    for result_item in self.body.eval(
+                        env.bind(self.name, item)
+                    ):
                         yield result_item
             else:
                 for item in source_result:
@@ -316,29 +384,39 @@ class FlatMap(MiniLinq):
         return RepeatableIterator(iterate)
 
     def __eq__(self, other):
-        return isinstance(other, FlatMap) and self.name == other.name and self.source == other.source and self.body == other.body
-
+        return (
+            isinstance(other, FlatMap)
+            and self.name == other.name
+            and self.source == other.source
+            and self.body == other.body
+        )
 
     @classmethod
     def from_jvalue(cls, jvalue):
         fields = jvalue['FlatMap']
 
         # TODO: catch errors and give informative error messages
-        return cls(body   = MiniLinq.from_jvalue(fields['body']),
-                   source = MiniLinq.from_jvalue(fields['source']),
-                   name   = fields.get('name'))
+        return cls(
+            body=MiniLinq.from_jvalue(fields['body']),
+            source=MiniLinq.from_jvalue(fields['source']),
+            name=fields.get('name'),
+        )
 
     def to_jvalue(self):
-        return {'FlatMap': {'body': self.body.to_jvalue(),
-                            'source': self.source.to_jvalue(),
-                            'name': self.name}}
+        return {
+            'FlatMap': {
+                'body': self.body.to_jvalue(),
+                'source': self.source.to_jvalue(),
+                'name': self.name,
+            }
+        }
 
 
 class Apply(MiniLinq):
     """
     Abstract syntax for function or operator application.
     """
-    
+
     def __init__(self, fn, *args):
         self.fn = fn
         self.args = args
@@ -359,28 +437,38 @@ class Apply(MiniLinq):
                 doc_id = 'unknown'
 
             message = e.args[0] + (
-                ": Error processing document '%s'. "
-                "Failure to evaluating expression '%r' with arguments '%s'"
-            ) % (doc_id, self, args)
+                f": Error processing document '{doc_id}'. Failure to "
+                f"evaluate expression '{self!r}' with arguments '{args}'"
+            )
 
             e.args = (message,) + e.args[1:]
             raise
         return result
 
     def __eq__(self, other):
-        return isinstance(other, Apply) and self.fn == other.fn and self.args == other.args
+        return (
+            isinstance(other, Apply)
+            and self.fn == other.fn
+            and self.args == other.args
+        )
 
     @classmethod
     def from_jvalue(cls, jvalue):
         fields = jvalue['Apply']
 
         # TODO: catch errors and give informative error messages
-        return cls(MiniLinq.from_jvalue(fields['fn']),
-                   *[MiniLinq.from_jvalue(arg) for arg in fields['args']])
+        return cls(
+            MiniLinq.from_jvalue(fields['fn']),
+            *[MiniLinq.from_jvalue(arg) for arg in fields['args']],
+        )
 
     def to_jvalue(self):
-        return {'Apply': {'fn': self.fn.to_jvalue(),
-                          'args': [arg.to_jvalue() for arg in self.args]}}
+        return {
+            'Apply': {
+                'fn': self.fn.to_jvalue(),
+                'args': [arg.to_jvalue() for arg in self.args],
+            }
+        }
 
     def __repr__(self):
         return '%s(%r, *%r)' % (self.__class__.__name__, self.fn, self.args)
@@ -388,16 +476,23 @@ class Apply(MiniLinq):
 
 class Emit(MiniLinq):
     """
-    This MiniLinq writes a whole table to whatever writer is registered in the `env`.
-    In practice,  a table to a dict of a name, headers, and rows, so the
-    writer is free to do an idempotent upsert, etc.
+    This MiniLinq writes a whole table to whatever writer is registered
+    in the `env`. In practice,  a table to a dict of a name, headers,
+    and rows, so the writer is free to do an idempotent upsert, etc.
 
     Note that it does not actually check that the number of headings is
     correct, nor does it try to ensure that the things being emitted
     are actually lists - it is just crashy instead.
     """
 
-    def __init__(self, table, headings, source, missing_value=None, data_types=None):
+    def __init__(
+        self,
+        table,
+        headings,
+        source,
+        missing_value=None,
+        data_types=None,
+    ):
         "(str, [str], [MiniLinq]) -> MiniLinq"
         self.table = table
         self.headings = headings
@@ -408,7 +503,9 @@ class Emit(MiniLinq):
     @unwrap('cell')
     def coerce_cell_blithely(self, cell):
         if isinstance(cell, list):
-            if not cell:  # jsonpath returns empty list when path is not present
+            if (
+                not cell
+            ):  # jsonpath returns empty list when path is not present
                 return self.missing_value
             return ','.join([self.coerce_cell(item) for item in cell])
         else:
@@ -418,20 +515,24 @@ class Emit(MiniLinq):
         try:
             return self.coerce_cell_blithely(cell)
         except Exception:
-            logger.exception('Error converting value to exportable form: %r' % cell)
+            logger.exception(
+                'Error converting value to exportable form: %r' % cell
+            )
             return ''
-            
+
     def coerce_row(self, row):
         return [self.coerce_cell(cell) for cell in row]
 
     def eval(self, env):
         rows = self.source.eval(env)
-        env.emit_table(TableSpec(
-            name=self.table,
-            headings=[heading.eval(env) for heading in self.headings],
-            rows=map(self.coerce_row, rows),
-            data_types=[lit.v for lit in self.data_types]
-        ))
+        env.emit_table(
+            TableSpec(
+                name=self.table,
+                headings=[heading.eval(env) for heading in self.headings],
+                rows=map(self.coerce_row, rows),
+                data_types=[lit.v for lit in self.data_types],
+            )
+        )
 
     @classmethod
     def from_jvalue(cls, jvalue):
@@ -439,21 +540,30 @@ class Emit(MiniLinq):
         return cls(
             table=fields['table'],
             source=MiniLinq.from_jvalue(fields['source']),
-            headings=[MiniLinq.from_jvalue(heading) for heading in fields['headings']],
+            headings=[
+                MiniLinq.from_jvalue(heading) for heading in fields['headings']
+            ],
             missing_value=fields.get('missing_value'),
             data_types=fields.get('data_types'),
         )
 
     def to_jvalue(self):
-        return {'Emit': {'table': self.table,
-                         'headings': [heading.to_jvalue() for heading in self.headings],
-                         'source': self.source.to_jvalue(),
-                         'missing_value': self.missing_value,
-                         'data_types': [heading.to_jvalue() for heading in self.headings]}}
+        return {
+            'Emit': {
+                'table': self.table,
+                'headings': [heading.to_jvalue() for heading in self.headings],
+                'source': self.source.to_jvalue(),
+                'missing_value': self.missing_value,
+                'data_types': [
+                    heading.to_jvalue() for heading in self.headings
+                ],
+            }
+        }
 
     def __eq__(self, other):
         return (
-            isinstance(other, Emit) and self.table == other.table
+            isinstance(other, Emit)
+            and self.table == other.table
             and self.headings == other.headings
             and self.source == other.source
             and self.missing_value == other.missing_value
@@ -462,7 +572,11 @@ class Emit(MiniLinq):
 
     def __repr__(self):
         return '%s(table=%r, headings=%r, source=%r, missing_value=%r)' % (
-            self.__class__.__name__, self.table, self.headings, self.source, self.missing_value
+            self.__class__.__name__,
+            self.table,
+            self.headings,
+            self.source,
+            self.missing_value,
         )
 
 

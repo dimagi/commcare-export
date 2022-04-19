@@ -1,11 +1,9 @@
-
-
 class RepeatableIterator(object):
     """
-    Pass something iterable into this and, 
-    unless it has crufty issues, voila.
+    Pass something iterable into this and, unless it has crufty issues,
+    voila.
     """
-    
+
     def __init__(self, generator):
         self.generator = generator
         self.__val = None

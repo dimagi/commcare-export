@@ -22,16 +22,26 @@ class Column:
         if not self.map_function:
             return Reference(self.source)
         else:
-            return Apply(Reference(self.map_function), Reference(self.source),
-                         *self.extra_args)
+            return Apply(
+                Reference(self.map_function),
+                Reference(self.source),
+                *self.extra_args,
+            )
 
 
 def compile_query(columns, data_source, table_name):
-    source = Apply(Reference('api_data'), Literal(data_source),
-                   Reference('checkpoint_manager'))
-    part = excel_query.SheetParts(table_name, [c.name for c in columns], source,
-                                  List([c.mapped_source_field for c in columns]),
-                                  None)
+    source = Apply(
+        Reference('api_data'),
+        Literal(data_source),
+        Reference('checkpoint_manager'),
+    )
+    part = excel_query.SheetParts(
+        table_name,
+        [c.name for c in columns],
+        source,
+        List([c.mapped_source_field for c in columns]),
+        None,
+    )
     return excel_query.compile_queries([part], None, False)[0]
 
 
@@ -50,10 +60,12 @@ user_columns = [
     Column('resource_uri', 'resource_uri'),
     Column('commcare_location_id', 'user_data.commcare_location_id'),
     Column('commcare_location_ids', 'user_data.commcare_location_ids'),
-    Column('commcare_primary_case_sharing_id',
-           'user_data.commcare_primary_case_sharing_id'),
+    Column(
+        'commcare_primary_case_sharing_id',
+        'user_data.commcare_primary_case_sharing_id',
+    ),
     Column('commcare_project', 'user_data.commcare_project'),
-    Column('username', 'username')
+    Column('username', 'username'),
 ]
 
 users_query = compile_query(user_columns, 'user', USERS_TABLE_NAME)
@@ -61,15 +73,18 @@ users_query = compile_query(user_columns, 'user', USERS_TABLE_NAME)
 
 # A MiniLinq query for internal CommCare location table.
 # It reads every field produced by the /location/ API endpoint and
-# appends fields to hold parent locations using location_type information
-# before writing the data to a table named "commcare_locations" in a database.
+# appends fields to hold parent locations using location_type
+# information before writing the data to a table named
+# "commcare_locations" in a database.
+
 
 def get_locations_query(lp):
     location_types = lp.location_types
 
-    # For test stability and clarity, we order location types from deepest
-    # to shallowest.
+    # For test stability and clarity, we order location types from
+    # deepest to shallowest.
     depth = {}
+
     def set_depth(lt):
         if lt not in depth:
             parent = location_types[lt]['parent']
@@ -82,8 +97,9 @@ def get_locations_query(lp):
     for lt in location_types:
         set_depth(lt)
 
-    ordered_location_types = sorted(location_types.values(),
-                                    key=lambda lt: -depth[lt['resource_uri']])
+    ordered_location_types = sorted(
+        location_types.values(), key=lambda lt: -depth[lt['resource_uri']]
+    )
     location_codes = [lt['code'] for lt in ordered_location_types]
 
     # The input names are codes produced by Django's slugify utility
@@ -106,24 +122,48 @@ def get_locations_query(lp):
         Column('parent', 'parent'),
         Column('resource_uri', 'resource_uri'),
         Column('site_code', 'site_code'),
-        Column('location_type_administrative', 'location_type',
-               'get_location_info', Literal('administrative')),
-        Column('location_type_code', 'location_type',
-               'get_location_info', Literal('code')),
-        Column('location_type_name', 'location_type',
-               'get_location_info', Literal('name')),
-        Column('location_type_parent', 'location_type',
-               'get_location_info', Literal('parent')),
-    ] + [Column(sql_column_name(code),
-                'resource_uri', 'get_location_ancestor',
-                Literal(code)) for code in location_codes]
-    return compile_query(location_columns, 'location',
-                         LOCATIONS_TABLE_NAME)
+        Column(
+            'location_type_administrative',
+            'location_type',
+            'get_location_info',
+            Literal('administrative'),
+        ),
+        Column(
+            'location_type_code',
+            'location_type',
+            'get_location_info',
+            Literal('code'),
+        ),
+        Column(
+            'location_type_name',
+            'location_type',
+            'get_location_info',
+            Literal('name'),
+        ),
+        Column(
+            'location_type_parent',
+            'location_type',
+            'get_location_info',
+            Literal('parent'),
+        ),
+    ] + [
+        Column(
+            sql_column_name(code),
+            'resource_uri',
+            'get_location_ancestor',
+            Literal(code),
+        )
+        for code in location_codes
+    ]
+    return compile_query(location_columns, 'location', LOCATIONS_TABLE_NAME)
+
 
 # Require specified columns in emitted tables.
-class ColumnEnforcer():
-    columns_to_require = {'form': Column('commcare_userid', '$.metadata.userID'),
-                          'case': Column('commcare_userid', '$.user_id')}
+class ColumnEnforcer:
+    columns_to_require = {
+        'form': Column('commcare_userid', '$.metadata.userID'),
+        'case': Column('commcare_userid', '$.user_id'),
+    }
 
     def __init__(self):
         self._emitted_tables = set([])
