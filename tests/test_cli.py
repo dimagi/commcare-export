@@ -1,3 +1,4 @@
+import csv
 import os
 import re
 import unittest
@@ -9,7 +10,6 @@ from unittest import mock
 import sqlalchemy
 from tests.utils import SqlWriterWithTearDown
 
-import csv342 as csv
 import pytest
 from commcare_export.checkpoint import (
     Checkpoint,

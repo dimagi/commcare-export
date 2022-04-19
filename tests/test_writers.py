@@ -1,3 +1,4 @@
+import csv
 import datetime
 import io
 import tempfile
@@ -6,7 +7,6 @@ import zipfile
 import openpyxl
 import sqlalchemy
 
-import csv342 as csv
 import pytest
 from commcare_export.specs import TableSpec
 from commcare_export.writers import (
