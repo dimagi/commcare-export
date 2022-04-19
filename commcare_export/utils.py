@@ -1,15 +1,4 @@
-from __future__ import (
-    absolute_import,
-    division,
-    generators,
-    nested_scopes,
-    print_function,
-    unicode_literals,
-)
-
 import sys
-
-from six.moves import input
 
 from commcare_export import misc
 from commcare_export.checkpoint import CheckpointManager

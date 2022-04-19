@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
 import os
 import re
 import unittest
 from argparse import Namespace
 from copy import copy
+from itertools import zip_longest
 from unittest import mock
 
 import sqlalchemy
@@ -31,11 +31,6 @@ CLI_ARGS_BY_NAME = {
     for arg in CLI_ARGS
 }
 
-try:
-    from itertools import izip_longest as zip_longest
-except ImportError:
-    # PY 3
-    from itertools import zip_longest
 
 
 DEFAULT_BATCH_SIZE = 200

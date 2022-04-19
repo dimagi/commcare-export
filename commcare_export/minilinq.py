@@ -1,22 +1,11 @@
-from __future__ import (
-    absolute_import,
-    division,
-    generators,
-    nested_scopes,
-    print_function,
-    unicode_literals,
-)
-
 import logging
-
-import six
-from six.moves import map
 
 from commcare_export.misc import unwrap, unwrap_val
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.specs import TableSpec
 
 logger = logging.getLogger(__name__)
+
 
 class MiniLinq(object):
     """
@@ -54,7 +43,7 @@ class MiniLinq(object):
         if not issubclass(MiniLinq, cls):
             raise NotImplementedError()
     
-        if isinstance(jvalue, six.string_types):
+        if isinstance(jvalue, str):
             return jvalue
     
         elif isinstance(jvalue, list):

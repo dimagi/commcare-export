@@ -9,8 +9,6 @@ from __future__ import (
 
 from collections import defaultdict, namedtuple
 
-from six.moves import xrange
-
 from commcare_export.exceptions import (
     LongFieldsException,
     MissingColumnException,
@@ -30,6 +28,7 @@ def take_while(pred, iterator):
         else:
             return
 
+
 def drop_while(pred, iterator):
     for v in iterator:
         if not pred(v):
@@ -39,11 +38,13 @@ def drop_while(pred, iterator):
     for v in iterator:
         yield v
 
+
 def without_empty_tail(cells):
     """
     Returns the prefix of a column that is not entirely empty.
     """
     return list(reversed(list(drop_while(lambda v: (not v) or (not v.value), reversed(cells)))))
+
 
 def map_value(mappings_sheet, mapping_name, source_value):
     "From the mappings_sheet, replaces the source_value with appropriate output value"
@@ -52,22 +53,22 @@ def map_value(mappings_sheet, mapping_name, source_value):
 
 def get_column_by_name(worksheet, column_name):
     # columns and rows are indexed from 1
-    for col in xrange(1, worksheet.max_column + 1):
+    for col in range(1, worksheet.max_column + 1):
         value = worksheet.cell(row=1, column=col).value
         value = value.lower().strip() if value else value
         if column_name == value:
             return without_empty_tail([
-                worksheet.cell(row=i, column=col) for i in xrange(2, worksheet.max_row + 1)
+                worksheet.cell(row=i, column=col) for i in range(2, worksheet.max_row + 1)
             ])
 
 
 def get_columns_by_prefix(worksheet, column_prefix):
     # columns and rows are indexed from 1
-    for col in xrange(1, worksheet.max_column + 1):
+    for col in range(1, worksheet.max_column + 1):
         value = worksheet.cell(row=1, column=col).value
         if value and value.lower().startswith(column_prefix):
             yield value, without_empty_tail([
-                worksheet.cell(row=i, column=col) for i in xrange(2, worksheet.max_row + 1)
+                worksheet.cell(row=i, column=col) for i in range(2, worksheet.max_row + 1)
             ])
 
 
@@ -84,6 +85,7 @@ def compile_mappings(worksheet):
 
     return mappings
 
+
 def compile_filters(worksheet, mappings=None):
     filter_names  = [cell.value for cell in get_column_by_name(worksheet, 'filter name') or []]
 
@@ -93,9 +95,10 @@ def compile_filters(worksheet, mappings=None):
     filter_values = extended_to_len(len(filter_names), [cell.value for cell in get_column_by_name(worksheet, 'filter value') or []])
     return zip(filter_names, filter_values)
 
+
 def extended_to_len(desired_len, some_list, value=None):
     return [some_list[i] if i < len(some_list) else value
-            for i in xrange(0, desired_len)]
+            for i in range(0, desired_len)]
 
 
 def _get_safe_source_field(source_field):
@@ -315,6 +318,7 @@ def require_column_in_sheet(sheet_name, data_source, table_name, output_headings
         body = List(output_fields)
 
     return (headings, body)
+
 
 def parse_sheet(worksheet, mappings=None, column_enforcer=None, value_or_root=False):
     mappings = mappings or {}

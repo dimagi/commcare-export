@@ -1,9 +1,6 @@
-# -*- coding: utf-8 -*-
 import types
 import unittest
 from itertools import *
-
-from six.moves import xrange
 
 import pytest
 from commcare_export.env import *
@@ -39,7 +36,7 @@ class TestMiniLinq(unittest.TestCase):
         assert Reference("foo").eval(DictEnv({'foo': 2})) == 2
         assert Reference(Reference(Reference('a'))).eval(DictEnv({'a': 'b', 'b': 'c', 'c': 2})) == 2
         self.check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': [2]})), [2])
-        self.check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': xrange(0, 1)})), [0]) # Should work the same w/ iterators as with lists
+        self.check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': range(0, 1)})), [0]) # Should work the same w/ iterators as with lists
 
         # Should be able to get back out to the root, as the JsonPathEnv actually passes the full datum around
         self.check_case(Reference("foo.$.baz").eval(JsonPathEnv({'foo': [2], 'baz': 3})), [3])

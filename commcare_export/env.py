@@ -1,19 +1,9 @@
-from __future__ import (
-    absolute_import,
-    division,
-    generators,
-    nested_scopes,
-    print_function,
-    unicode_literals,
-)
-
 import hashlib
 import json
 import operator
 import uuid
 
 import pytz
-import six
 
 from commcare_export.jsonpath_utils import split_leftmost
 from commcare_export.misc import unwrap, unwrap_val
@@ -23,10 +13,12 @@ from jsonpath_ng.parser import parse as parse_jsonpath
 
 JSONPATH_CACHE = {}
 
+
 class CannotBind(Exception): pass
 class CannotReplace(Exception): pass
 class CannotEmit(Exception): pass
 class NotFound(Exception): pass
+
 
 class Env(object):
     """
@@ -198,7 +190,7 @@ class JsonPathEnv(Env):
         
     def lookup(self, name):
         "str|JsonPath -> ??"
-        if isinstance(name, six.string_types):
+        if isinstance(name, str):
             jsonpath_expr = self.parse(name)
         elif isinstance(name, jsonpath.JSONPath):
             jsonpath_expr = name
@@ -227,7 +219,7 @@ class JsonPathEnv(Env):
             new_bindings.update(args[0])
             return self.__class__(new_bindings)
         
-        elif isinstance(args[0], six.string_types):
+        elif isinstance(args[0], str):
             new_bindings[args[0]] = args[1]
             return self.__class__(new_bindings)
 
@@ -250,8 +242,8 @@ def _not_val(val):
 def _to_unicode(val):
     if isinstance(val, bytes):
         return val.decode('utf8')
-    elif not isinstance(val, six.text_type):
-        return six.text_type(val)
+    elif not isinstance(val, str):
+        return str(val)
 
     return val
 
@@ -314,7 +306,7 @@ def sha1(val):
         return None
 
     if not isinstance(val, bytes):
-        val = six.text_type(val).encode('utf8')
+        val = str(val).encode('utf8')
 
     return hashlib.sha1(val).hexdigest()
 
@@ -360,7 +352,7 @@ def count_selected(val):
 
 @unwrap('val')
 def json2str(val):
-    if isinstance(val, six.string_types):
+    if isinstance(val, str):
         return val
     try:
         return json.dumps(val)

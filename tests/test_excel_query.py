@@ -1,12 +1,3 @@
-from __future__ import (
-    absolute_import,
-    division,
-    generators,
-    nested_scopes,
-    print_function,
-    unicode_literals,
-)
-
 import os.path
 import pprint
 import unittest

@@ -1,12 +1,3 @@
-from __future__ import (
-    absolute_import,
-    division,
-    generators,
-    nested_scopes,
-    print_function,
-    unicode_literals,
-)
-
 import argparse
 import getpass
 import io
@@ -18,7 +9,6 @@ import sys
 import dateutil.parser
 import requests
 import sqlalchemy
-from six.moves import input
 
 from commcare_export import builtin_queries, excel_query, writers
 from commcare_export.checkpoint import CheckpointManagerProvider

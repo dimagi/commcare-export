@@ -16,6 +16,7 @@ DATA_TYPES_TO_SQLALCHEMY_TYPES = {
     DATA_TYPE_JSON: sqlalchemy.JSON(),
 }
 
+
 class UnknownDataType(Exception):
     pass
 
