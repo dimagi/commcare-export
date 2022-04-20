@@ -1,5 +1,3 @@
-
-
 class TableSpec:
 
     def __init__(self, name, headings, rows, data_types=None):

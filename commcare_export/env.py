@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import hashlib
 import json
 import operator
 import uuid
+from typing import Any
 
 import pytz
 
@@ -14,10 +17,20 @@ from jsonpath_ng.parser import parse as parse_jsonpath
 JSONPATH_CACHE = {}
 
 
-class CannotBind(Exception): pass
-class CannotReplace(Exception): pass
-class CannotEmit(Exception): pass
-class NotFound(Exception): pass
+class CannotBind(Exception):
+    pass
+
+
+class CannotReplace(Exception):
+    pass
+
+
+class CannotEmit(Exception):
+    pass
+
+
+class NotFound(Exception):
+    pass
 
 
 class Env(object):
@@ -25,56 +38,45 @@ class Env(object):
     An abstract model of an "environment" where data can be bound to
     names and later looked up. Not simply a dictionary as lookup in our
     case may support JsonPath, or may be a chaining of other
-    environments, so the abstract interface will
-    allow experimentation and customization.
+    environments, so the abstract interface will allow experimentation
+    and customization.
     """
 
     #
     # Interface
     #
-    def bind(self, name, value):
+    def bind(self, name: str, value: Any) -> Env:
         """
-        (key, ??) -> Env 
-
-        Returns a new environment that is equivalent
-        to the current except the provided key is
-        bound to the value passed in. If the environment
-        does not support such a binding, raises 
-        CannotBind
+        Returns a new environment that is equivalent to the current
+        except the provided key is bound to the value passed in. If the
+        environment does not support such a binding, raises  CannotBind
         """
         raise NotImplementedError()
 
-    def lookup(self, key):
+    def lookup(self, key: str) -> Any:
         """
-        key -> ??
-
-        Note that the ?? may be None which may mean
-        the value was unbound or may mean it was
-        found and was None. This may need revisiting.
-        This may also raise NotFound if it is the
+        Note that the return value may be ``None`` which may mean the
+        value was unbound or may mean it was found and was None. This
+        may need revisiting. This may also raise NotFound if it is the
         sort of environment that does that.
         """
         raise NotImplementedError()
 
-    def replace(self, data):
+    def replace(self, data: dict) -> Env:
         """
-        data -> Env
+        Completely replace the environment with new data (somewhat like
+        "this"-based Map functions a la jQuery). Could be the same as
+        creating a new empty env and binding "@" in JsonPath.
 
-        Completely replace the environment with new
-        data (somewhat like "this"-based Map functions a la jQuery).
-        Could be the same as creating a new empty env
-        and binding "@" in JsonPath.
-
-        May raise CannotReplace if this environment does
-        not support the input replacement
+        May raise CannotReplace if this environment does not support the
+        input replacement
         """
         raise NotImplementedError()
 
-    # Minor impurity of the idea of a binding env:
-    # also allow `Emit` to directly call into
-    # the environment. It is up to the env
-    # whether to store it, write it immediately,
-    # or do something clever with iterators, etc.
+    # Minor impurity of the idea of a binding env: also allow `Emit` to
+    # directly call into the environment. It is up to the env whether to
+    # store it, write it immediately, or do something clever with
+    # iterators, etc.
     def emit_table(self, table_spec):
         raise CannotEmit()
 
@@ -86,50 +88,62 @@ class Env(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
-    
+
     #
     # Fluent interface to combinators
     #
     def __or__(self, other):
         return OrElse(self, other)
 
+
 #
 # Combinators
 #
 
+
 class OrElse(Env):
     """
-    An environment that chains together a left environment
-    and a right environment. Note that this differes from
-    just a bunch of bindings, as the two envs might have
-    entirely different mechanisms (for example a magic
-    environment for special operators vs a JsonPathEnv
-    that always returns a list and operates only on
-    simple data)
+    An environment that chains together a left environment and a right
+    environment. Note that this differs from just a bunch of bindings,
+    as the two envs might have entirely different mechanisms (for
+    example a magic environment for special operators vs a JsonPathEnv
+    that always returns a list and operates only on simple data)
     """
+
     def __init__(self, left, right):
         self.left = left
         self.right = right
-        
+
     def bind(self, name, value):
-        try:               return OrElse(self.left.bind(name, value), self.right)
-        except CannotBind: return OrElse(self.left, self.right.bind(name, value))
+        try:
+            return OrElse(self.left.bind(name, value), self.right)
+        except CannotBind:
+            return OrElse(self.left, self.right.bind(name, value))
 
     def lookup(self, name):
-        try:             return self.left.lookup(name)
-        except NotFound: return self.right.lookup(name)
+        try:
+            return self.left.lookup(name)
+        except NotFound:
+            return self.right.lookup(name)
 
     def replace(self, data):
         # A bit sketchy...
-        try:                  return OrElse(self.left.replace(data), self.right)
-        except CannotReplace: return OrElse(self.left, self.right.replace(data))
+        try:
+            return OrElse(self.left.replace(data), self.right)
+        except CannotReplace:
+            return OrElse(self.left, self.right.replace(data))
 
     def emit_table(self, table_spec):
-        try:               return self.left.emit_table(table_spec)
-        except CannotEmit: return self.right.emit_table(table_spec)
+        try:
+            return self.left.emit_table(table_spec)
+        except CannotEmit:
+            return self.right.emit_table(table_spec)
 
     def has_emitted_tables(self):
-        return any([self.left.has_emitted_tables(), self.right.has_emitted_tables()])
+        return any([
+            self.left.has_emitted_tables(),
+            self.right.has_emitted_tables()
+        ])
 
     def __enter__(self):
         self.left.__enter__()
@@ -144,40 +158,47 @@ class OrElse(Env):
 
 #
 # Concrete environment classes
-# 
+#
+
 
 class DictEnv(Env):
     """
     A simple dictionary environment; more-or-less boring!
     """
+
     def __init__(self, d=None):
         self.d = d or {}
 
     def bind(self, name, value):
         return DictEnv(dict(list(self.d.items()) + [(name, value)]))
-        
+
     def lookup(self, name):
-        try:             return self.d[name]
-        except KeyError: raise NotFound(unwrap_val(name))
+        try:
+            return self.d[name]
+        except KeyError:
+            raise NotFound(unwrap_val(name))
 
     def replace(self, data):
-        if isinstance(data, dict): return DictEnv(data)
-        else:                      raise CannotReplace()
+        if isinstance(data, dict):
+            return DictEnv(data)
+        else:
+            raise CannotReplace()
 
 
 class JsonPathEnv(Env):
     """
-    An environment like those that map names
-    to variables, but supporting dereferencing
-    an JsonPath expression. Note that it never
-    fails a lookup, but always returns an empty 
-    list.
+    An environment like those that map names to variables, but
+    supporting dereferencing an JsonPath expression. Note that it never
+    fails a lookup, but always returns an empty  list.
 
     It also interns all parsed expressions
     """
+
     def __init__(self, bindings=None):
         self.__bindings = bindings or {}
-        self.__restrict_to_root = bool(jsonpath.Fields("__root_only").find(self.__bindings))
+        self.__restrict_to_root = bool(
+            jsonpath.Fields("__root_only").find(self.__bindings)
+        )
 
         # Currently hardcoded because it is a global is jsonpath-ng
         # Probably not widely used, but will require refactor if so
@@ -187,7 +208,7 @@ class JsonPathEnv(Env):
         if jsonpath_string not in JSONPATH_CACHE:
             JSONPATH_CACHE[jsonpath_string] = parse_jsonpath(jsonpath_string)
         return JSONPATH_CACHE[jsonpath_string]
-        
+
     def lookup(self, name):
         "str|JsonPath -> ??"
         if isinstance(name, str):
@@ -197,28 +218,32 @@ class JsonPathEnv(Env):
         else:
             raise NotFound(unwrap_val(name))
 
-        if self.__restrict_to_root and str(jsonpath_expr) != 'id':  # special case for 'id'
+        if self.__restrict_to_root and str(
+            jsonpath_expr
+        ) != 'id':  # special case for 'id'
             expr, _ = split_leftmost(jsonpath_expr)
             if not isinstance(expr, jsonpath.Root):
-                return RepeatableIterator(lambda : iter(()))
+                return RepeatableIterator(lambda: iter(()))
 
-        def iterator(jsonpath_expr=jsonpath_expr): # Capture closure
+        def iterator(jsonpath_expr=jsonpath_expr):  # Capture closure
             for datum in jsonpath_expr.find(self.__bindings):
-                # HACK: The auto id from jsonpath_ng is good, but we lose it when we do .value here,
-                # so just slap it on if not present
+                # HACK: The auto id from jsonpath_ng is good, but we
+                # lose it when we do .value here, so just slap it on if
+                # not present
                 if isinstance(datum.value, dict) and 'id' not in datum.value:
                     datum.value['id'] = jsonpath.AutoIdForDatum(datum).value
                 yield datum
+
         return RepeatableIterator(iterator)
 
     def bind(self, *args):
         "(str, ??) -> Env | ({str: ??}) -> Env"
-        
+
         new_bindings = dict(self.__bindings)
         if isinstance(args[0], dict):
             new_bindings.update(args[0])
             return self.__class__(new_bindings)
-        
+
         elif isinstance(args[0], str):
             new_bindings[args[0]] = args[1]
             return self.__class__(new_bindings)
@@ -294,6 +319,7 @@ def str2date(val):
             pass
 
     return date.replace(microsecond=0, tzinfo=None)
+
 
 @unwrap('val')
 def bool2int(val):
@@ -381,7 +407,7 @@ def format_uuid(val):
 
 
 def join(*args):
-    args = [unwrap_val(arg)for arg in args]
+    args = [unwrap_val(arg) for arg in args]
     try:
         return args[0].join(args[1:])
     except TypeError:
@@ -401,12 +427,9 @@ def attachment_url(val):
         return None
     from commcare_export.minilinq import Apply, Reference, Literal
     return Apply(
-        Reference('template'),
-        Literal('{}/a/{}/api/form/attachment/{}/{}'),
-        Reference('commcarehq_base_url'),
-        Reference('$.domain'),
-        Reference('$.id'),
-        Literal(val)
+        Reference('template'), Literal('{}/a/{}/api/form/attachment/{}/{}'),
+        Reference('commcarehq_base_url'), Reference('$.domain'),
+        Reference('$.id'), Literal(val)
     )
 
 
@@ -424,7 +447,7 @@ def _doc_url(url_path):
     from commcare_export.minilinq import Apply, Reference, Literal
     return Apply(
         Reference('template'),
-        Literal('{}/a/{}/reports/'+ url_path + '/{}/'),
+        Literal('{}/a/{}/reports/' + url_path + '/{}/'),
         Reference('commcarehq_base_url'),
         Reference('$.domain'),
         Reference('$.id'),
@@ -441,6 +464,7 @@ def _or(*args):
 
 
 def _or_raw(*args):
+
     def unwrap_iter(arg):
         if isinstance(arg, RepeatableIterator):
             return list(arg)
@@ -480,14 +504,14 @@ def unique(val):
 
 class BuiltInEnv(DictEnv):
     """
-    A built-in environment of operators and functions
-    which does not support replacement or bindings.
+    A built-in environment of operators and functions which does not
+    support replacement or bindings.
 
-    For convenience, this environment has been chosen to
-    queue up tables to be written out, since it will be
-    the first env involved in almost any situation.
+    For convenience, this environment has been chosen to queue up tables
+    to be written out, since it will be the first env involved in almost
+    any situation.
     """
-    
+
     def __init__(self, d=None):
         self.__tables = []
         d = d or {}
@@ -525,13 +549,17 @@ class BuiltInEnv(DictEnv):
             '_or_raw': _or_raw,  # for internal use,
             'unique': unique
         })
-        return super(BuiltInEnv, self).__init__(d)
+        super(BuiltInEnv, self).__init__(d)
 
-    def bind(self, name, value): raise CannotBind()
-    def replace(self, data): raise CannotReplace()
+    def bind(self, name, value):
+        raise CannotBind()
+
+    def replace(self, data):
+        raise CannotReplace()
 
 
 class EmitterEnv(Env):
+
     def __init__(self, writer):
         self.writer = writer
         self.emitted = False
@@ -542,9 +570,14 @@ class EmitterEnv(Env):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.writer.__exit__(exc_type, exc_val, exc_tb)
 
-    def bind(self, name, value): raise CannotBind()
-    def replace(self, data): raise CannotReplace()
-    def lookup(self, key): raise NotFound()
+    def bind(self, name, value):
+        raise CannotBind()
+
+    def replace(self, data):
+        raise CannotReplace()
+
+    def lookup(self, key):
+        raise NotFound()
 
     def emit_table(self, table_spec):
         self.emitted = True
@@ -556,16 +589,21 @@ class EmitterEnv(Env):
 
     @staticmethod
     def _unwrap_row_vals(rows):
-        """The XMLtoJSON conversion in CommCare can result in a field being a JSON object
-        instead of a simple field (if the XML tag has attributes or different namespace from
-        the default). In this case the actual value of the XML element is stored in a '#text' field.
         """
+        The XMLtoJSON conversion in CommCare can result in a field being
+        a JSON object instead of a simple field (if the XML tag has
+        attributes or different namespace from the default). In this
+        case the actual value of the XML element is stored in a '#text'
+        field.
+        """
+
         def _unwrap_val(val):
             if isinstance(val, dict):
                 if '#text' in val:
                     return val.get('#text')
                 elif all(key == 'id' or key.startswith('@') for key in val):
-                    # this implies the XML element was empty since all keys are from attributes
+                    # this implies the XML element was empty since all
+                    # keys are from attributes
                     return ''
             return val
 
