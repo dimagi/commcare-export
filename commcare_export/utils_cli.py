@@ -146,15 +146,14 @@ def main(argv):
 
     try:
         args = parser.parse_args(argv)
-    except UnicodeDecodeError:
+    except UnicodeError:
         for arg in argv:
             try:
-                arg.encode('utf-8')
-            except UnicodeDecodeError:
+                arg.encode('ascii')
+            except UnicodeError:
                 sys.stderr.write(
-                    u"ERROR: Argument '%s' contains unicode characters. "
-                    u"Only ASCII characters are supported.\n"
-                    % unicode(arg, 'utf-8')
+                    f"ERROR: Argument '{arg}' contains non-ASCII characters. "
+                    "Only ASCII characters are supported.\n"
                 )
         sys.exit(1)
 
