@@ -2,6 +2,7 @@ import sys
 
 from commcare_export import misc
 from commcare_export.checkpoint import CheckpointManager
+from commcare_export.specs import TableSpec
 from commcare_export.writers import StreamingMarkdownTableWriter
 
 
@@ -40,10 +41,11 @@ def print_runs(runs):
 
     StreamingMarkdownTableWriter(
         sys.stdout, compute_widths=True
-    ).write_table({
-        'headings': [
+    ).write_table(TableSpec(
+        name='',
+        headings=[
             "Checkpoint Time", "Batch end date", "Export Complete", "Project",
             "Query Filename", "Query MD5", "Key", "Table", "CommCare HQ"
         ],
-        'rows': rows
-    })
+        rows=rows,
+    ))
