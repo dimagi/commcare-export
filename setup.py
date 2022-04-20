@@ -79,7 +79,6 @@ setuptools.setup(
         'alembic',
         'argparse',
         'backoff',
-        'csv342',
         'jsonpath-ng~=1.5',
         'ndg-httpsclient',
         'openpyxl==2.5.12',

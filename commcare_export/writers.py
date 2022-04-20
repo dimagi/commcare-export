@@ -1,3 +1,4 @@
+import csv
 import datetime
 import io
 import logging
@@ -6,7 +7,6 @@ from itertools import zip_longest
 
 import sqlalchemy
 
-import csv342 as csv
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from commcare_export.data_types import UnknownDataType, get_sqlalchemy_type
@@ -88,17 +88,11 @@ class CsvTableWriter(TableWriter):
         if self.archive is None:
             raise Exception('Attempt to write to a closed CsvWriter')
 
-        def _encode_row(row):
-            return [
-                val.encode('utf-8') if isinstance(val, bytes) else val
-                for val in row
-            ]
-
         tempfile = io.StringIO()
         writer = csv.writer(tempfile, dialect=csv.excel)
-        writer.writerow(_encode_row(table.headings))
+        writer.writerow(table.headings)
         for row in table.rows:
-            writer.writerow(_encode_row(row))
+            writer.writerow(row)
 
         # TODO: make this a polite zip and put everything in a subfolder with the same basename
         # as the zipfile
