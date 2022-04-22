@@ -227,10 +227,7 @@ class StreamingMarkdownTableWriter(TableWriter):
         self.output_stream = output_stream
         self.compute_widths = compute_widths
 
-    def write_table(
-        self,
-        table,
-    ):
+    def write_table(self, table):
         col_widths = None
         if self.compute_widths:
             col_widths = self._get_column_widths(table)
