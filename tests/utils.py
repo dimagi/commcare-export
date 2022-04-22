@@ -2,6 +2,7 @@ from commcare_export.writers import SqlTableWriter
 
 
 class SqlWriterWithTearDown(SqlTableWriter):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tables = set()

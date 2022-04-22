@@ -9,15 +9,18 @@ from commcare_export import misc
 class TestDigestFile(unittest.TestCase):
 
     def check_digest(self, contents):
-        with tempfile.NamedTemporaryFile(prefix='commcare-export-test-', mode='wb') as file:
-            file.write(contents) 
+        with tempfile.NamedTemporaryFile(
+            prefix='commcare-export-test-', mode='wb'
+        ) as file:
+            file.write(contents)
             file.flush()
             file_digest = misc.digest_file(file.name)
 
-        assert file_digest == hashlib.md5(contents).hexdigest() # Make sure the chunking does not mess with stuff
-    
+        # Make sure the chunking does not mess with stuff
+        assert file_digest == hashlib.md5(contents).hexdigest()
+
     def test_digest_file_ascii(self):
-        self.check_digest('Hello'.encode('utf-8')) # Even a call to `write` requires encoding (as it should) in Python 3
+        self.check_digest('Hello'.encode('utf-8'))
 
     def test_digest_file_long(self):
         self.check_digest(('Hello' * 100000).encode('utf-8'))
