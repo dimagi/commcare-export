@@ -127,7 +127,7 @@ class CommCareHqClient(object):
         want this to work like (or via) slumber.
         """
         logger.debug("Fetching '%s' batch: %s", resource, params)
-        resource_url = '{self.api_url}/{resource}/'
+        resource_url = f'{self.api_url}/{resource}/'
         response = self.session.get(
             resource_url, params=params, auth=self.__auth, timeout=60
         )
