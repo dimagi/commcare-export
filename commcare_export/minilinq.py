@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Dict
 from typing import List as ListType
 from typing import Optional
 
@@ -25,7 +25,7 @@ class MiniLinq(object):
 
     #### Factory methods ####
 
-    _node_classes = {}
+    _node_classes: Dict[str, 'MiniLinq'] = {}
 
     @classmethod
     def register(cls, clazz, slug=None):
@@ -71,6 +71,9 @@ class MiniLinq(object):
                 )
 
             return cls._node_classes[slug].from_jvalue(jvalue)
+
+    def to_jvalue(self):
+        raise NotImplementedError()
 
 
 class Reference(MiniLinq):
@@ -175,11 +178,6 @@ class Bind(MiniLinq):
                 'body': self.body.to_jvalue()
             }
         }
-
-    def __repr__(self):
-        return '%s(name=%r, value=%r, body=%r)' % (
-            self.__class__.__name__, self.name, self.value, self.body
-        )
 
 
 class Filter(MiniLinq):
@@ -476,8 +474,8 @@ class Emit(MiniLinq):
     def __init__(
         self,
         table: str,
-        headings: ListType[str],
-        source: ListType[MiniLinq],
+        headings: ListType[MiniLinq],
+        source: MiniLinq,
         missing_value=None,
         data_types=None,
     ):

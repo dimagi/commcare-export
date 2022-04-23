@@ -60,7 +60,7 @@ class Env(object):
         """
         raise NotImplementedError()
 
-    def replace(self, data: dict) -> 'Env':
+    def replace(self, data: Dict[str, Any]) -> 'Env':
         """
         Completely replace the environment with new data (somewhat like
         "this"-based Map functions a la jQuery). Could be the same as
@@ -412,9 +412,9 @@ def format_uuid(val):
 
 
 def join(*args):
-    args = [unwrap_val(arg) for arg in args]
+    args_ = [unwrap_val(arg) for arg in args]
     try:
-        return args[0].join(args[1:])
+        return args_[0].join(args_[1:])
     except TypeError:
         return '""'
 
@@ -463,8 +463,8 @@ def _doc_url(url_path):
 
 
 def template(format_template, *args):
-    args = [unwrap_val(arg) for arg in args]
-    return format_template.format(*args)
+    args_ = [unwrap_val(arg) for arg in args]
+    return format_template.format(*args_)
 
 
 def _or(*args):
