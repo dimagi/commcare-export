@@ -172,11 +172,6 @@ class Bind(MiniLinq):
             }
         }
 
-    def __repr__(self):
-        return '%s(name=%r, value=%r, body=%r)' % (
-            self.__class__.__name__, self.name, self.value, self.body
-        )
-
 
 class Filter(MiniLinq):
     """
