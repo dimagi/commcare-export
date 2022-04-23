@@ -17,7 +17,8 @@ def stored_version():
 
 def git_version():
     described_version_bytes = subprocess.Popen(
-        ['git', 'describe'], stdout=subprocess.PIPE
+        ['git', 'describe'],
+        stdout=subprocess.PIPE
     ).communicate()[0].strip()
     return described_version_bytes.decode('ascii')
 

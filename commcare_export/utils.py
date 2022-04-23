@@ -14,7 +14,11 @@ def get_checkpoint_manager(args, require_query=True):
             raise
 
     return CheckpointManager(
-        args.output, args.query, md5, args.project, args.commcare_hq,
+        args.output,
+        args.query,
+        md5,
+        args.project,
+        args.commcare_hq,
         args.checkpoint_key
     )
 
@@ -31,9 +35,15 @@ def print_runs(runs):
     rows = []
     for run in runs:
         rows.append([
-            run.time_of_run, run.since_param, "True" if run.final else "False",
-            run.project, run.query_file_name, run.query_file_md5, run.key,
-            run.table_name, run.commcare
+            run.time_of_run,
+            run.since_param,
+            "True" if run.final else "False",
+            run.project,
+            run.query_file_name,
+            run.query_file_md5,
+            run.key,
+            run.table_name,
+            run.commcare
         ])
 
     rows = [[val if val is not None else '' for val in row] for row in rows]
@@ -42,8 +52,15 @@ def print_runs(runs):
         sys.stdout, compute_widths=True
     ).write_table({
         'headings': [
-            "Checkpoint Time", "Batch end date", "Export Complete", "Project",
-            "Query Filename", "Query MD5", "Key", "Table", "CommCare HQ"
+            "Checkpoint Time",
+            "Batch end date",
+            "Export Complete",
+            "Project",
+            "Query Filename",
+            "Query MD5",
+            "Key",
+            "Table",
+            "CommCare HQ"
         ],
         'rows': rows
     })

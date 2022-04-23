@@ -116,7 +116,8 @@ def compile_filters(worksheet, mappings=None):
         return []
 
     filter_values = extended_to_len(
-        len(filter_names), [
+        len(filter_names),
+        [
             cell.value
             for cell in get_column_by_name(worksheet, 'filter value') or []
         ]
@@ -167,7 +168,8 @@ def compile_field(
 
     if alternate_source_fields:
         expr = Apply(
-            Reference('or'), expr,
+            Reference('or'),
+            expr,
             *[Reference(alt_field) for alt_field in alternate_source_fields]
         )
     if map_via:
@@ -185,7 +187,10 @@ def compile_field(
 def compile_mapped_field(field_mappings, field_expression):
     # quote the ref in case it has special chars
     quoted_field = Apply(
-        Reference('join'), Literal(''), Literal('"'), field_expression,
+        Reference('join'),
+        Literal(''),
+        Literal('"'),
+        field_expression,
         Literal('"')
     )
     # produce the mapping reference i.e. 'mapping."X"'
@@ -222,7 +227,7 @@ def _get_alternate_source_fields_from_columns(worksheet, num_fields):
     alt_source_cols = [
         extended_to_len(
             num_fields, [cell.value if cell else cell for cell in alt_col]
-        ) for col_name, alt_col in matching_columns
+        ) for (col_name, alt_col) in matching_columns
     ]
     # transpose columns to rows
     alt_srouce_fields = map(list, zip(*alt_source_cols))
@@ -272,7 +277,8 @@ def compile_fields(worksheet, mappings=None):
             format_via=format_via.value if format_via else None,
             mappings=mappings
         )
-        for field, source_field, alt_source_fields, map_via, format_via in args
+        for (field, source_field, alt_source_fields, map_via, format_via)
+        in args
     ]
 
 
@@ -466,8 +472,12 @@ def parse_sheet(
         data_types = [Literal(data_type.value) for data_type in output_types]
         if column_enforcer is not None:
             (headings, body) = require_column_in_sheet(
-                worksheet.title, data_source, output_table_name,
-                output_headings, output_fields, column_enforcer
+                worksheet.title,
+                data_source,
+                output_table_name,
+                output_headings,
+                output_fields,
+                column_enforcer
             )
             source = source_expr
         else:
@@ -508,7 +518,13 @@ class SheetParts(
     ):
         data_types = data_types or []
         return super(SheetParts, cls).__new__(
-            cls, name, headings, source, body, root_expr, data_types,
+            cls,
+            name,
+            headings,
+            source,
+            body,
+            root_expr,
+            data_types,
             data_source
         )
 
@@ -600,14 +616,8 @@ def get_multi_emit_query(source, sheets, missing_value):
     # the filter here is to prevent accumulating a `[None]` value for
     # each doc
     multi_query = Filter(
-        predicate=Apply(
-            Reference("filter_empty"),
-            Reference("$")
-        ),
-        source=Map(
-            source=source,
-            body=List(emits)
-        )
+        predicate=Apply(Reference("filter_empty"), Reference("$")),
+        source=Map(source=source, body=List(emits))
     )
 
     for sheet in sheets:
@@ -630,9 +640,11 @@ def get_multi_emit_query(source, sheets, missing_value):
     return Bind(
         'checkpoint_manager',
         Apply(
-            Reference('get_checkpoint_manager'), Literal(data_source),
+            Reference('get_checkpoint_manager'),
+            Literal(data_source),
             Literal(table_names)
-        ), multi_query
+        ),
+        multi_query
     )
 
 
@@ -660,9 +672,11 @@ def get_single_emit_query(sheet, missing_value):
     return Bind(
         'checkpoint_manager',
         Apply(
-            Reference('get_checkpoint_manager'), Literal(sheet.data_source),
+            Reference('get_checkpoint_manager'),
+            Literal(sheet.data_source),
             Literal([sheet.name])
-        ), emit
+        ),
+        emit
     )
 
 

@@ -429,9 +429,12 @@ def attachment_url(val):
         return None
     from commcare_export.minilinq import Apply, Reference, Literal
     return Apply(
-        Reference('template'), Literal('{}/a/{}/api/form/attachment/{}/{}'),
-        Reference('commcarehq_base_url'), Reference('$.domain'),
-        Reference('$.id'), Literal(val)
+        Reference('template'),
+        Literal('{}/a/{}/api/form/attachment/{}/{}'),
+        Reference('commcarehq_base_url'),
+        Reference('$.domain'),
+        Reference('$.id'),
+        Literal(val)
     )
 
 

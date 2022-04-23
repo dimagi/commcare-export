@@ -152,7 +152,7 @@ class CheckpointManager(SqlMixin):
         logger.info(
             'Setting %s checkpoint: data_source: %s, tables: %s, '
             'pagination_mode: %s, checkpoint: %s:%s',
-
+            #
             'final' if final else 'batch',
             self.data_source,
             ', '.join(self.table_names),
@@ -276,8 +276,10 @@ class CheckpointManager(SqlMixin):
             )
             if table_run:
                 return self._set_checkpoint(
-                    table_run.since_param, PaginationMode.date_modified,
-                    table_run.final, table_run.time_of_run
+                    table_run.since_param,
+                    PaginationMode.date_modified,
+                    table_run.final,
+                    table_run.time_of_run
                 )
 
             # Check for run without the args
@@ -291,8 +293,10 @@ class CheckpointManager(SqlMixin):
             )
             if table_run:
                 return self._set_checkpoint(
-                    table_run.since_param, PaginationMode.date_modified,
-                    table_run.final, table_run.time_of_run
+                    table_run.since_param,
+                    PaginationMode.date_modified,
+                    table_run.final,
+                    table_run.time_of_run
                 )
 
     def _get_last_checkpoint(self, session, **kwarg_filters):
@@ -309,7 +313,10 @@ class CheckpointManager(SqlMixin):
                 "Query differs from most recent checkpoint:\n"
                 "From checkpoint:         name=%s, md5=%s\n"
                 "From command line args:  name=%s, md5=%s\n",
-                run.query_file_name, run.query_file_md5, self.query,
+                #
+                run.query_file_name,
+                run.query_file_md5,
+                self.query,
                 self.query_md5
             )
 
@@ -349,8 +356,10 @@ class CheckpointManager(SqlMixin):
         """
         with session_scope(self.Session) as session:
             cols = [
-                Checkpoint.project, Checkpoint.commcare,
-                Checkpoint.query_file_md5, Checkpoint.table_name
+                Checkpoint.project,
+                Checkpoint.commcare,
+                Checkpoint.query_file_md5,
+                Checkpoint.table_name
             ]
             inner_query = self._filter_query(
                 session.query(
@@ -482,7 +491,7 @@ class CheckpointManagerProvider(object):
         logger.info(
             "Creating checkpoint manager for tables: %s, since: %s, "
             "pagination_mode: %s",
-
+            #
             ', '.join(table_names),
             since,
             pagination_mode.name,
@@ -495,8 +504,7 @@ class CheckpointManagerProvider(object):
                 "future versions. To switch to the new mode you must re-sync "
                 "your data using\n"
                 "`--start-over`. For more details see: %s"
-                "\n====================================\n",
-
+                "\n====================================\n",  #
                 "https://github.com/dimagi/commcare-export/releases/tag/1.5.0"
             )
         return CheckpointManagerWithDetails(manager, since, pagination_mode)

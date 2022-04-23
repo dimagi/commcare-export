@@ -69,7 +69,7 @@ CLI_ARGS = [
         'commcare-hq',
         default='prod',
         help='Base url for the CommCare HQ instance e.g. '
-             'https://www.commcarehq.org'
+        'https://www.commcarehq.org'
     ),
     Argument('api-version', default=LATEST_KNOWN_VERSION),
     Argument('project'),
@@ -83,24 +83,24 @@ CLI_ARGS = [
         default='password',
         choices=['password', 'apikey'],
         help='Use "digest" auth, or "apikey" auth (for two factor enabled '
-             'domains).'
+        'domains).'
     ),
     Argument(
         'since',
         help='Export all data after this date. Format YYYY-MM-DD or '
-             'YYYY-MM-DDTHH:mm:SS'
+        'YYYY-MM-DDTHH:mm:SS'
     ),
     Argument(
         'until',
         help='Export all data up until this date. Format YYYY-MM-DD or '
-             'YYYY-MM-DDTHH:mm:SS'
+        'YYYY-MM-DDTHH:mm:SS'
     ),
     Argument(
         'start-over',
         default=False,
         action='store_true',
         help='When saving to a SQL database; the default is to pick up '
-             'since the last success. This disables that.'
+        'since the last success. This disables that.'
     ),
     Argument('profile'),
     Argument('verbose', default=False, action='store_true'),
@@ -121,7 +121,7 @@ CLI_ARGS = [
         default=False,
         action='store_true',
         help="When saving to a SQL database don't allow changing column types "
-             "once they are created."
+        "once they are created."
     ),
     Argument(
         'missing-value',
@@ -136,15 +136,15 @@ CLI_ARGS = [
     Argument(
         'checkpoint-key',
         help="Use this key for all checkpoints instead of the query file MD5 "
-             "hash in order to prevent table rebuilds after a query file has "
-             "been edited."
+        "hash in order to prevent table rebuilds after a query file has "
+        "been edited."
     ),
     Argument(
         'users',
         default=False,
         action='store_true',
         help="Export a table containing data about this project's mobile "
-             "workers"
+        "workers"
     ),
     Argument(
         'locations',
@@ -157,16 +157,16 @@ CLI_ARGS = [
         default=False,
         action='store_true',
         help="Export tables containing mobile worker data and location data "
-             "and add a commcare_userid field to any exported form or case"
+        "and add a commcare_userid field to any exported form or case"
     ),
     Argument(
         'export-root-if-no-subdocument',
         default=False,
         action='store_true',
         help="Use this when you are exporting a nested document e.g. "
-             "form.form..case, messaging-event.messages.[*] And you want to "
-             "have a record exported even if the nested document does not "
-             "exist or is empty.",
+        "form.form..case, messaging-event.messages.[*] And you want to "
+        "have a record exported even if the nested document does not "
+        "exist or is empty.",
     )
 ]
 
@@ -239,23 +239,37 @@ def main(argv):
 
 def _get_query(args, writer, column_enforcer=None):
     return _get_query_from_file(
-        args.query, args.missing_value, writer.supports_multi_table_write,
-        writer.max_column_length, writer.required_columns, column_enforcer,
+        args.query,
+        args.missing_value,
+        writer.supports_multi_table_write,
+        writer.max_column_length,
+        writer.required_columns,
+        column_enforcer,
         args.export_root_if_no_subdocument
     )
 
 
 def _get_query_from_file(
-    query_arg, missing_value, combine_emits, max_column_length,
-    required_columns, column_enforcer, value_or_root
+    query_arg,
+    missing_value,
+    combine_emits,
+    max_column_length,
+    required_columns,
+    column_enforcer,
+    value_or_root
 ):
     if os.path.exists(query_arg):
         if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
             import openpyxl
             workbook = openpyxl.load_workbook(query_arg)
             return excel_query.get_queries_from_excel(
-                workbook, missing_value, combine_emits, max_column_length,
-                required_columns, column_enforcer, value_or_root
+                workbook,
+                missing_value,
+                combine_emits,
+                max_column_length,
+                required_columns,
+                column_enforcer,
+                value_or_root
             )
         else:
             with io.open(query_arg, encoding='utf-8') as fh:
@@ -383,7 +397,8 @@ def evaluate_query(env, query):
             print('Try increasing --batch-size to overcome the error')
             return EXIT_STATUS_ERROR
         except (
-            sqlalchemy.exc.DataError, sqlalchemy.exc.InternalError,
+            sqlalchemy.exc.DataError,
+            sqlalchemy.exc.InternalError,
             sqlalchemy.exc.ProgrammingError
         ) as e:
             print('Stopping because of database error:\n', e)

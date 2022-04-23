@@ -208,7 +208,10 @@ class CommCareHqClient(object):
                         more_to_fetch = not repeated_last_page_of_non_counting_resource
 
                     self.checkpoint(
-                        checkpoint_manager, paginator, batch, not more_to_fetch
+                        checkpoint_manager,
+                        paginator,
+                        batch,
+                        not more_to_fetch
                     )
 
         return RepeatableIterator(iterate_resource)
@@ -255,15 +258,16 @@ class MockCommCareHqClient(object):
         self.mock_data = {
             resource: {
                 _params_to_url(params): result
-                for params, result in resource_results
-            } for resource, resource_results in mock_data.items()
+                for (params, result) in resource_results
+            } for (resource, resource_results) in mock_data.items()
         }
 
     def iterate(
         self, resource, paginator, params=None, checkpoint_manager=None
     ):
         logger.debug(
-            'Mock client call to resource "%s" with params "%s"', resource,
+            'Mock client call to resource "%s" with params "%s"',
+            resource,
             params
         )
         return self.mock_data[resource][_params_to_url(params)]

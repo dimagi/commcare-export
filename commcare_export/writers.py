@@ -321,8 +321,7 @@ class SqlMixin(object):
     @property
     def metadata(self):
         if (
-            not hasattr(self, '_metadata')
-            or self._metadata.bind.closed
+            not hasattr(self, '_metadata') or self._metadata.bind.closed
             or self._metadata.bind.invalidated
         ):
             if self.connection.closed:
@@ -510,7 +509,8 @@ class SqlTableWriter(SqlMixin, TableWriter):
             if self.strict_types:
                 create_sql = sqlalchemy.schema.CreateTable(
                     sqlalchemy.Table(
-                        table_name, sqlalchemy.MetaData(),
+                        table_name,
+                        sqlalchemy.MetaData(),
                         *self._get_columns_for_data(row_dict, data_type_dict)
                     )
                 ).compile(self.connection.engine)
@@ -519,7 +519,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     f"with:\n{create_sql}"
                 )
                 empty_cols = [
-                    name for name, val in row_dict.items()
+                    name for (name, val) in row_dict.items()
                     if val is None and name not in data_type_dict
                 ]
                 if empty_cols:
@@ -571,7 +571,11 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 if new_type:
                     logger.warning(
                         'Altering column %s from %s to %s for value: "%s:%s"',
-                        columns[column], current_ty, new_type, type(val), val
+                        columns[column],
+                        current_ty,
+                        new_type,
+                        type(val),
+                        val
                     )
                     op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
@@ -615,7 +619,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 self.get_data_type(data_type_dict[column_name], val),
                 nullable=True
             )
-            for column_name, val in row_dict.items()
-            if (val is not None or data_type_dict[column_name])
-            and column_name != 'id'
+            for (column_name, val) in row_dict.items()
+            if ((val is not None or data_type_dict[column_name])
+                and column_name != 'id')
         ]

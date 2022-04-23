@@ -211,10 +211,8 @@ class Filter(MiniLinq):
 
     def __eq__(self, other):
         return (
-            isinstance(other, Filter)
-            and self.source == other.source
-            and self.name == other.name
-            and self.predicate == other.predicate
+            isinstance(other, Filter) and self.source == other.source
+            and self.name == other.name and self.predicate == other.predicate
         )
 
     @classmethod
@@ -302,10 +300,8 @@ class Map(MiniLinq):
 
     def __eq__(self, other):
         return (
-            isinstance(other, Map)
-            and self.name == other.name
-            and self.source == other.source
-            and self.body == other.body
+            isinstance(other, Map) and self.name == other.name
+            and self.source == other.source and self.body == other.body
         )
 
     @classmethod
@@ -350,8 +346,7 @@ class FlatMap(MiniLinq):
         source_result = self.source.eval(env)
 
         def iterate(
-            env=env,
-            source_result=source_result
+            env=env, source_result=source_result
         ):  # Python closure workaround
             if self.name:
                 for item in source_result:
@@ -368,10 +363,8 @@ class FlatMap(MiniLinq):
 
     def __eq__(self, other):
         return (
-            isinstance(other, FlatMap)
-            and self.name == other.name
-            and self.source == other.source
-            and self.body == other.body
+            isinstance(other, FlatMap) and self.name == other.name
+            and self.source == other.source and self.body == other.body
         )
 
     @classmethod
@@ -430,8 +423,7 @@ class Apply(MiniLinq):
 
     def __eq__(self, other):
         return (
-            isinstance(other, Apply)
-            and self.fn == other.fn
+            isinstance(other, Apply) and self.fn == other.fn
             and self.args == other.args
         )
 
@@ -553,7 +545,10 @@ class Emit(MiniLinq):
 
     def __repr__(self):
         return '%s(table=%r, headings=%r, source=%r, missing_value=%r)' % (
-            self.__class__.__name__, self.table, self.headings, self.source,
+            self.__class__.__name__,
+            self.table,
+            self.headings,
+            self.source,
             self.missing_value
         )
 

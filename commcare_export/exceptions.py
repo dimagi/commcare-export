@@ -36,7 +36,7 @@ class MissingColumnException(DataExportException):
         lines = [
             'Sheet "{}" is missing definitions for required fields: "{}"'
             .format(sheet, '", "'.join(missing_cols))
-            for sheet, missing_cols in self.errors_by_sheet.items()
+            for (sheet, missing_cols) in self.errors_by_sheet.items()
         ]
         return '\n'.join(lines)
 

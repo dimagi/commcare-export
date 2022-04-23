@@ -14,7 +14,12 @@ from commcare_export.env import CannotBind, CannotReplace, DictEnv
 from commcare_export.misc import unwrap
 
 SUPPORTED_RESOURCES = {
-    'form', 'case', 'user', 'location', 'application', 'web-user',
+    'form',
+    'case',
+    'user',
+    'location',
+    'application',
+    'web-user',
     'messaging-event'
 }
 
@@ -66,15 +71,16 @@ class FormFilterSinceParams(object):
                             "server_modified_on": range_expression
                         }
                     }]
-                }, {
-                    "and": [
-                        server_modified_missing, {
-                            "range": {
-                                "received_on": range_expression
-                            }
-                        }
-                    ]
-                }]
+                },
+                       {
+                           "and": [
+                               server_modified_missing, {
+                                   "range": {
+                                       "received_on": range_expression
+                                   }
+                               }
+                           ]
+                       }]
             }
         })
 
@@ -87,8 +93,7 @@ DATE_PARAMS = {
     'server_date_modified':
         SimpleSinceParams(
             'server_date_modified_start', 'server_date_modified_end'
-        ),
-    # used by messaging-events
+        ),  # used by messaging-events
     'date_last_activity':
         SimpleSinceParams('date_last_activity.gte', 'date_last_activity.lt'),
 }

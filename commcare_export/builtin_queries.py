@@ -24,19 +24,23 @@ class Column:
             return Reference(self.source)
         else:
             return Apply(
-                Reference(self.map_function), Reference(self.source),
+                Reference(self.map_function),
+                Reference(self.source),
                 *self.extra_args
             )
 
 
 def compile_query(columns, data_source, table_name):
     source = Apply(
-        Reference('api_data'), Literal(data_source),
+        Reference('api_data'),
+        Literal(data_source),
         Reference('checkpoint_manager')
     )
     part = excel_query.SheetParts(
-        table_name, [c.name for c in columns], source,
-        List([c.mapped_source_field for c in columns]), None
+        table_name, [c.name for c in columns],
+        source,
+        List([c.mapped_source_field for c in columns]),
+        None
     )
     return excel_query.compile_queries([part], None, False)[0]
 
@@ -92,8 +96,7 @@ def get_locations_query(lp):
         set_depth(lt)
 
     ordered_location_types = sorted(
-        location_types.values(),
-        key=lambda lt: -depth[lt['resource_uri']]
+        location_types.values(), key=lambda lt: -depth[lt['resource_uri']]
     )
     location_codes = [lt['code'] for lt in ordered_location_types]
 
@@ -119,24 +122,34 @@ def get_locations_query(lp):
         Column('resource_uri', 'resource_uri'),
         Column('site_code', 'site_code'),
         Column(
-            'location_type_administrative', 'location_type',
-            'get_location_info', Literal('administrative')
+            'location_type_administrative',
+            'location_type',
+            'get_location_info',
+            Literal('administrative')
         ),
         Column(
-            'location_type_code', 'location_type', 'get_location_info',
+            'location_type_code',
+            'location_type',
+            'get_location_info',
             Literal('code')
         ),
         Column(
-            'location_type_name', 'location_type', 'get_location_info',
+            'location_type_name',
+            'location_type',
+            'get_location_info',
             Literal('name')
         ),
         Column(
-            'location_type_parent', 'location_type', 'get_location_info',
+            'location_type_parent',
+            'location_type',
+            'get_location_info',
             Literal('parent')
         ),
     ] + [
         Column(
-            sql_column_name(code), 'resource_uri', 'get_location_ancestor',
+            sql_column_name(code),
+            'resource_uri',
+            'get_location_ancestor',
             Literal(code)
         ) for code in location_codes
     ]
