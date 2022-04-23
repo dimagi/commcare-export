@@ -14,9 +14,6 @@ class MiniLinq(object):
     for dispatching parsing, etc.
     """
 
-    def __init__(self, *args, **kwargs):
-        raise NotImplementedError()
-
     def eval(self, env):
         "( env: object(bindings: {str: ??}, writer: Writer) )-> ??"
         raise NotImplementedError()
