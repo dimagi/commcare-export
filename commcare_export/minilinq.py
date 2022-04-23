@@ -187,16 +187,18 @@ class Filter(MiniLinq):
     def eval(self, env):
         source_result = self.source.eval(env)
 
+        # Python closure workaround
         def iterate(
-            env=env, source_result=source_result
-        ):  # Python closure workaround
+            env_=env,
+            source_result_=source_result,
+        ):
             if self.name:
-                for item in source_result:
-                    if self.predicate.eval(env.bind(self.name, item)):
+                for item in source_result_:
+                    if self.predicate.eval(env_.bind(self.name, item)):
                         yield item
             else:
-                for item in source_result:
-                    if self.predicate.eval(env.replace(item)):
+                for item in source_result_:
+                    if self.predicate.eval(env_.replace(item)):
                         yield item
 
         return RepeatableIterator(iterate)
@@ -337,18 +339,20 @@ class FlatMap(MiniLinq):
     def eval(self, env):
         source_result = self.source.eval(env)
 
+        # Python closure workaround
         def iterate(
-            env=env, source_result=source_result
-        ):  # Python closure workaround
+            env_=env,
+            source_result_=source_result,
+        ):
             if self.name:
-                for item in source_result:
+                for item in source_result_:
                     for result_item in self.body.eval(
-                        env.bind(self.name, item)
+                        env_.bind(self.name, item)
                     ):
                         yield result_item
             else:
-                for item in source_result:
-                    for result_item in self.body.eval(env.replace(item)):
+                for item in source_result_:
+                    for result_item in self.body.eval(env_.replace(item)):
                         yield result_item
 
         return RepeatableIterator(iterate)
