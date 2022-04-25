@@ -6,6 +6,7 @@ import zipfile
 from itertools import zip_longest
 
 import sqlalchemy
+from sqlalchemy.exc import NoSuchTableError
 
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
@@ -327,14 +328,10 @@ class SqlMixin(object):
             or self._metadata.bind.invalidated
         ):
             if self.connection.closed:
-                raise Exception('Tried to reflect via a closed connection')
+                raise Exception('Tried to bind to a closed connection')
             if self.connection.invalidated:
-                raise Exception(
-                    'Tried to reflect via an invalidated connection'
-                )
-            self._metadata = sqlalchemy.MetaData()
-            self._metadata.bind = self.connection
-            self._metadata.reflect()
+                raise Exception('Tried to bind to an invalidated connection')
+            self._metadata = sqlalchemy.MetaData(bind=self.connection)
         return self._metadata
 
     def table(self, table_name):
@@ -507,7 +504,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
         ctx = MigrationContext.configure(self.connection)
         op = Operations(ctx)
 
-        if not table_name in self.metadata.tables:
+        try:
+            self.table(table_name)
+        except NoSuchTableError:
             if self.strict_types:
                 create_sql = sqlalchemy.schema.CreateTable(
                     sqlalchemy.Table(
@@ -535,7 +534,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 *self._get_columns_for_data(row_dict, data_type_dict)
             )
             self.metadata.clear()
-            self.metadata.reflect()
             return
 
         def get_current_table_columns():
@@ -556,7 +554,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     table_name, sqlalchemy.Column(column, ty, nullable=True)
                 )
                 self.metadata.clear()
-                self.metadata.reflect()
                 columns = get_current_table_columns()
             elif not columns[column].primary_key:
                 current_ty = columns[column].type
@@ -581,7 +578,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     )
                     op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
-                    self.metadata.reflect()
                     columns = get_current_table_columns()
 
     def upsert(self, table, row_dict):
