@@ -501,16 +501,15 @@ class SqlTableWriter(SqlMixin, TableWriter):
         return sqlalchemy.UnicodeText(collation=self.collation)
 
     def make_table_compatible(self, table_name, row_dict, data_type_dict):
-        ctx = MigrationContext.configure(self.connection)
-        op = Operations(ctx)
-
         try:
-            self.table(table_name)
+            table = self.table(table_name)
         except NoSuchTableError:
             self._create_table(table_name, row_dict, data_type_dict)
             return
 
-        columns = {c.name: c for c in self.table(table_name).columns}
+        ctx = MigrationContext.configure(self.connection)
+        op = Operations(ctx)
+        columns = {c.name: c for c in table.columns}
 
         for column, val in row_dict.items():
             if val is None:
