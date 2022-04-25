@@ -507,33 +507,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
         try:
             self.table(table_name)
         except NoSuchTableError:
-            if self.strict_types:
-                create_sql = sqlalchemy.schema.CreateTable(
-                    sqlalchemy.Table(
-                        table_name,
-                        sqlalchemy.MetaData(),
-                        *self._get_columns_for_data(row_dict, data_type_dict)
-                    )
-                ).compile(self.connection.engine)
-                logger.warning(
-                    f"Table '{table_name}' does not exist. Creating table "
-                    f"with:\n{create_sql}"
-                )
-                empty_cols = [
-                    name for (name, val) in row_dict.items()
-                    if val is None and name not in data_type_dict
-                ]
-                if empty_cols:
-                    logger.warning(
-                        "This schema does not include the following columns "
-                        "since we are unable to determine the column type at "
-                        f"this stage: {empty_cols}"
-                    )
-            op.create_table(
-                table_name,
-                *self._get_columns_for_data(row_dict, data_type_dict)
-            )
-            self.metadata.clear()
+            self._create_table(table_name, row_dict, data_type_dict)
             return
 
         def get_current_table_columns():
@@ -579,6 +553,37 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
                     columns = get_current_table_columns()
+
+    def _create_table(self, table_name, row_dict, data_type_dict):
+        ctx = MigrationContext.configure(self.connection)
+        op = Operations(ctx)
+        if self.strict_types:
+            create_sql = sqlalchemy.schema.CreateTable(
+                sqlalchemy.Table(
+                    table_name,
+                    sqlalchemy.MetaData(),
+                    *self._get_columns_for_data(row_dict, data_type_dict)
+                )
+            ).compile(self.connection.engine)
+            logger.warning(
+                f"Table '{table_name}' does not exist. Creating table "
+                f"with:\n{create_sql}"
+            )
+            empty_cols = [
+                name for (name, val) in row_dict.items()
+                if val is None and name not in data_type_dict
+            ]
+            if empty_cols:
+                logger.warning(
+                    "This schema does not include the following columns "
+                    "since we are unable to determine the column type at "
+                    f"this stage: {empty_cols}"
+                )
+        op.create_table(
+            table_name,
+            *self._get_columns_for_data(row_dict, data_type_dict)
+        )
+        self.metadata.clear()
 
     def upsert(self, table, row_dict):
         # For atomicity "insert, catch, update" is slightly better than
