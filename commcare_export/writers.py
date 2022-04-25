@@ -396,9 +396,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 # MySQL cannot build an index on TEXT due to the lack of
                 # a field length, so we try to use VARCHAR when
                 # possible.
-                if len(
-                    val
-                ) < self.MAX_VARCHAR_LEN:  # FIXME: Is 255 an interesting cutoff?
+                if len(val) < self.MAX_VARCHAR_LEN:
                     return sqlalchemy.Unicode(
                         max(len(val), self.MIN_VARCHAR_LEN),
                         collation=self.collation
@@ -418,12 +416,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 return sqlalchemy.NVARCHAR(
                     length=column_length_in_bytes, collation=self.collation
                 )
-            if self.is_oracle:
+            elif self.is_oracle:
                 return sqlalchemy.Unicode(4000, collation=self.collation)
             else:
-                raise Exception(
-                    "Unknown database dialect: {}".format(self.db_url)
-                )
+                raise Exception(f"Unknown database dialect: {self.db_url}")
         else:
             # We do not have a name for "bottom" in SQL aka the type
             # whose least upper bound with any other type is the other
@@ -515,37 +511,34 @@ class SqlTableWriter(SqlMixin, TableWriter):
             if val is None:
                 continue
 
-            ty = self.get_data_type(data_type_dict[column], val)
+            val_type = self.get_data_type(data_type_dict[column], val)
             if column not in columns:
                 logger.warning(
-                    "Adding column '{}.{} {}'".format(table_name, column, ty)
+                    f"Adding column '{table_name}.{column} {val_type}'"
                 )
                 op.add_column(
-                    table_name, sqlalchemy.Column(column, ty, nullable=True)
+                    table_name,
+                    sqlalchemy.Column(column, val_type, nullable=True)
                 )
                 self.metadata.clear()
             elif not columns[column].primary_key:
-                current_ty = columns[column].type
-                new_type = None
+                col_type = columns[column].type
+                new_col_type = None
                 if self.strict_types:
                     # don't bother checking compatibility since we're
                     # not going to change anything
-                    new_type = self.strict_types_compatibility_check(
-                        ty, current_ty, val
+                    new_col_type = self.strict_types_compatibility_check(
+                        val_type, col_type, val
                     )
-                elif not self.compatible(ty, current_ty):
-                    new_type = self.least_upper_bound(ty, current_ty)
+                elif not self.compatible(val_type, col_type):
+                    new_col_type = self.least_upper_bound(val_type, col_type)
 
-                if new_type:
+                if new_col_type:
                     logger.warning(
-                        'Altering column %s from %s to %s for value: "%s:%s"',
-                        columns[column],
-                        current_ty,
-                        new_type,
-                        type(val),
-                        val
+                        f'Altering column {columns[column]} from {col_type} '
+                        f'to {new_col_type} for value: "{type(val)}:{val}"',
                     )
-                    op.alter_column(table_name, column, type_=new_type)
+                    op.alter_column(table_name, column, type_=new_col_type)
                     self.metadata.clear()
 
     def _create_table(self, table_name, row_dict, data_type_dict):
@@ -595,8 +588,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
             insert = table.insert().values(**row_dict)
             self.connection.execute(insert)
         except sqlalchemy.exc.IntegrityError:
-            update = table.update().where(table.c.id == row_dict['id']
-                                         ).values(**row_dict)
+            update = (table.update()
+                      .where(table.c.id == row_dict['id'])
+                      .values(**row_dict))
             self.connection.execute(update)
 
     def write_table(self, table: TableSpec) -> None:
