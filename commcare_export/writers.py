@@ -279,6 +279,7 @@ class SqlMixin(object):
         self.engine = engine or sqlalchemy.create_engine(
             db_url, poolclass=poolclass
         )
+        self._metadata = None
 
     def __enter__(self):
         self.connection = self.engine.connect()
@@ -321,7 +322,8 @@ class SqlMixin(object):
     @property
     def metadata(self):
         if (
-            not hasattr(self, '_metadata') or self._metadata.bind.closed
+            self._metadata is None
+            or self._metadata.bind.closed
             or self._metadata.bind.invalidated
         ):
             if self.connection.closed:
