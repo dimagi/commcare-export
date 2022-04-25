@@ -144,19 +144,7 @@ def main(argv):
         )
         command_type.add_arguments(sub)
 
-    try:
-        args = parser.parse_args(argv)
-    except UnicodeDecodeError:
-        for arg in argv:
-            try:
-                arg.encode('utf-8')
-            except UnicodeDecodeError:
-                sys.stderr.write(
-                    u"ERROR: Argument '%s' contains unicode characters. "
-                    u"Only ASCII characters are supported.\n"
-                    % unicode(arg, 'utf-8')
-                )
-        sys.exit(1)
+    args = parser.parse_args(argv)
 
     logging.basicConfig(
         level=logging.WARN,
