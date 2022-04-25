@@ -510,10 +510,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             self._create_table(table_name, row_dict, data_type_dict)
             return
 
-        def get_current_table_columns():
-            return {c.name: c for c in self.table(table_name).columns}
-
-        columns = get_current_table_columns()
+        columns = {c.name: c for c in self.table(table_name).columns}
 
         for column, val in row_dict.items():
             if val is None:
@@ -528,7 +525,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     table_name, sqlalchemy.Column(column, ty, nullable=True)
                 )
                 self.metadata.clear()
-                columns = get_current_table_columns()
             elif not columns[column].primary_key:
                 current_ty = columns[column].type
                 new_type = None
@@ -552,7 +548,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     )
                     op.alter_column(table_name, column, type_=new_type)
                     self.metadata.clear()
-                    columns = get_current_table_columns()
 
     def _create_table(self, table_name, row_dict, data_type_dict):
         ctx = MigrationContext.configure(self.connection)
