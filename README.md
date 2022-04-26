@@ -484,15 +484,21 @@ tests/test_writers.py ...
 ============ 17 passed in 2.09 seconds ============
 ```
 
-5\. Push the feature branch up
+5\. Type hints are used in the `env` and `minilinq` modules. Check that any changes in those modules adhere to those types:
+
+```
+$ mypy --install-types @mypy_typed_modules.txt
+```
+
+6\. Push the feature branch up
 
 ```
 $ git push -u origin my-super-duper-feature
 ```
 
-6\. Visit https://github.com/dimagi/commcare-export and submit a pull request.
+7\. Visit https://github.com/dimagi/commcare-export and submit a pull request.
 
-7\. Accept our gratitude for contributing: Thanks!
+8\. Accept our gratitude for contributing: Thanks!
 
 Release process
 ---------------
