@@ -2,6 +2,7 @@ import hashlib
 import json
 import operator
 import uuid
+from typing import Any, Dict, Union, overload
 
 import pytz
 
@@ -42,20 +43,16 @@ class Env(object):
     #
     # Interface
     #
-    def bind(self, name, value):
+    def bind(self, name: str, value: Any) -> 'Env':
         """
-        (key, ??) -> Env 
-
         Returns a new environment that is equivalent to the current
         except the provided key is bound to the value passed in. If the
         environment does not support such a binding, raises  CannotBind
         """
         raise NotImplementedError()
 
-    def lookup(self, key):
+    def lookup(self, key: str) -> Any:
         """
-        key -> ??
-
         Note that the return value may be ``None`` which may mean the
         value was unbound or may mean it was found and was None. This
         may need revisiting. This may also raise NotFound if it is the
@@ -63,10 +60,8 @@ class Env(object):
         """
         raise NotImplementedError()
 
-    def replace(self, data):
+    def replace(self, data: Dict[str, Any]) -> 'Env':
         """
-        data -> Env
-
         Completely replace the environment with new data (somewhat like
         "this"-based Map functions a la jQuery). Could be the same as
         creating a new empty env and binding "@" in JsonPath.
@@ -212,8 +207,10 @@ class JsonPathEnv(Env):
             JSONPATH_CACHE[jsonpath_string] = parse_jsonpath(jsonpath_string)
         return JSONPATH_CACHE[jsonpath_string]
 
-    def lookup(self, name):
-        "str|JsonPath -> ??"
+    def lookup(
+        self,
+        name: Union[str, jsonpath.JSONPath]
+    ) -> RepeatableIterator:
         if isinstance(name, str):
             jsonpath_expr = self.parse(name)
         elif isinstance(name, jsonpath.JSONPath):
@@ -238,9 +235,15 @@ class JsonPathEnv(Env):
 
         return RepeatableIterator(iterator)
 
-    def bind(self, *args):
-        "(str, ??) -> Env | ({str: ??}) -> Env"
+    @overload
+    def bind(self, key: str, value: Any, *args) -> Env:
+        ...
 
+    @overload
+    def bind(self, bindings: Dict[str, Any], *args) -> Env:
+        ...
+
+    def bind(self, *args):
         new_bindings = dict(self.__bindings)
         if isinstance(args[0], dict):
             new_bindings.update(args[0])
@@ -409,9 +412,9 @@ def format_uuid(val):
 
 
 def join(*args):
-    args = [unwrap_val(arg) for arg in args]
+    args_ = [unwrap_val(arg) for arg in args]
     try:
-        return args[0].join(args[1:])
+        return args_[0].join(args_[1:])
     except TypeError:
         return '""'
 
@@ -460,8 +463,8 @@ def _doc_url(url_path):
 
 
 def template(format_template, *args):
-    args = [unwrap_val(arg) for arg in args]
-    return format_template.format(*args)
+    args_ = [unwrap_val(arg) for arg in args]
+    return format_template.format(*args_)
 
 
 def _or(*args):

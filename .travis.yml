@@ -28,12 +28,15 @@ install:
  - pip install pymysql psycopg2 pyodbc
  - pip install coverage coveralls
  - sudo ACCEPT_EULA=Y apt-get install msodbcsql17
+ - pip install mypy
 before_script:
  - mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'travis'@'%';";
  - docker ps -a
  - odbcinst -q -d
  - .travis/wait.sh
-script: coverage run setup.py test
+script:
+ - coverage run setup.py test
+ - mypy --install-types --non-interactive @mypy_typed_modules.txt
 after_success:
  - coveralls
 services:

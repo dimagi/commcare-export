@@ -1,6 +1,9 @@
 import logging
+from typing import Any, Dict
 from typing import List as ListType
+from typing import Optional
 
+from commcare_export.env import Env
 from commcare_export.misc import unwrap, unwrap_val
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.specs import TableSpec
@@ -14,13 +17,12 @@ class MiniLinq(object):
     for dispatching parsing, etc.
     """
 
-    def eval(self, env):
-        "( env: object(bindings: {str: ??}, writer: Writer) )-> ??"
+    def eval(self, env: Env) -> Any:
         raise NotImplementedError()
 
     #### Factory methods ####
 
-    _node_classes = {}
+    _node_classes: Dict[str, 'MiniLinq'] = {}
 
     @classmethod
     def register(cls, clazz, slug=None):
@@ -66,6 +68,9 @@ class MiniLinq(object):
                 )
 
             return cls._node_classes[slug].from_jvalue(jvalue)
+
+    def to_jvalue(self):
+        raise NotImplementedError()
 
 
 class Reference(MiniLinq):
@@ -135,8 +140,7 @@ class Bind(MiniLinq):
     too large to store, so it'll be re-run on each access.
     """
 
-    def __init__(self, name, value, body):
-        "(str, MiniLinq, MiniLinq) -> MiniLinq"
+    def __init__(self, name: str, value: MiniLinq, body: MiniLinq) -> None:
         self.name = name
         self.value = value
         self.body = body
@@ -178,8 +182,12 @@ class Filter(MiniLinq):
     Just what it sounds like
     """
 
-    def __init__(self, source, predicate, name=None):
-        "(MiniLinq, MiniLinq, var?) -> MiniLinq"
+    def __init__(
+        self,
+        source: MiniLinq,
+        predicate: MiniLinq,
+        name: Optional[str] = None
+    ) -> None:
         self.source = source
         self.name = name
         self.predicate = predicate
@@ -271,8 +279,12 @@ class Map(MiniLinq):
     enabling references to the rest of the env.
     """
 
-    def __init__(self, source, body, name=None):
-        "(MiniLinq, MiniLinq, var?) -> MiniLinq"
+    def __init__(
+        self,
+        source: MiniLinq,
+        body: MiniLinq,
+        name: Optional[str] = None
+    ) -> None:
         self.source = source
         self.name = name
         self.body = body
@@ -330,8 +342,12 @@ class FlatMap(MiniLinq):
     enabling references to the rest of the env.
     """
 
-    def __init__(self, source, body, name=None):
-        "(MiniLinq, MiniLinq, var?) -> MiniLinq"
+    def __init__(
+        self,
+        source: MiniLinq,
+        body: MiniLinq,
+        name: Optional[str] = None
+    ) -> None:
         self.source = source
         self.name = name
         self.body = body
@@ -459,8 +475,8 @@ class Emit(MiniLinq):
     def __init__(
         self,
         table: str,
-        headings: ListType[str],
-        source: ListType[MiniLinq],
+        headings: ListType[MiniLinq],
+        source: MiniLinq,
         missing_value=None,
         data_types=None,
     ):
