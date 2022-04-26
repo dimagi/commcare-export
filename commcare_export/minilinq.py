@@ -477,9 +477,9 @@ class Emit(MiniLinq):
         table: str,
         headings: ListType[MiniLinq],
         source: MiniLinq,
-        missing_value=None,
-        data_types=None,
-    ):
+        missing_value: Optional[str] = None,  # Denotes "no value". e.g. "---"
+        data_types: Optional[ListType[Literal]] = None,
+    ) -> None:
         self.table = table
         self.headings = headings
         self.source = source
