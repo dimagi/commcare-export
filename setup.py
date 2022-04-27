@@ -55,7 +55,7 @@ setuptools.setup(
     name="commcare-export",
     version=version,
     description='A command-line tool (and Python library) to extract data from '
-    'CommCareHQ into a SQL database or Excel workbook',
+    'CommCare HQ into a SQL database or Excel workbook',
     long_description=io.open(readme, encoding='utf-8').read(),
     long_description_content_type='text/markdown',
     author='Dimagi',
