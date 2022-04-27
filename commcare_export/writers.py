@@ -517,6 +517,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     sqlalchemy.Column(column, val_type, nullable=True)
                 )
                 self.metadata.clear()
+                table = self.get_table(table.name)
             elif not columns[column].primary_key:
                 col_type = columns[column].type
                 new_col_type = None
@@ -536,6 +537,8 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     )
                     op.alter_column(table.name, column, type_=new_col_type)
                     self.metadata.clear()
+                    table = self.get_table(table.name)
+        return table
 
     def create_table(self, table_name, row_dict, data_type_dict):
         ctx = MigrationContext.configure(self.connection)
@@ -607,7 +610,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             # Checks the data type for every cell in every row. Maybe we
             # can use a future version of the data dictionary to avoid
             # this?
-            self.make_table_compatible(table, row_dict, data_type_dict)
+            table = self.make_table_compatible(table, row_dict, data_type_dict)
             self.upsert(table, row_dict)
 
     def _get_columns_for_data(self, row_dict, data_type_dict):
