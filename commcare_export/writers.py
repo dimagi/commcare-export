@@ -593,12 +593,12 @@ class SqlTableWriter(SqlMixin, TableWriter):
                       .values(**row_dict))
             self.connection.execute(update)
 
-    def write_table(self, table: TableSpec) -> None:
-        table_name = table.name
-        headings = table.headings
-        data_type_dict = dict(zip_longest(headings, table.data_types))
+    def write_table(self, table_spec: TableSpec) -> None:
+        table_name = table_spec.name
+        headings = table_spec.headings
+        data_type_dict = dict(zip_longest(headings, table_spec.data_types))
         # Rather inefficient for now...
-        for row in table.rows:
+        for row in table_spec.rows:
             row_dict = dict(zip(headings, row))
             self.make_table_compatible(table_name, row_dict, data_type_dict)
             self.upsert(self.table(table_name), row_dict)
