@@ -334,13 +334,15 @@ class SqlMixin(object):
             self._metadata = sqlalchemy.MetaData(bind=self.connection)
         return self._metadata
 
-    def table(self, table_name):
-        return sqlalchemy.Table(
-            table_name,
-            self.metadata,
-            autoload=True,
-            autoload_with=self.connection
-        )
+    def get_table(self, table_name):
+        try:
+            return sqlalchemy.Table(
+                table_name,
+                self.metadata,
+                autoload_with=self.connection,
+            )
+        except NoSuchTableError:
+            return None
 
     def get_id_column(self):
         return sqlalchemy.Column(
@@ -496,13 +498,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
         # FIXME: Don't be so silly
         return sqlalchemy.UnicodeText(collation=self.collation)
 
-    def make_table_compatible(self, table_name, row_dict, data_type_dict):
-        try:
-            table = self.table(table_name)
-        except NoSuchTableError:
-            self._create_table(table_name, row_dict, data_type_dict)
-            return
-
+    def make_table_compatible(self, table, row_dict, data_type_dict):
         ctx = MigrationContext.configure(self.connection)
         op = Operations(ctx)
         columns = {c.name: c for c in table.columns}
@@ -514,10 +510,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
             val_type = self.get_data_type(data_type_dict[column], val)
             if column not in columns:
                 logger.warning(
-                    f"Adding column '{table_name}.{column} {val_type}'"
+                    f"Adding column '{table.name}.{column} {val_type}'"
                 )
                 op.add_column(
-                    table_name,
+                    table.name,
                     sqlalchemy.Column(column, val_type, nullable=True)
                 )
                 self.metadata.clear()
@@ -538,10 +534,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
                         f'Altering column {columns[column]} from {col_type} '
                         f'to {new_col_type} for value: "{type(val)}:{val}"',
                     )
-                    op.alter_column(table_name, column, type_=new_col_type)
+                    op.alter_column(table.name, column, type_=new_col_type)
                     self.metadata.clear()
 
-    def _create_table(self, table_name, row_dict, data_type_dict):
+    def create_table(self, table_name, row_dict, data_type_dict):
         ctx = MigrationContext.configure(self.connection)
         op = Operations(ctx)
         if self.strict_types:
@@ -571,6 +567,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             *self._get_columns_for_data(row_dict, data_type_dict)
         )
         self.metadata.clear()
+        return self.get_table(table_name)
 
     def upsert(self, table, row_dict):
         # For atomicity "insert, catch, update" is slightly better than
@@ -597,11 +594,21 @@ class SqlTableWriter(SqlMixin, TableWriter):
         table_name = table_spec.name
         headings = table_spec.headings
         data_type_dict = dict(zip_longest(headings, table_spec.data_types))
-        # Rather inefficient for now...
-        for row in table_spec.rows:
+        for i, row in enumerate(table_spec.rows):
             row_dict = dict(zip(headings, row))
-            self.make_table_compatible(table_name, row_dict, data_type_dict)
-            self.upsert(self.table(table_name), row_dict)
+            if i == 0:
+                table = self.get_table(table_name)
+                if table is None:
+                    table = self.create_table(
+                        table_name,
+                        row_dict,
+                        data_type_dict,
+                    )
+            # Checks the data type for every cell in every row. Maybe we
+            # can use a future version of the data dictionary to avoid
+            # this?
+            self.make_table_compatible(table, row_dict, data_type_dict)
+            self.upsert(table, row_dict)
 
     def _get_columns_for_data(self, row_dict, data_type_dict):
         return [self.get_id_column()] + [
