@@ -7,7 +7,7 @@ https://github.com/dimagi/commcare-export
 [![Test coverage](https://coveralls.io/repos/dimagi/commcare-export/badge.png?branch=master)](https://coveralls.io/r/dimagi/commcare-export)
 [![PyPI version](https://badge.fury.io/py/commcare-export.svg)](https://badge.fury.io/py/commcare-export)
 
-A command-line tool (and Python library) to generate customized exports from the [CommCareHQ](https://www.commcarehq.org) [REST API](https://wiki.commcarehq.org/display/commcarepublic/Data+APIs).
+A command-line tool (and Python library) to generate customized exports from the [CommCare HQ](https://www.commcarehq.org) [REST API](https://wiki.commcarehq.org/display/commcarepublic/Data+APIs).
 
 * [User documentation](https://wiki.commcarehq.org/display/commcarepublic/CommCare+Data+Export+Tool)
 * [Changelog](https://github.com/dimagi/commcare-export/releases)
@@ -17,7 +17,7 @@ Installation & Quick Start
 
 0a\. Install [Python 3](https://www.python.org/downloads/). This tool is [tested with Python 3.6, 3.7, and 3.8](https://app.travis-ci.com/dimagi/commcare-export).
 
-0b\. Sign up for [CommCareHQ](https://www.commcarehq.org/) if you have not already.
+0b\. Sign up for [CommCare HQ](https://www.commcarehq.org/) if you have not already.
 
 1\. Install CommCare Export via `pip`
 
@@ -86,7 +86,7 @@ $ commcare-export --commcare-hq <URL or alias like "local" or "prod"> \
 
 See `commcare-export --help` for the full list of options.
 
-There are example query files for the CommCare Demo App (available on the CommCareHq Exchange) in the `examples/`
+There are example query files for the CommCare Demo App (available on the CommCare HQ Exchange) in the `examples/`
 directory.
 
 `--output`
@@ -234,12 +234,12 @@ Python Library Usage
 
 As a library, the various `commcare_export` modules make it easy to
 
- - Interact with the CommCareHQ REST API
+ - Interact with the CommCare HQ REST API
  - Execute "Minilinq" queries against the API (a very simple query language, described below)
  - Load and save JSON representations of Minilinq queries
  - Compile Excel configurations to Minilinq queries
 
-To directly access the CommCareHq REST API:
+To directly access the CommCare HQ REST API:
 
 ```python
 >>> import getpass
