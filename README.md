@@ -108,7 +108,7 @@ mssql+pyodbc://scott:tiger@localhost/mydatabases?driver=ODBC+Driver+17+for+SQL+S
 Excel Queries
 -------------
 
-An excel query is any `.xlsx` workbook. Each sheet in the workbook represents one table you wish
+An Excel query is any `.xlsx` workbook. Each sheet in the workbook represents one table you wish
 to create. There are two grouping of columns to configure the table:
 
  - **Data Source**: Set this to `form` to export form data, or `case` for case data.
@@ -121,7 +121,7 @@ JSON Queries
 ------------
 
 JSON queries are a described in the table below. You build a JSON object that represents the query you have in mind.
-A good way to get started is to work from the examples, or you could make an excel query and run the tool
+A good way to get started is to work from the examples, or you could make an Excel query and run the tool
 with `--dump-query` to see the resulting JSON query.
 
 
@@ -132,7 +132,7 @@ The --users and --locations options export data from a CommCare project that
 can be joined with form and case data. The --with-organization option does all
 of that and adds a field to Excel query specifications to be joined on.
 
-Specifiying the --users option or --with-organization option will export an
+Specifying the --users option or --with-organization option will export an
 additional table named 'commcare_users' containing the following columns:
 
 Column                           | Type | Note
@@ -200,7 +200,7 @@ a9ca40      | Supervisor         | NULL   | a9ca40     | c4cbef | 939fa8
 In order to join form or case data to 'commcare_users' and 'commcare_locations'
 the exported forms and cases need to contain a field identifying which user
 submitted them. The --with-organization option automatically adds a field
-called 'commcare_userid' to each query in an Excel specifiction for this
+called 'commcare_userid' to each query in an Excel specification for this
 purpose. Using that field, you can use a SQL query with a join to report
 data about any level of you organization. For example, to count the number
 of forms submitted by all workers in each clinic:
@@ -451,7 +451,7 @@ $ pip install "commcare-export[base_sql]"
 Contributing
 ------------
 
-0\. Sign up for github, if you have not already, at https://github.com.
+0\. Sign up for GitHub, if you have not already, at https://github.com.
 
 1\. Fork the repository at https://github.com/dimagi/commcare-export.
 
@@ -484,15 +484,21 @@ tests/test_writers.py ...
 ============ 17 passed in 2.09 seconds ============
 ```
 
-5\. Push the feature branch up
+5\. Type hints are used in the `env` and `minilinq` modules. Check that any changes in those modules adhere to those types:
+
+```
+$ mypy --install-types @mypy_typed_modules.txt
+```
+
+6\. Push the feature branch up
 
 ```
 $ git push -u origin my-super-duper-feature
 ```
 
-6\. Visit https://github.com/dimagi/commcare-export and submit a pull request.
+7\. Visit https://github.com/dimagi/commcare-export and submit a pull request.
 
-7\. Accept our gratitude for contributing: Thanks!
+8\. Accept our gratitude for contributing: Thanks!
 
 Release process
 ---------------

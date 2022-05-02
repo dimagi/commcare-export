@@ -477,9 +477,19 @@ class Emit(MiniLinq):
         table: str,
         headings: ListType[MiniLinq],
         source: MiniLinq,
-        missing_value=None,
-        data_types=None,
-    ):
+        missing_value: Optional[str] = None,
+        data_types: Optional[ListType[Literal]] = None,
+    ) -> None:
+        """
+        Initializes an ``Emit`` instance.
+
+        :param table: The name/title of the table to be written.
+        :param headings: Evaluated to determine column headings.
+        :param source: Evaluated to determine the table rows.
+        :param missing_value: Denotes "no value". e.g. ``"---"``
+        :param data_types: The data types of the columns. e.g.
+            ``[Literal('text'), Literal('date'), ...]``
+        """
         self.table = table
         self.headings = headings
         self.source = source
