@@ -6,6 +6,7 @@ import zipfile
 from itertools import zip_longest
 
 import sqlalchemy
+from sqlalchemy.exc import NoSuchTableError
 
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
@@ -327,23 +328,21 @@ class SqlMixin(object):
             or self._metadata.bind.invalidated
         ):
             if self.connection.closed:
-                raise Exception('Tried to reflect via a closed connection')
+                raise Exception('Tried to bind to a closed connection')
             if self.connection.invalidated:
-                raise Exception(
-                    'Tried to reflect via an invalidated connection'
-                )
-            self._metadata = sqlalchemy.MetaData()
-            self._metadata.bind = self.connection
-            self._metadata.reflect()
+                raise Exception('Tried to bind to an invalidated connection')
+            self._metadata = sqlalchemy.MetaData(bind=self.connection)
         return self._metadata
 
-    def table(self, table_name):
-        return sqlalchemy.Table(
-            table_name,
-            self.metadata,
-            autoload=True,
-            autoload_with=self.connection
-        )
+    def get_table(self, table_name):
+        try:
+            return sqlalchemy.Table(
+                table_name,
+                self.metadata,
+                autoload_with=self.connection,
+            )
+        except NoSuchTableError:
+            return None
 
     def get_id_column(self):
         return sqlalchemy.Column(
@@ -399,9 +398,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 # MySQL cannot build an index on TEXT due to the lack of
                 # a field length, so we try to use VARCHAR when
                 # possible.
-                if len(
-                    val
-                ) < self.MAX_VARCHAR_LEN:  # FIXME: Is 255 an interesting cutoff?
+                if len(val) < self.MAX_VARCHAR_LEN:
                     return sqlalchemy.Unicode(
                         max(len(val), self.MIN_VARCHAR_LEN),
                         collation=self.collation
@@ -421,12 +418,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 return sqlalchemy.NVARCHAR(
                     length=column_length_in_bytes, collation=self.collation
                 )
-            if self.is_oracle:
+            elif self.is_oracle:
                 return sqlalchemy.Unicode(4000, collation=self.collation)
             else:
-                raise Exception(
-                    "Unknown database dialect: {}".format(self.db_url)
-                )
+                raise Exception(f"Unknown database dialect: {self.db_url}")
         else:
             # We do not have a name for "bottom" in SQL aka the type
             # whose least upper bound with any other type is the other
@@ -503,86 +498,79 @@ class SqlTableWriter(SqlMixin, TableWriter):
         # FIXME: Don't be so silly
         return sqlalchemy.UnicodeText(collation=self.collation)
 
-    def make_table_compatible(self, table_name, row_dict, data_type_dict):
+    def make_table_compatible(self, table, row_dict, data_type_dict):
         ctx = MigrationContext.configure(self.connection)
         op = Operations(ctx)
-
-        if not table_name in self.metadata.tables:
-            if self.strict_types:
-                create_sql = sqlalchemy.schema.CreateTable(
-                    sqlalchemy.Table(
-                        table_name,
-                        sqlalchemy.MetaData(),
-                        *self._get_columns_for_data(row_dict, data_type_dict)
-                    )
-                ).compile(self.connection.engine)
-                logger.warning(
-                    f"Table '{table_name}' does not exist. Creating table "
-                    f"with:\n{create_sql}"
-                )
-                empty_cols = [
-                    name for (name, val) in row_dict.items()
-                    if val is None and name not in data_type_dict
-                ]
-                if empty_cols:
-                    logger.warning(
-                        "This schema does not include the following columns "
-                        "since we are unable to determine the column type at "
-                        f"this stage: {empty_cols}"
-                    )
-            op.create_table(
-                table_name,
-                *self._get_columns_for_data(row_dict, data_type_dict)
-            )
-            self.metadata.clear()
-            self.metadata.reflect()
-            return
-
-        def get_current_table_columns():
-            return {c.name: c for c in self.table(table_name).columns}
-
-        columns = get_current_table_columns()
+        columns = {c.name: c for c in table.columns}
 
         for column, val in row_dict.items():
             if val is None:
                 continue
 
-            ty = self.get_data_type(data_type_dict[column], val)
+            val_type = self.get_data_type(data_type_dict[column], val)
             if column not in columns:
                 logger.warning(
-                    "Adding column '{}.{} {}'".format(table_name, column, ty)
+                    f"Adding column '{table.name}.{column} {val_type}'"
                 )
                 op.add_column(
-                    table_name, sqlalchemy.Column(column, ty, nullable=True)
+                    table.name,
+                    sqlalchemy.Column(column, val_type, nullable=True)
                 )
                 self.metadata.clear()
-                self.metadata.reflect()
-                columns = get_current_table_columns()
+                table = self.get_table(table.name)
             elif not columns[column].primary_key:
-                current_ty = columns[column].type
-                new_type = None
+                col_type = columns[column].type
+                new_col_type = None
                 if self.strict_types:
                     # don't bother checking compatibility since we're
                     # not going to change anything
-                    new_type = self.strict_types_compatibility_check(
-                        ty, current_ty, val
+                    new_col_type = self.strict_types_compatibility_check(
+                        val_type, col_type, val
                     )
-                elif not self.compatible(ty, current_ty):
-                    new_type = self.least_upper_bound(ty, current_ty)
+                elif not self.compatible(val_type, col_type):
+                    new_col_type = self.least_upper_bound(val_type, col_type)
 
-                if new_type:
+                if new_col_type:
                     logger.warning(
-                        'Altering column %s from %s to %s for value: "%s:%s"',
-                        columns[column],
-                        current_ty,
-                        new_type,
-                        type(val),
-                        val
+                        f'Altering column {columns[column]} from {col_type} '
+                        f'to {new_col_type} for value: "{type(val)}:{val}"',
                     )
-                    op.alter_column(table_name, column, type_=new_type)
+                    op.alter_column(table.name, column, type_=new_col_type)
                     self.metadata.clear()
-                    self.metadata.reflect()
-                    columns = get_current_table_columns()
+                    table = self.get_table(table.name)
+        return table
+
+    def create_table(self, table_name, row_dict, data_type_dict):
+        ctx = MigrationContext.configure(self.connection)
+        op = Operations(ctx)
+        if self.strict_types:
+            create_sql = sqlalchemy.schema.CreateTable(
+                sqlalchemy.Table(
+                    table_name,
+                    sqlalchemy.MetaData(),
+                    *self._get_columns_for_data(row_dict, data_type_dict)
+                )
+            ).compile(self.connection.engine)
+            logger.warning(
+                f"Table '{table_name}' does not exist. Creating table "
+                f"with:\n{create_sql}"
+            )
+            empty_cols = [
+                name for (name, val) in row_dict.items()
+                if val is None and name not in data_type_dict
+            ]
+            if empty_cols:
+                logger.warning(
+                    "This schema does not include the following columns "
+                    "since we are unable to determine the column type at "
+                    f"this stage: {empty_cols}"
+                )
+        op.create_table(
+            table_name,
+            *self._get_columns_for_data(row_dict, data_type_dict)
+        )
+        self.metadata.clear()
+        return self.get_table(table_name)
 
     def upsert(self, table, row_dict):
         # For atomicity "insert, catch, update" is slightly better than
@@ -600,19 +588,30 @@ class SqlTableWriter(SqlMixin, TableWriter):
             insert = table.insert().values(**row_dict)
             self.connection.execute(insert)
         except sqlalchemy.exc.IntegrityError:
-            update = table.update().where(table.c.id == row_dict['id']
-                                         ).values(**row_dict)
+            update = (table.update()
+                      .where(table.c.id == row_dict['id'])
+                      .values(**row_dict))
             self.connection.execute(update)
 
-    def write_table(self, table: TableSpec) -> None:
-        table_name = table.name
-        headings = table.headings
-        data_type_dict = dict(zip_longest(headings, table.data_types))
-        # Rather inefficient for now...
-        for row in table.rows:
+    def write_table(self, table_spec: TableSpec) -> None:
+        table_name = table_spec.name
+        headings = table_spec.headings
+        data_type_dict = dict(zip_longest(headings, table_spec.data_types))
+        for i, row in enumerate(table_spec.rows):
             row_dict = dict(zip(headings, row))
-            self.make_table_compatible(table_name, row_dict, data_type_dict)
-            self.upsert(self.table(table_name), row_dict)
+            if i == 0:
+                table = self.get_table(table_name)
+                if table is None:
+                    table = self.create_table(
+                        table_name,
+                        row_dict,
+                        data_type_dict,
+                    )
+            # Checks the data type for every cell in every row. Maybe we
+            # can use a future version of the data dictionary to avoid
+            # this?
+            table = self.make_table_compatible(table, row_dict, data_type_dict)
+            self.upsert(table, row_dict)
 
     def _get_columns_for_data(self, row_dict, data_type_dict):
         return [self.get_id_column()] + [

@@ -48,7 +48,8 @@ class TestCheckpointManager(object):
     def test_create_checkpoint_table(self, manager, revision='head'):
         manager.create_checkpoint_table(revision)
         with manager:
-            assert 'commcare_export_runs' in manager.metadata.tables
+            table = manager.get_table('commcare_export_runs')
+            assert table is not None
 
     def test_checkpoint_table_exists(self, manager):
         # Test that the migrations don't fail for tables that existed before

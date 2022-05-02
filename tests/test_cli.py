@@ -723,9 +723,12 @@ class TestCLIWithDataTypes(object):
         )
 
         metadata = sqlalchemy.schema.MetaData(bind=writer.engine)
-        metadata.reflect()
-
-        cols = metadata.tables['forms'].c
+        table = sqlalchemy.Table(
+            'forms',
+            metadata,
+            autoload_with=writer.engine,
+        )
+        cols = table.c
         assert sorted([c.name for c in cols]) == sorted([
             u'id', u'a_bool', u'an_int', u'a_date', u'a_datetime', u'a_text'
         ])
