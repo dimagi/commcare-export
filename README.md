@@ -62,8 +62,8 @@ $ commcare-export \
 You'll see the tables printed out. Change to `--output-format sql --output URL_TO_YOUR_DB --since DATE` to
 sync all forms submitted since that date.
 
-All examples are present in Excel and also equivalent JSON, however it is recommended
-to use the Excel format as the JSON format may change upon future library releases.
+All example queries are present in Excel and also equivalent JSON, however it is recommended
+to use the Excel format as the JSON query format may change upon future library releases.
 
 Command-line Usage
 ------------------
