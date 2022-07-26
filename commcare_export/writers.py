@@ -369,7 +369,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
     def get_explicit_type(self, data_type):
         try:
-            return get_sqlalchemy_type(data_type)
+            return get_sqlalchemy_type(data_type, self.collation)
         except UnknownDataType:
             if data_type:
                 logger.warning(

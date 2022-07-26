@@ -519,18 +519,19 @@ class TestSQLWriters(object):
                 TableSpec(
                     **{
                         'name': 'foo_explicit_types',
-                        'headings': ['id', 'a', 'b', 'c', 'd'],
+                        'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
                         'rows': [
-                            ['bizzle', '1', 2, 3, '7'],
-                            ['bazzle', '4', 5, 6, '8'],
-                            ['bozzle', '6', '本', 1, '本'],
+                            ['bizzle', '1', 2, 3, '7', 'x'],
+                            ['bazzle', '4', 5, 6, '8', 'y'],
+                            ['bozzle', '6', '01', 1, '本', 7],
                         ],
                         'data_types': [
                             'text',  # id
                             'integer',  # a
                             'text',  # b
                             None,  # c
-                            # d (will be None)
+                            'unicode'  # d
+                            # e (will be None)
                         ]
                     }
                 )
@@ -541,7 +542,7 @@ class TestSQLWriters(object):
         with strict_writer:
             result = dict([
                 (row['id'], row) for row in strict_writer.connection
-                .execute('SELECT id, a, b, c, d FROM foo_explicit_types')
+                .execute('SELECT id, a, b, c, d, e FROM foo_explicit_types')
             ])
 
         assert len(result) == 3
@@ -551,21 +552,24 @@ class TestSQLWriters(object):
             'a': 1,
             'b': '2',
             'c': 3,
-            'd': '7'
+            'd': '7',
+            'e': 'x',
         }
         assert dict(result['bazzle']) == {
             'id': 'bazzle',
             'a': 4,
             'b': '5',
             'c': 6,
-            'd': '8'
+            'd': '8',
+            'e': 'y',
         }
         assert dict(result['bozzle']) == {
             'id': 'bozzle',
             'a': 6,
-            'b': '本',
+            'b': '01',
             'c': 1,
-            'd': '本'
+            'd': '本',
+            'e': '7',
         }
 
     def test_mssql_nvarchar_length_upsize(self, writer):
