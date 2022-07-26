@@ -523,12 +523,14 @@ class TestSQLWriters(object):
                         'rows': [
                             ['bizzle', '1', 2, 3, '7'],
                             ['bazzle', '4', 5, 6, '8'],
+                            ['bozzle', '6', '本', 1, '本'],
                         ],
                         'data_types': [
-                            'text',
-                            'integer',
-                            'text',
-                            None,
+                            'text',  # id
+                            'integer',  # a
+                            'text',  # b
+                            None,  # c
+                            # d (will be None)
                         ]
                     }
                 )
@@ -542,7 +544,7 @@ class TestSQLWriters(object):
                 .execute('SELECT id, a, b, c, d FROM foo_explicit_types')
             ])
 
-        assert len(result) == 2
+        assert len(result) == 3
         # a casts strings to ints, b casts ints to text, c default falls back to ints, d default falls back to text
         assert dict(result['bizzle']) == {
             'id': 'bizzle',
@@ -557,6 +559,13 @@ class TestSQLWriters(object):
             'b': '5',
             'c': 6,
             'd': '8'
+        }
+        assert dict(result['bozzle']) == {
+            'id': 'bozzle',
+            'a': 6,
+            'b': '本',
+            'c': 1,
+            'd': '本'
         }
 
     def test_mssql_nvarchar_length_upsize(self, writer):
