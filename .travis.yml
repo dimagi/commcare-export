@@ -23,6 +23,7 @@ before_install:
  - sudo apt-get update -qq
 install:
  - sudo apt-get install pandoc
+ - pip list
  - python setup.py sdist
  - pip install dist/*
  - pip install pymysql psycopg2 pyodbc
