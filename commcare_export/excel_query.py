@@ -122,7 +122,12 @@ def compile_filters(worksheet, mappings=None):
             for cell in get_column_by_name(worksheet, 'filter value') or []
         ]
     )
-    return zip(filter_names, filter_values)
+    # Preserve values of duplicate filter names. Results in an OR filter.
+    # e.g. {'type': ['person'], 'owner_id': ['abc123', 'def456']}
+    filters = defaultdict(list)
+    for k, v in zip(filter_names, filter_values):
+        filters[k].append(v)
+    return filters
 
 
 def extended_to_len(desired_len, some_list, value=None):
@@ -350,7 +355,7 @@ def compile_source(worksheet, value_or_root=False):
             # conditional
             api_query_args.append(Literal(None))
     else:
-        api_query_args.append(Literal(dict(filters)))
+        api_query_args.append(Literal(filters))
 
     if include_referenced_items:
         api_query_args.append(Literal(include_referenced_items))
