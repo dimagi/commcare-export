@@ -504,12 +504,10 @@ def parse_sheet(
     )
 
 
-class SheetParts(
-    namedtuple(
-        'SheetParts',
-        'name headings source body root_expr data_types data_source'
-    )
-):
+class SheetParts(namedtuple(
+    'SheetParts',
+    'name headings source body root_expr data_types data_source'
+)):
 
     def __new__(
         cls,
@@ -521,15 +519,14 @@ class SheetParts(
         data_types=None,
         data_source=None
     ):
-        data_types = data_types or []
-        return super(SheetParts, cls).__new__(
+        return super().__new__(
             cls,
             name,
             headings,
             source,
             body,
             root_expr,
-            data_types,
+            data_types or [],
             data_source
         )
 
