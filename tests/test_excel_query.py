@@ -132,8 +132,8 @@ class TestExcelQuery(unittest.TestCase):
                         Reference("api_data"), Literal("form"),
                         Reference("checkpoint_manager"),
                         Literal({
-                            'app_id': 'foobizzle',
-                            'type': 'intake',
+                            'app_id': ['foobizzle'],
+                            'type': ['intake'],
                         })
                     ),
                     body=None,
