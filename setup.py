@@ -86,7 +86,7 @@ setuptools.setup(
         'pytz',
         'requests',
         'simplejson',
-        'sqlalchemy',
+        'sqlalchemy~=1.4',
         'sqlalchemy-migrate'
     ],
     extras_require={
