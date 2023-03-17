@@ -43,7 +43,7 @@ jobs:
       - run: mysql -uroot -proot -e "CREATE USER '${{ env.DB_USER }}'@'%';"
       - run: mysql -uroot -proot -e "GRANT ALL PRIVILEGES ON *.* TO '${{ env.DB_USER }}'@'%';"
 
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - run: sudo apt-get install pandoc
