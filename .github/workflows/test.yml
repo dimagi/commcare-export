@@ -31,7 +31,7 @@ jobs:
           - 5432:5432
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, '3.10'] # Version 3.6 with arch x64 not found
+        python-version: [3.7, 3.8, 3.9, '3.10', '3.11']
     steps:
       - uses: actions/checkout@v3
         with:
