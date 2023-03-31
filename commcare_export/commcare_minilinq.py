@@ -5,33 +5,47 @@ To date, this is simply built-ins for querying the
 API directly.
 """
 import json
+from enum import Enum
+from urllib.parse import parse_qs, urlparse
 
-from commcare_export.env import DictEnv, CannotBind, CannotReplace
-from datetime import datetime
+from dateutil.parser import ParserError, parse
 
+from commcare_export.env import CannotBind, CannotReplace, DictEnv
 from commcare_export.misc import unwrap
 
-try:
-    from urllib.parse import urlparse, parse_qs
-except ImportError:
-    from urlparse import urlparse, parse_qs
+SUPPORTED_RESOURCES = {
+    'form',
+    'case',
+    'user',
+    'location',
+    'application',
+    'web-user',
+    'messaging-event'
+}
+
+
+class PaginationMode(Enum):
+    date_indexed = "date_indexed"
+    date_modified = "date_modified"
 
 
 class SimpleSinceParams(object):
+
     def __init__(self, start, end):
         self.start_param = start
         self.end_param = end
 
     def __call__(self, since, until):
-        params = {
-            self.start_param: since.isoformat()
-        }
+        params = {}
+        if since:
+            params[self.start_param] = since.isoformat()
         if until:
             params[self.end_param] = until.isoformat()
         return params
 
 
 class FormFilterSinceParams(object):
+
     def __call__(self, since, until):
         range_expression = {}
         if since:
@@ -40,59 +54,75 @@ class FormFilterSinceParams(object):
         if until:
             range_expression['lte'] = until.isoformat()
 
-        server_modified_missing = {"missing": {
-            "field": "server_modified_on", "null_value": True, "existence": True}
+        server_modified_missing = {
+            "missing": {
+                "field": "server_modified_on",
+                "null_value": True,
+                "existence": True
+            }
         }
         query = json.dumps({
             'filter': {
-                "or": [
-                    {
-                        "and": [
-                            {
-                                "not": server_modified_missing
-                            },
-                            {
-                                "range": {
-                                    "server_modified_on": range_expression
-                                }
-                            }
-                        ]
-                    },
-                    {
-                        "and": [
-                            server_modified_missing,
-                            {
-                                "range": {
-                                    "received_on": range_expression
-                                }
-                            }
-                        ]
-                    }
-                ]
-            }})
+                "or": [{
+                    "and": [{
+                        "not": server_modified_missing
+                    }, {
+                        "range": {
+                            "server_modified_on": range_expression
+                        }
+                    }]
+                },
+                       {
+                           "and": [
+                               server_modified_missing, {
+                                   "range": {
+                                       "received_on": range_expression
+                                   }
+                               }
+                           ]
+                       }]
+            }
+        })
 
         return {'_search': query}
 
 
-resource_since_params = {
-    'form': FormFilterSinceParams(),
-    'case': SimpleSinceParams('server_date_modified_start', 'server_date_modified_end'),
-    'user': None,
-    'location': None,
-    'application': None,
-    'web-user': None,
+DATE_PARAMS = {
+    'indexed_on':
+        SimpleSinceParams('indexed_on_start', 'indexed_on_end'),
+    'server_date_modified':
+        SimpleSinceParams(
+            'server_date_modified_start', 'server_date_modified_end'
+        ),  # used by messaging-events
+    'date_last_activity':
+        SimpleSinceParams('date_last_activity.gte', 'date_last_activity.lt'),
 }
 
 
-def get_paginator(resource, page_size=1000):
+def get_paginator(
+    resource,
+    page_size=1000,
+    pagination_mode=PaginationMode.date_indexed,
+):
     return {
-        'form': DatePaginator('form', ['server_modified_on','received_on'], page_size),
-        'case': DatePaginator('case', 'server_date_modified', page_size),
-        'user': SimplePaginator('user', page_size),
-        'location': SimplePaginator('location', page_size),
-        'application': SimplePaginator('application', page_size),
-        'web-user': SimplePaginator('web-user', page_size),
-    }[resource]
+        PaginationMode.date_indexed: {
+            'form': DatePaginator('indexed_on', page_size),
+            'case': DatePaginator('indexed_on', page_size),
+            'messaging-event': DatePaginator('date_last_activity', page_size),
+        },
+        PaginationMode.date_modified: {
+            'form':
+                DatePaginator(
+                    ['server_modified_on', 'received_on'],
+                    page_size,
+                    params=FormFilterSinceParams(),
+                ),
+            'case':
+                DatePaginator('server_date_modified', page_size),
+            'messaging-event':
+                DatePaginator('date_last_activity', page_size),
+        }
+    }[pagination_mode].get(resource, SimplePaginator(page_size))
 
 
 class CommCareHqEnv(DictEnv):
@@ -100,26 +130,36 @@ class CommCareHqEnv(DictEnv):
     An environment providing primitives for pulling from the
     CommCareHq API.
     """
-    
+
     def __init__(self, commcare_hq_client, until=None, page_size=1000):
         self.commcare_hq_client = commcare_hq_client
         self.until = until
         self.page_size = page_size
-        super(CommCareHqEnv, self).__init__({
-            'api_data' : self.api_data
-        })
+        super(CommCareHqEnv, self).__init__({'api_data': self.api_data})
 
     @unwrap('checkpoint_manager')
-    def api_data(self, resource, checkpoint_manager, payload=None, include_referenced_items=None):
-        if resource not in resource_since_params:
-            raise ValueError('I do not know how to access the API resource "%s"' % resource)
+    def api_data(
+        self,
+        resource,
+        checkpoint_manager,
+        payload=None,
+        include_referenced_items=None
+    ):
+        if resource not in SUPPORTED_RESOURCES:
+            raise ValueError('Unknown API resource "%s' % resource)
 
-        paginator = get_paginator(resource, self.page_size)
+        paginator = get_paginator(
+            resource, self.page_size, checkpoint_manager.pagination_mode
+        )
         paginator.init(payload, include_referenced_items, self.until)
-        initial_params = paginator.next_page_params_since(checkpoint_manager.since_param)
+        initial_params = paginator.next_page_params_since(
+            checkpoint_manager.since_param
+        )
         return self.commcare_hq_client.iterate(
-            resource, paginator,
-            params=initial_params, checkpoint_manager=checkpoint_manager
+            resource,
+            paginator,
+            params=initial_params,
+            checkpoint_manager=checkpoint_manager
         )
 
     def bind(self, name, value):
@@ -133,9 +173,10 @@ class SimplePaginator(object):
     """
     Paginate based on the 'next' URL provided in the API response.
     """
-    def __init__(self, resource, page_size=1000):
-        self.resource = resource
+
+    def __init__(self, page_size=1000, params=None):
         self.page_size = page_size
+        self.params = params
 
     def init(self, payload=None, include_referenced_items=None, until=None):
         self.payload = dict(payload or {})  # Do not mutate passed-in dicts
@@ -146,14 +187,14 @@ class SimplePaginator(object):
         params = self.payload
         params['limit'] = self.page_size
 
-        resource_date_params = resource_since_params[self.resource]
-        if (since or self.until) and resource_date_params:
-            params.update(
-                resource_date_params(since, self.until)
-            )
+        if (since or self.until) and self.params:
+            params.update(self.params(since, self.until))
 
         if self.include_referenced_items:
-            params.update([('%s__full' % referenced_item, 'true') for referenced_item in self.include_referenced_items])
+            params.update([
+                (f'{referenced_item}__full', 'true')
+                for referenced_item in self.include_referenced_items
+            ])
 
         return params
 
@@ -164,19 +205,26 @@ class SimplePaginator(object):
 
 class DatePaginator(SimplePaginator):
     """
-    This paginator is designed to get around the issue of deep paging where the deeper the page the longer
-    the query takes.
+    This paginator is designed to get around the issue of deep paging
+    where the deeper the page the longer the query takes.
 
-    Paginate records according to a date in the record. The params for the next batch will include a filter
-    for the date of the last record in the previous batch.
+    Paginate records according to a date in the record. The params for
+    the next batch will include a filter for the date of the last record
+    in the previous batch.
 
-    This also adds an ordering parameter to ensure that the records are ordered by the date field in ascending order.
+    This also adds an ordering parameter to ensure that the records are
+    ordered by the date field in ascending order.
 
-    :param resource: The name of the resource being fetched: ``form`` or ``case``.
     :param since_field: The name of the date field to use for pagination.
+    :param page_size: Number of results to request in each page
     """
-    def __init__(self, resource, since_field, page_size=1000):
-        super(DatePaginator, self).__init__(resource, page_size)
+
+    DEFAULT_PARAMS = object()
+
+    def __init__(self, since_field, page_size=1000, params=DEFAULT_PARAMS):
+        params = DATE_PARAMS[
+            since_field] if params is DatePaginator.DEFAULT_PARAMS else params
+        super(DatePaginator, self).__init__(page_size, params)
         self.since_field = since_field
 
     def next_page_params_since(self, since=None):
@@ -205,8 +253,12 @@ class DatePaginator(SimplePaginator):
                 since = last_obj.get(self.since_field)
 
             if since:
-                for fmt in ('%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S.%fZ'):
-                    try:
-                        return datetime.strptime(since, fmt)
-                    except ValueError:
-                        pass
+                try:
+                    return parse(
+                        since,
+                        # ignoretz since we assume utc, and use naive
+                        # datetimes everywhere
+                        ignoretz=True
+                    )
+                except ParserError:
+                    return None

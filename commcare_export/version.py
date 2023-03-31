@@ -1,7 +1,6 @@
-from __future__ import print_function, unicode_literals
 import io
-import subprocess
 import os.path
+import subprocess
 
 __all__ = ['__version__', 'stored_version', 'git_version']
 
@@ -17,7 +16,10 @@ def stored_version():
 
 
 def git_version():
-    described_version_bytes = subprocess.Popen(['git', 'describe'], stdout=subprocess.PIPE).communicate()[0].strip()
+    described_version_bytes = subprocess.Popen(
+        ['git', 'describe'],
+        stdout=subprocess.PIPE
+    ).communicate()[0].strip()
     return described_version_bytes.decode('ascii')
 
 

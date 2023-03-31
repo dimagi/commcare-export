@@ -1,17 +1,18 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
 import functools
 import hashlib
 import inspect
 import io
-from jsonpath_rw import jsonpath
+
 from commcare_export.repeatable_iterator import RepeatableIterator
+from jsonpath_ng import jsonpath
 
 
 def digest_file(path):
     with io.open(path, 'rb') as filehandle:
         digest = hashlib.md5()
         while True:
-            chunk = filehandle.read(4096) # Arbitrary choice of size to be ~filesystem block size friendly
+            # Arbitrary choice of size to be ~filesystem block size friendly
+            chunk = filehandle.read(4096)
             if not chunk:
                 break
             digest.update(chunk)
@@ -21,6 +22,7 @@ def digest_file(path):
 def unwrap(arg_name):
 
     def unwrapper(fn):
+
         @functools.wraps(fn)
         def _inner(*args):
             callargs = inspect.getcallargs(fn, *args)

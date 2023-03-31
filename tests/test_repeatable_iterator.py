@@ -1,8 +1,8 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
-from itertools import *
 import unittest
+from itertools import *
 
 from commcare_export.repeatable_iterator import RepeatableIterator
+
 
 class TestRepeatableIterator(unittest.TestCase):
 
@@ -12,10 +12,11 @@ class TestRepeatableIterator(unittest.TestCase):
 
     def test_iteration(self):
 
-        class LazinessException(Exception): pass
+        class LazinessException(Exception):
+            pass
 
-        def test1(): 
-            for i in range(1, 100): 
+        def test1():
+            for i in range(1, 100):
                 yield i
 
         def test2():
@@ -24,12 +25,12 @@ class TestRepeatableIterator(unittest.TestCase):
                     raise LazinessException('Not lazy enough')
                 yield i
 
-        # First make sure that we've properly set up a situation that fails
-        # without RepeatableIterator
+        # First make sure that we've properly set up a situation that
+        # fails without RepeatableIterator
         iterator = test1()
         assert list(iterator) == list(range(1, 100))
         assert list(iterator) == []
-        
+
         # Now test that the RepeatableIterator restores functionality
         iterator = RepeatableIterator(test1)
         assert list(iterator) == list(range(1, 100))

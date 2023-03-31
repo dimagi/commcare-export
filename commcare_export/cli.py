@@ -1,5 +1,3 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
-
 import argparse
 import getpass
 import io
@@ -11,22 +9,26 @@ import sys
 import dateutil.parser
 import requests
 import sqlalchemy
-from six.moves import input
 
-from commcare_export import excel_query
-from commcare_export import writers
+from commcare_export import builtin_queries, excel_query, writers
 from commcare_export.checkpoint import CheckpointManagerProvider
-from commcare_export.misc import default_to_json
-from commcare_export.utils import get_checkpoint_manager
-from commcare_export.commcare_hq_client import CommCareHqClient, LATEST_KNOWN_VERSION, ResourceRepeatException
+from commcare_export.commcare_hq_client import (
+    LATEST_KNOWN_VERSION,
+    CommCareHqClient,
+    ResourceRepeatException,
+)
 from commcare_export.commcare_minilinq import CommCareHqEnv
-from commcare_export.env import BuiltInEnv, JsonPathEnv, EmitterEnv
-from commcare_export.exceptions import LongFieldsException, DataExportException, MissingQueryFileException
-from commcare_export.minilinq import MiniLinq, List
-from commcare_export.repeatable_iterator import RepeatableIterator
-from commcare_export.version import __version__
-from commcare_export import builtin_queries
+from commcare_export.env import BuiltInEnv, EmitterEnv, JsonPathEnv
+from commcare_export.exceptions import (
+    DataExportException,
+    MissingQueryFileException,
+)
 from commcare_export.location_info_provider import LocationInfoProvider
+from commcare_export.minilinq import List, MiniLinq
+from commcare_export.misc import default_to_json
+from commcare_export.repeatable_iterator import RepeatableIterator
+from commcare_export.utils import get_checkpoint_manager
+from commcare_export.version import __version__
 
 EXIT_STATUS_ERROR = 1
 
@@ -39,6 +41,7 @@ commcare_hq_aliases = {
 
 
 class Argument(object):
+
     def __init__(self, name, *args, **kwargs):
         self.name = name.replace('-', '_')
         self._args = ['--{}'.format(name)] + list(args)
@@ -54,68 +57,139 @@ class Argument(object):
 
 
 CLI_ARGS = [
-        Argument('version', default=False, action='store_true',
-                 help='Print the current version of the commcare-export tool.'),
-        Argument('query', required=False, help='JSON or Excel query file'),
-        Argument('dump-query', default=False, action='store_true'),
-        Argument('commcare-hq', default='prod',
-                 help='Base url for the CommCare HQ instance e.g. https://www.commcarehq.org'),
-        Argument('api-version', default=LATEST_KNOWN_VERSION),
-        Argument('project'),
-        Argument('username'),
-        Argument('password', help='Enter password, or if using apikey auth-mode, enter the api key.'),
-        Argument('auth-mode', default='password', choices=['password', 'apikey'],
-                 help='Use "digest" auth, or "apikey" auth (for two factor enabled domains).'),
-        Argument('since', help='Export all data after this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS'),
-        Argument('until', help='Export all data up until this date. Format YYYY-MM-DD or YYYY-MM-DDTHH:mm:SS'),
-        Argument('start-over', default=False, action='store_true',
-                 help='When saving to a SQL database; the default is to pick up since the last success. This disables that.'),
-        Argument('profile'),
-        Argument('verbose', default=False, action='store_true'),
-        Argument('output-format', default='json', choices=['json', 'csv', 'xls', 'xlsx', 'sql', 'markdown'],
-                 help='Output format'),
-        Argument('output', metavar='PATH', default='reports.zip', help='Path to output; defaults to `reports.zip`.'),
-        Argument('strict-types', default=False, action='store_true',
-                 help="When saving to a SQL database don't allow changing column types once they are created."),
-        Argument('missing-value', default=None, help="Value to use when a field is missing from the form / case."),
-        Argument('batch-size', default=200, help="Number of records to process per batch."),
-        Argument('checkpoint-key', help="Use this key for all checkpoints instead of the query file MD5 hash "
-                                        "in order to prevent table rebuilds after a query file has been edited."),
-        Argument('users', default=False, action='store_true',
-                 help="Export a table containing data about this project's "
-                      "mobile workers"),
-        Argument('locations', default=False, action='store_true',
-                 help="Export a table containing data about this project's "
-                      "locations"),
-        Argument('with-organization', default=False, action='store_true',
-                 help="Export tables containing mobile worker data and "
-                      "location data and add a commcare_userid field to any "
-                      "exported form or case"),
-    ]
+    Argument(
+        'version',
+        default=False,
+        action='store_true',
+        help='Print the current version of the commcare-export tool.'
+    ),
+    Argument('query', required=False, help='JSON or Excel query file'),
+    Argument('dump-query', default=False, action='store_true'),
+    Argument(
+        'commcare-hq',
+        default='prod',
+        help='Base url for the CommCare HQ instance e.g. '
+        'https://www.commcarehq.org'
+    ),
+    Argument('api-version', default=LATEST_KNOWN_VERSION),
+    Argument('project'),
+    Argument('username'),
+    Argument(
+        'password',
+        help='Enter password, or if using apikey auth-mode, enter the api key.'
+    ),
+    Argument(
+        'auth-mode',
+        default='password',
+        choices=['password', 'apikey'],
+        help='Use "digest" auth, or "apikey" auth (for two factor enabled '
+        'domains).'
+    ),
+    Argument(
+        'since',
+        help='Export all data after this date. Format YYYY-MM-DD or '
+        'YYYY-MM-DDTHH:mm:SS'
+    ),
+    Argument(
+        'until',
+        help='Export all data up until this date. Format YYYY-MM-DD or '
+        'YYYY-MM-DDTHH:mm:SS'
+    ),
+    Argument(
+        'start-over',
+        default=False,
+        action='store_true',
+        help='When saving to a SQL database; the default is to pick up '
+        'since the last success. This disables that.'
+    ),
+    Argument('profile'),
+    Argument('verbose', default=False, action='store_true'),
+    Argument(
+        'output-format',
+        default='json',
+        choices=['json', 'csv', 'xls', 'xlsx', 'sql', 'markdown'],
+        help='Output format'
+    ),
+    Argument(
+        'output',
+        metavar='PATH',
+        default='reports.zip',
+        help='Path to output; defaults to `reports.zip`.'
+    ),
+    Argument(
+        'strict-types',
+        default=False,
+        action='store_true',
+        help="When saving to a SQL database don't allow changing column types "
+        "once they are created."
+    ),
+    Argument(
+        'missing-value',
+        default=None,
+        help="Value to use when a field is missing from the form / case."
+    ),
+    Argument(
+        'batch-size',
+        default=200,
+        help="Number of records to process per batch."
+    ),
+    Argument(
+        'checkpoint-key',
+        help="Use this key for all checkpoints instead of the query file MD5 "
+        "hash in order to prevent table rebuilds after a query file has "
+        "been edited."
+    ),
+    Argument(
+        'users',
+        default=False,
+        action='store_true',
+        help="Export a table containing data about this project's mobile "
+        "workers"
+    ),
+    Argument(
+        'locations',
+        default=False,
+        action='store_true',
+        help="Export a table containing data about this project's locations"
+    ),
+    Argument(
+        'with-organization',
+        default=False,
+        action='store_true',
+        help="Export tables containing mobile worker data and location data "
+        "and add a commcare_userid field to any exported form or case"
+    ),
+    Argument(
+        'export-root-if-no-subdocument',
+        default=False,
+        action='store_true',
+        help="Use this when you are exporting a nested document e.g. "
+        "form.form..case, messaging-event.messages.[*] And you want to "
+        "have a record exported even if the nested document does not "
+        "exist or is empty.",
+    )
+]
 
 
 def main(argv):
-    parser = argparse.ArgumentParser('commcare-export', 'Output a customized export of CommCareHQ data.')
+    parser = argparse.ArgumentParser(
+        'commcare-export', 'Output a customized export of CommCareHQ data.'
+    )
     for arg in CLI_ARGS:
         arg.add_to_parser(parser)
 
-    try:
-        args = parser.parse_args(argv)
-    except UnicodeDecodeError:
-        for arg in argv:
-            try:
-                arg.encode('utf-8')
-            except UnicodeDecodeError:
-                print(u"ERROR: Argument '%s' contains unicode characters. "
-                      u"Only ASCII characters are supported.\n" % unicode(arg, 'utf-8'), file=sys.stderr)
-        sys.exit(1)
+    args = parser.parse_args(argv)
 
     if args.verbose:
-        logging.basicConfig(level=logging.DEBUG,
-                            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
+        )
     else:
-        logging.basicConfig(level=logging.WARN,
-                            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+        logging.basicConfig(
+            level=logging.WARN,
+            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
+        )
 
     logging.getLogger('alembic').setLevel(logging.WARN)
     logging.getLogger('backoff').setLevel(logging.FATAL)
@@ -126,7 +200,10 @@ def main(argv):
         exit(0)
 
     if not args.project:
-        print('commcare-export: error: argument --project is required', file=sys.stderr)
+        print(
+            'commcare-export: error: argument --project is required',
+            file=sys.stderr
+        )
         exit(1)
 
     if args.profile:
@@ -154,22 +231,37 @@ def _get_query(args, writer, column_enforcer=None):
         writer.supports_multi_table_write,
         writer.max_column_length,
         writer.required_columns,
-        column_enforcer
+        column_enforcer,
+        args.export_root_if_no_subdocument
     )
 
-def _get_query_from_file(query_arg, missing_value, combine_emits,
-                         max_column_length, required_columns, column_enforcer):
+
+def _get_query_from_file(
+    query_arg,
+    missing_value,
+    combine_emits,
+    max_column_length,
+    required_columns,
+    column_enforcer,
+    value_or_root
+):
     if os.path.exists(query_arg):
         if os.path.splitext(query_arg)[1] in ['.xls', '.xlsx']:
             import openpyxl
             workbook = openpyxl.load_workbook(query_arg)
             return excel_query.get_queries_from_excel(
-                workbook, missing_value, combine_emits,
-                max_column_length, required_columns, column_enforcer
+                workbook,
+                missing_value,
+                combine_emits,
+                max_column_length,
+                required_columns,
+                column_enforcer,
+                value_or_root
             )
         else:
             with io.open(query_arg, encoding='utf-8') as fh:
                 return MiniLinq.from_jvalue(json.loads(fh.read()))
+
 
 def get_queries(args, writer, lp, column_enforcer=None):
     query_list = []
@@ -198,17 +290,30 @@ def _get_writer(output_format, output, strict_types):
         return writers.Excel2003TableWriter(output)
     elif output_format == 'csv':
         if not output.endswith(".zip"):
-            print("WARNING: csv output is a zip file, but "
-                  "will be written to %s" % output)
-            print("Consider appending .zip to the file name to avoid confusion.")
+            print(
+                "WARNING: csv output is a zip file, but "
+                "will be written to %s" % output
+            )
+            print(
+                "Consider appending .zip to the file name to avoid confusion."
+            )
         return writers.CsvTableWriter(output)
     elif output_format == 'json':
         return writers.JValueTableWriter()
     elif output_format == 'markdown':
         return writers.StreamingMarkdownTableWriter(sys.stdout)
     elif output_format == 'sql':
-        # Output should be a connection URL
-        # Writer had bizarre issues so we use a full connection instead of passing in a URL or engine
+        # Output should be a connection URL. Writer had bizarre issues
+        # so we use a full connection instead of passing in a URL or
+        # engine.
+        if output.startswith('mysql'):
+            charset_split = output.split('charset=')
+            if len(charset_split) > 1 and charset_split[1] != 'utf8mb4':
+                raise Exception(
+                    f"The charset '{charset_split[1]}' might cause problems with the export. "
+                    f"It is recommended that you use 'utf8mb4' instead."
+                )
+
         return writers.SqlTableWriter(output, strict_types)
     else:
         raise Exception("Unknown output format: {}".format(output_format))
@@ -232,11 +337,17 @@ def _get_api_client(args, commcarehq_base_url):
 
 
 def _get_checkpoint_manager(args):
-    if not args.users and not args.locations and not os.path.exists(args.query):
-        logger.warning("Checkpointing disabled for non builtin, "
-                       "non file-based query")
+    if not args.users and not args.locations and not os.path.exists(
+        args.query
+    ):
+        logger.warning(
+            "Checkpointing disabled for non builtin, "
+            "non file-based query"
+        )
     elif args.since or args.until:
-        logger.warning("Checkpointing disabled when using '--since' or '--until'")
+        logger.warning(
+            "Checkpointing disabled when using '--since' or '--until'"
+        )
     else:
         checkpoint_manager = get_checkpoint_manager(args)
         checkpoint_manager.create_checkpoint_table()
@@ -259,8 +370,11 @@ def evaluate_query(env, query):
             force_lazy_result(lazy_result)
             return 0
         except requests.exceptions.RequestException as e:
-            if e.response.status_code == 401:
-                print("\nAuthentication failed. Please check your credentials.", file=sys.stderr)
+            if e.response and e.response.status_code == 401:
+                print(
+                    "\nAuthentication failed. Please check your credentials.",
+                    file=sys.stderr
+                )
                 return EXIT_STATUS_ERROR
             else:
                 raise
@@ -269,8 +383,11 @@ def evaluate_query(env, query):
             print(e.message)
             print('Try increasing --batch-size to overcome the error')
             return EXIT_STATUS_ERROR
-        except (sqlalchemy.exc.DataError, sqlalchemy.exc.InternalError,
-                sqlalchemy.exc.ProgrammingError) as e:
+        except (
+            sqlalchemy.exc.DataError,
+            sqlalchemy.exc.InternalError,
+            sqlalchemy.exc.ProgrammingError
+        ) as e:
             print('Stopping because of database error:\n', e)
             return EXIT_STATUS_ERROR
         except KeyboardInterrupt:
@@ -283,15 +400,27 @@ def main_with_args(args):
     writer = _get_writer(args.output_format, args.output, args.strict_types)
 
     if args.query is None and args.users is False and args.locations is False:
-        print('At least one the following arguments is required: '
-              '--query, --users, --locations', file=sys.stderr)
+        print(
+            'At least one the following arguments is required: '
+            '--query, --users, --locations',
+            file=sys.stderr
+        )
         return EXIT_STATUS_ERROR
+
+    if not args.username:
+        args.username = input('Please provide a username: ')
+
+    if not args.password:
+        # Windows getpass does not accept unicode
+        args.password = getpass.getpass()
 
     column_enforcer = None
     if args.with_organization:
         column_enforcer = builtin_queries.ColumnEnforcer()
 
-    commcarehq_base_url = commcare_hq_aliases.get(args.commcare_hq, args.commcare_hq)
+    commcarehq_base_url = commcare_hq_aliases.get(
+        args.commcare_hq, args.commcare_hq
+    )
     api_client = _get_api_client(args, commcarehq_base_url)
     lp = LocationInfoProvider(api_client, page_size=args.batch_size)
     try:
@@ -308,17 +437,13 @@ def main_with_args(args):
     if writer.support_checkpoints:
         checkpoint_manager = _get_checkpoint_manager(args)
 
-    if not args.username:
-        args.username = input('Please provide a username: ')
-
-    if not args.password:
-        # Windows getpass does not accept unicode
-        args.password = getpass.getpass()
-
     since, until = get_date_params(args)
     if args.start_over:
         if checkpoint_manager:
-            logger.warning('Ignoring all checkpoints and re-fetching all data from CommCare.')
+            logger.warning(
+                'Ignoring all checkpoints and re-fetching all data from '
+                'CommCare.'
+            )
     elif since:
         logger.debug('Starting from %s', args.since)
 
@@ -330,16 +455,22 @@ def main_with_args(args):
         'get_location_ancestor': lp.get_location_ancestor
     }
     env = (
-            BuiltInEnv(static_env)
-            | CommCareHqEnv(api_client, until=until, page_size=args.batch_size)
-            | JsonPathEnv({})
-            | EmitterEnv(writer)
+        BuiltInEnv(static_env)
+        | CommCareHqEnv(api_client, until=until, page_size=args.batch_size)
+        | JsonPathEnv({})
+        | EmitterEnv(writer)
     )
 
     exit_status = evaluate_query(env, query)
 
     if args.output_format == 'json':
-        print(json.dumps(list(writer.tables.values()), indent=4, default=default_to_json))
+        print(
+            json.dumps(
+                list(writer.tables.values()),
+                indent=4,
+                default=default_to_json
+            )
+        )
 
     return exit_status
 

@@ -3,11 +3,11 @@ CommCare Export
 
 https://github.com/dimagi/commcare-export 
 
-[![Build Status](https://travis-ci.com/dimagi/commcare-export.png)](https://travis-ci.com/dimagi/commcare-export)
+[![Build Status](https://app.travis-ci.com/dimagi/commcare-export.svg?branch=master)](https://app.travis-ci.com/dimagi/commcare-export)
 [![Test coverage](https://coveralls.io/repos/dimagi/commcare-export/badge.png?branch=master)](https://coveralls.io/r/dimagi/commcare-export)
 [![PyPI version](https://badge.fury.io/py/commcare-export.svg)](https://badge.fury.io/py/commcare-export)
 
-A command-line tool (and Python library) to generate customized exports from the [CommCareHQ](https://www.commcarehq.org) [REST API](https://wiki.commcarehq.org/display/commcarepublic/Data+APIs).
+A command-line tool (and Python library) to generate customized exports from the [CommCare HQ](https://www.commcarehq.org) [REST API](https://wiki.commcarehq.org/display/commcarepublic/Data+APIs).
 
 * [User documentation](https://wiki.commcarehq.org/display/commcarepublic/CommCare+Data+Export+Tool)
 * [Changelog](https://github.com/dimagi/commcare-export/releases)
@@ -15,14 +15,15 @@ A command-line tool (and Python library) to generate customized exports from the
 Installation & Quick Start
 --------------------------
 
-0a\. Install Python and `pip`. This tool is [tested with Python 2.7, 3.6 and 3.7](https://travis-ci.com/dimagi/commcare-export).
+0a\. Install [Python 3](https://www.python.org/downloads/). This tool is [tested with Python 3.6, 3.7, and 3.8](https://app.travis-ci.com/dimagi/commcare-export).
 
-0b\. Sign up for [CommCareHQ](https://www.commcarehq.org/) if you have not already.
+0b\. Sign up for [CommCare HQ](https://www.commcarehq.org/) if you have not already.
 
 1\. Install CommCare Export via `pip`
 
 ```
-$ pip install commcare-export
+$ python3 -m pip install wheel
+$ python3 -m pip install commcare-export
 ```
 
 2\. Create a project space and application.
@@ -61,7 +62,7 @@ $ commcare-export \
 You'll see the tables printed out. Change to `--output-format sql --output URL_TO_YOUR_DB --since DATE` to
 sync all forms submitted since that date.
 
-All examples are present in Excel and also equivalent JSON, however it is recommended
+Example query files are provided in both Excel and JSON format.  It is recommended
 to use the Excel format as the JSON format may change upon future library releases.
 
 Command-line Usage
@@ -85,7 +86,7 @@ $ commcare-export --commcare-hq <URL or alias like "local" or "prod"> \
 
 See `commcare-export --help` for the full list of options.
 
-There are example query files for the CommCare Demo App (available on the CommCareHq Exchange) in the `examples/`
+There are example query files for the CommCare Demo App (available on the CommCare HQ Exchange) in the `examples/`
 directory.
 
 `--output`
@@ -107,7 +108,7 @@ mssql+pyodbc://scott:tiger@localhost/mydatabases?driver=ODBC+Driver+17+for+SQL+S
 Excel Queries
 -------------
 
-An excel query is any `.xlsx` workbook. Each sheet in the workbook represents one table you wish
+An Excel query is any `.xlsx` workbook. Each sheet in the workbook represents one table you wish
 to create. There are two grouping of columns to configure the table:
 
  - **Data Source**: Set this to `form` to export form data, or `case` for case data.
@@ -120,7 +121,7 @@ JSON Queries
 ------------
 
 JSON queries are a described in the table below. You build a JSON object that represents the query you have in mind.
-A good way to get started is to work from the examples, or you could make an excel query and run the tool
+A good way to get started is to work from the examples, or you could make an Excel query and run the tool
 with `--dump-query` to see the resulting JSON query.
 
 
@@ -131,7 +132,7 @@ The --users and --locations options export data from a CommCare project that
 can be joined with form and case data. The --with-organization option does all
 of that and adds a field to Excel query specifications to be joined on.
 
-Specifiying the --users option or --with-organization option will export an
+Specifying the --users option or --with-organization option will export an
 additional table named 'commcare_users' containing the following columns:
 
 Column                           | Type | Note
@@ -199,7 +200,7 @@ a9ca40      | Supervisor         | NULL   | a9ca40     | c4cbef | 939fa8
 In order to join form or case data to 'commcare_users' and 'commcare_locations'
 the exported forms and cases need to contain a field identifying which user
 submitted them. The --with-organization option automatically adds a field
-called 'commcare_userid' to each query in an Excel specifiction for this
+called 'commcare_userid' to each query in an Excel specification for this
 purpose. Using that field, you can use a SQL query with a join to report
 data about any level of you organization. For example, to count the number
 of forms submitted by all workers in each clinic:
@@ -233,12 +234,12 @@ Python Library Usage
 
 As a library, the various `commcare_export` modules make it easy to
 
- - Interact with the CommCareHQ REST API
+ - Interact with the CommCare HQ REST API
  - Execute "Minilinq" queries against the API (a very simple query language, described below)
  - Load and save JSON representations of Minilinq queries
  - Compile Excel configurations to Minilinq queries
 
-To directly access the CommCareHq REST API:
+To directly access the CommCare HQ REST API:
 
 ```python
 >>> import getpass
@@ -397,6 +398,7 @@ List of builtin functions:
 | attachment_url               | Convert an attachment name into it's download URL                              |                                  |
 | form_url                     | Output the URL to the form view on CommCare HQ                                 |                                  |
 | case_url                     | Output the URL to the case view on CommCare HQ                                 |                                  |
+| unique                       | Ouptut only unique values in a list                                            |                                  |
 
 Output Formats
 --------------
@@ -427,19 +429,29 @@ are optional. Here is how you might install them:
 
 ```
 # To export "xlsx"
-$ pip install openpyxl
+$ pip install "commcare-export[xlsx]"
 
 # To export "xls"
-$ pip install xlwt
+$ pip install "commcare-export[xls]"
 
-# To sync with a SQL database
-$ pip install SQLAlchemy alembic psycopg2 pymysql pyodbc
+# To sync with a Postgres database
+$ pip install "commcare-export[postgres]"
+
+# To sync with a mysql database
+$ pip install "commcare-export[mysql]"
+
+# To sync with a database which uses odbc (e.g. mssql)
+$ pip install "commcare-export[odbc]"
+
+# To sync with another SQL database supported by SQLAlchemy
+$ pip install "commcare-export[base_sql]"
+# Then install the python package for your database
 ```
 
 Contributing
 ------------
 
-0\. Sign up for github, if you have not already, at https://github.com.
+0\. Sign up for GitHub, if you have not already, at https://github.com.
 
 1\. Fork the repository at https://github.com/dimagi/commcare-export.
 
@@ -472,15 +484,21 @@ tests/test_writers.py ...
 ============ 17 passed in 2.09 seconds ============
 ```
 
-5\. Push the feature branch up
+5\. Type hints are used in the `env` and `minilinq` modules. Check that any changes in those modules adhere to those types:
+
+```
+$ mypy --install-types @mypy_typed_modules.txt
+```
+
+6\. Push the feature branch up
 
 ```
 $ git push -u origin my-super-duper-feature
 ```
 
-6\. Visit https://github.com/dimagi/commcare-export and submit a pull request.
+7\. Visit https://github.com/dimagi/commcare-export and submit a pull request.
 
-7\. Accept our gratitude for contributing: Thanks!
+8\. Accept our gratitude for contributing: Thanks!
 
 Release process
 ---------------
@@ -503,7 +521,7 @@ Ensure that the archive (`dist/commcare-export-X.YY.0.tar.gz`) has the correct v
 
 ```
 $ pip install twine
-$ twine upload dist/commcare-export-X.YY.0.tar.gz
+$ twine upload -u dimagi dist/commcare-export-X.YY.0.tar.gz
 ```
 
 4\. Verify upload
@@ -576,7 +594,7 @@ mysql> GRANT ALL PRIVILEGES ON *.* TO 'travis'@'%';
 MSSQL
 =====
 ```
-$ docker pull microsoft/mssql-server-linux:2017-latest
+$ docker pull mcr.microsoft.com/mssql/server:2017-latest 
 $ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=Password@123" -p 1433:1433 --name mssql1 -d microsoft/mssql-server-linux:2017-latest
 
 # install driver
@@ -591,7 +609,7 @@ $ odbcinst -q -d
 MSSQL for Mac OS
 ==========
 ```
-$ docker pull microsoft/mssql-server-linux:2017-latest
+$ docker pull mcr.microsoft.com/mssql/server:2017-latest 
 $ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=Password@123" -p 1433:1433 --name mssql1 -d microsoft/mssql-server-linux:2017-latest
 
 # Install driver

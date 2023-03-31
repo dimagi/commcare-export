@@ -1,12 +1,10 @@
-from __future__ import unicode_literals, print_function, absolute_import, division, generators, nested_scopes
-
 import argparse
 import inspect
 import logging
 import sys
 
 from commcare_export.cli import CLI_ARGS
-from commcare_export.utils import get_checkpoint_manager, confirm, print_runs
+from commcare_export.utils import confirm, get_checkpoint_manager, print_runs
 
 EXIT_STATUS_ERROR = 1
 
@@ -28,14 +26,18 @@ class BaseCommand(object):
 class ListHistoryCommand(BaseCommand):
     slug = 'history'
     help = """List export history. History will be filtered by arguments provided.
-    
-    This command only applies when exporting to a SQL database. The command lists
-    the checkpoints that have been created by the command.
+
+    This command only applies when exporting to a SQL database. The command
+    lists the checkpoints that have been created by the command.
     """
 
     @classmethod
     def add_arguments(cls, parser):
-        parser.add_argument('--limit', default=10, help="Limit the number of export runs to display")
+        parser.add_argument(
+            '--limit',
+            default=10,
+            help="Limit the number of export runs to display"
+        )
         parser.add_argument('--output', required=True, help='SQL Database URL')
         shared_args = {'project', 'query', 'checkpoint_key', 'commcare_hq'}
         for arg in CLI_ARGS:
@@ -64,22 +66,27 @@ class SetKeyCommand(BaseCommand):
     slug = 'set-checkpoint-key'
     help = """Set the key for a particular checkpoint.
 
-    This command is used to migrate an non-keyed checkpoint to a keyed checkpoint.
+    This command is used to migrate an non-keyed checkpoint to a keyed
+    checkpoint.
 
-    This is useful if you already have a populated export database and do not wish to trigger
-    rebuilds after editing the query file.
+    This is useful if you already have a populated export database and do
+    not wish to trigger rebuilds after editing the query file.
 
-    For example, you've been running the export tool with query file A.xlsx and have a fully populated
-    database. Now you need to add an extra column to the table but only want to populate it with new data.
+    For example, you've been running the export tool with query file A.xlsx
+    and have a fully populated database. Now you need to add an extra column
+    to the table but only want to populate it with new data.
 
-    What you need to do is update your current checkpoint with a key that you can then use when running
-    the command from now on.
+    What you need to do is update your current checkpoint with a key that
+    you can then use when running the command from now on.
 
-      $ commcare-export-utils set-key --project X --query A.xlsx --output [SQL URL] --checkpoint-key my-key
+        $ commcare-export-utils set-key --project X --query A.xlsx \\
+            --output [SQL URL] --checkpoint-key my-key
 
     Now when you run the export tool in future you can use this key:
 
-      $ commcare-export --project X --query A.xlsx --output [SQL URL] --checkpoint-key my-key ...
+        $ commcare-export --project X --query A.xlsx --output [SQL URL] \\
+            --checkpoint-key my-key ...
+
     """
 
     @classmethod
@@ -111,7 +118,9 @@ class SetKeyCommand(BaseCommand):
             return
 
         print_runs(runs_no_key)
-        if confirm("Do you want to set the key for this checkpoint to '{}'".format(key)):
+        if confirm(
+            f"Do you want to set the key for this checkpoint to '{key}'"
+        ):
             for checkpoint in runs_no_key:
                 checkpoint.key = key
                 manager.update_checkpoint(checkpoint)
@@ -120,10 +129,7 @@ class SetKeyCommand(BaseCommand):
         print_runs(runs_no_key)
 
 
-COMMANDS = [
-    ListHistoryCommand,
-    SetKeyCommand
-]
+COMMANDS = [ListHistoryCommand, SetKeyCommand]
 
 
 def main(argv):
@@ -138,19 +144,12 @@ def main(argv):
         )
         command_type.add_arguments(sub)
 
-    try:
-        args = parser.parse_args(argv)
-    except UnicodeDecodeError:
-        for arg in argv:
-            try:
-                arg.encode('utf-8')
-            except UnicodeDecodeError:
-                sys.stderr.write(u"ERROR: Argument '%s' contains unicode characters. "
-                                 u"Only ASCII characters are supported.\n" % unicode(arg, 'utf-8'))
-        sys.exit(1)
+    args = parser.parse_args(argv)
 
-    logging.basicConfig(level=logging.WARN,
-                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+    logging.basicConfig(
+        level=logging.WARN,
+        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
+    )
 
     exit(main_with_args(args))
 

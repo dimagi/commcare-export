@@ -1,0 +1,66 @@
+name: commcare-export tests
+on:
+  pull_request:
+    branches:
+      - master
+env:
+  DB_USER: db_user
+  DB_PASSWORD: Password123
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2017-latest
+        env:
+          SA_PASSWORD: ${{ env.DB_PASSWORD }}
+          ACCEPT_EULA: 'Y'
+        ports:
+          - 1433:1433
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
+          POSTGRES_USER: ${{ env.DB_USER }}
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9, '3.10', '3.11']
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 50
+      - run: git fetch --tags origin # So we can use git describe. actions/checkout@v3 does not pull tags.
+
+      # MySQL set up
+      - run: sudo service mysql start # Ubuntu already includes mysql no need to use service
+      - run: mysql -uroot -proot -e "CREATE USER '${{ env.DB_USER }}'@'%';"
+      - run: mysql -uroot -proot -e "GRANT ALL PRIVILEGES ON *.* TO '${{ env.DB_USER }}'@'%';"
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: sudo apt-get install pandoc
+      - run: python setup.py sdist
+      - run: pip install dist/*
+      - run: pip install pymysql psycopg2 pyodbc
+      - run: pip install coverage coveralls
+      - run: pip install mypy
+      - run: pip install pytest
+      - run: pip install -e ".[test]"
+      - run: coverage run setup.py test
+        env:
+          POSTGRES_URL: postgresql://${{ env.DB_USER }}:${{ env.DB_PASSWORD }}@localhost/
+          MYSQL_URL: mysql+pymysql://${{ env.DB_USER }}:@localhost/
+          MSSQL_URL: mssql+pyodbc://sa:${{ env.DB_PASSWORD }}@localhost/
+          HQ_USERNAME: ${{ secrets.HQ_USERNAME }}
+          HQ_API_KEY: ${{ secrets.HQ_API_KEY }}
+      - run: mypy --install-types --non-interactive @mypy_typed_modules.txt
+      - run: coverage lcov -o coverage/lcov.info
+      - uses: coverallsapp/github-action@v1

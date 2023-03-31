@@ -1,5 +1,3 @@
-
-
 class TableSpec:
 
     def __init__(self, name, headings, rows, data_types=None):
@@ -13,7 +11,6 @@ class TableSpec:
             isinstance(other, TableSpec)
             and other.name == self.name
             and other.headings == self.headings
-            and other.rows == self.rows
             and other.data_types == self.data_types
         )
 
@@ -21,6 +18,5 @@ class TableSpec:
         return {
             'name': self.name,
             'headings': self.headings,
-            'rows': self.rows,
             'data_types': self.data_types,
         }
