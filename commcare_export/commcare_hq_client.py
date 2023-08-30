@@ -18,6 +18,7 @@ from requests.auth import AuthBase, HTTPDigestAuth
 import backoff
 import commcare_export
 from commcare_export.repeatable_iterator import RepeatableIterator
+from datetime import datetime
 
 AUTH_MODE_PASSWORD = 'password'
 AUTH_MODE_APIKEY = 'apikey'
@@ -217,7 +218,7 @@ class CommCareHqClient(object):
         return RepeatableIterator(iterate_resource)
 
     def checkpoint(self, checkpoint_manager, paginator, batch, is_final):
-        from commcare_export.commcare_minilinq import DatePaginator
+        from commcare_export.commcare_minilinq import DatePaginator, UCRPaginator
         if isinstance(paginator, DatePaginator):
             since_date = paginator.get_since_date(batch)
             if since_date:
@@ -232,6 +233,13 @@ class CommCareHqClient(object):
                 logger.warning(
                     'Failed to get a checkpoint date from a batch of data.'
                 )
+        if isinstance(paginator, UCRPaginator):
+            cursor = paginator.next_page_params_from_batch(batch)['cursor'][0]
+            checkpoint_manager.set_checkpoint(
+                datetime.utcnow(),
+                is_final,
+                cursor=cursor,
+            )
 
 
 class MockCommCareHqClient(object):

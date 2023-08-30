@@ -36,6 +36,7 @@ class Checkpoint(Base):
     data_source = Column(String)
     last_doc_id = Column(String)
     pagination_mode = Column(String)
+    cursor = Column(String)
 
     def get_pagination_mode(self):
         """
@@ -63,7 +64,8 @@ class Checkpoint(Base):
             "final={r.final}), "
             "data_source={r.data_source}, "
             "last_doc_id={r.last_doc_id}, "
-            "pagination_mode={r.pagination_mode}>"
+            "pagination_mode={r.pagination_mode},"
+            "cursor={r.cursor}>"
         ).format(r=self)
 
 
@@ -131,12 +133,14 @@ class CheckpointManager(SqlMixin):
         pagination_mode,
         is_final=False,
         doc_id=None,
+        cursor=None,
     ):
         self._set_checkpoint(
             checkpoint_time,
             pagination_mode,
             is_final,
             doc_id=doc_id,
+            cursor=cursor,
         )
         if is_final:
             self._cleanup()
@@ -147,7 +151,8 @@ class CheckpointManager(SqlMixin):
         pagination_mode,
         final,
         time_of_run=None,
-        doc_id=None
+        doc_id=None,
+        cursor=None,
     ):
         logger.info(
             'Setting %s checkpoint: data_source: %s, tables: %s, '
@@ -188,7 +193,8 @@ class CheckpointManager(SqlMixin):
                     final=final,
                     data_source=self.data_source,
                     last_doc_id=doc_id,
-                    pagination_mode=pagination_mode.name
+                    pagination_mode=pagination_mode.name,
+                    cursor=cursor,
                 )
                 session.add(checkpoint)
                 created.append(checkpoint)
@@ -423,10 +429,10 @@ class CheckpointManagerWithDetails(object):
         self.since_param = since_param
         self.pagination_mode = pagination_mode
 
-    def set_checkpoint(self, checkpoint_time, is_final=False, doc_id=None):
+    def set_checkpoint(self, checkpoint_time, is_final=False, doc_id=None, cursor=None):
         if self.manager:
             self.manager.set_checkpoint(
-                checkpoint_time, self.pagination_mode, is_final, doc_id=doc_id
+                checkpoint_time, self.pagination_mode, is_final, doc_id=doc_id, cursor=cursor
             )
 
 
@@ -442,7 +448,7 @@ class CheckpointManagerProvider(object):
         self.since = since
         self.base_checkpoint_manager = base_checkpoint_manager
 
-    def get_since(self, checkpoint_manager):
+    def get_since(self, checkpoint_manager, data_source=None):
         if self.start_over:
             return None
 
@@ -450,6 +456,9 @@ class CheckpointManagerProvider(object):
             return self.since
 
         if checkpoint_manager:
+            if data_source and data_source == 'ucr':
+                return checkpoint_manager.get_last_checkpoint().cursor
+
             since = checkpoint_manager.get_time_of_last_checkpoint()
             return dateutil.parser.parse(since) if since else None
 
@@ -485,7 +494,7 @@ class CheckpointManagerProvider(object):
                 data_source, table_names
             )
 
-        since = self.get_since(manager)
+        since = self.get_since(manager, data_source)
         pagination_mode = self.get_pagination_mode(manager)
 
         logger.info(
