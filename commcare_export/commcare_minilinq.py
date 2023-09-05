@@ -20,7 +20,8 @@ SUPPORTED_RESOURCES = {
     'location',
     'application',
     'web-user',
-    'messaging-event'
+    'messaging-event',
+    'ucr',
 }
 
 
@@ -109,6 +110,7 @@ def get_paginator(
             'form': DatePaginator('indexed_on', page_size),
             'case': DatePaginator('indexed_on', page_size),
             'messaging-event': DatePaginator('date_last_activity', page_size),
+            'ucr': UCRPaginator(page_size),
         },
         PaginationMode.date_modified: {
             'form':
@@ -121,6 +123,7 @@ def get_paginator(
                 DatePaginator('server_date_modified', page_size),
             'messaging-event':
                 DatePaginator('date_last_activity', page_size),
+            'ucr': UCRPaginator(page_size),
         }
     }[pagination_mode].get(resource, SimplePaginator(page_size))
 
@@ -262,3 +265,11 @@ class DatePaginator(SimplePaginator):
                     )
                 except ParserError:
                     return None
+
+
+class UCRPaginator(SimplePaginator):
+
+    def next_page_params_from_batch(self, batch):
+        params = super(UCRPaginator, self).next_page_params_from_batch(batch)
+        if params:
+            return params | self.payload
