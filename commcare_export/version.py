@@ -1,4 +1,5 @@
 import io
+import re
 import os.path
 import subprocess
 
@@ -20,7 +21,22 @@ def git_version():
         ['git', 'describe'],
         stdout=subprocess.PIPE
     ).communicate()[0].strip()
-    return described_version_bytes.decode('ascii')
+    version_raw = described_version_bytes.decode('ascii')
+    return parse_version(version_raw)
+
+
+def parse_version(version_raw):
+    """Attempt to convert a git version to a version
+    compatible with PEP440: https://peps.python.org/pep-0440/
+    """
+    match = re.match('(\d+\.\d+\.\d+)(?:-(\d+).*)?', version_raw)
+    if match:
+        tag_version, lead_count = match.groups()
+        if lead_count:
+            tag_version += ".dev{}".format(lead_count)
+        return tag_version
+
+    return version_raw
 
 
 def version():
