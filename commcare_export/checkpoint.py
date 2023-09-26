@@ -448,7 +448,7 @@ class CheckpointManagerProvider(object):
         self.since = since
         self.base_checkpoint_manager = base_checkpoint_manager
 
-    def get_since(self, checkpoint_manager, data_source=None):
+    def get_since(self, checkpoint_manager):
         if self.start_over:
             return None
 
@@ -456,10 +456,9 @@ class CheckpointManagerProvider(object):
             return self.since
 
         if checkpoint_manager:
-            if data_source and data_source == 'ucr':
-                if not checkpoint_manager.get_last_checkpoint():
-                    return None
-                return checkpoint_manager.get_last_checkpoint().cursor
+            if checkpoint_manager.data_source == 'ucr':
+                last_checkpoint = checkpoint_manager.get_last_checkpoint()
+                return last_checkpoint.cursor if last_checkpoint else None
 
             since = checkpoint_manager.get_time_of_last_checkpoint()
             return dateutil.parser.parse(since) if since else None
@@ -472,6 +471,9 @@ class CheckpointManagerProvider(object):
         """
         if self.start_over or self.since or not checkpoint_manager:
             return PaginationMode.date_indexed
+
+        if checkpoint_manager.data_source == 'ucr':
+            return PaginationMode.cursor
 
         last_checkpoint = checkpoint_manager.get_last_checkpoint()
         if not last_checkpoint:
@@ -496,9 +498,8 @@ class CheckpointManagerProvider(object):
                 data_source, table_names
             )
 
-        since = self.get_since(manager, data_source)
+        since = self.get_since(manager)
         pagination_mode = self.get_pagination_mode(manager)
-
         logger.info(
             "Creating checkpoint manager for tables: %s, since: %s, "
             "pagination_mode: %s",
@@ -507,7 +508,7 @@ class CheckpointManagerProvider(object):
             since,
             pagination_mode.name,
         )
-        if pagination_mode != PaginationMode.date_indexed:
+        if pagination_mode not in PaginationMode.supported_modes():
             logger.warning(
                 "\n====================================\n"
                 "This export is using a deprecated pagination mode which will "

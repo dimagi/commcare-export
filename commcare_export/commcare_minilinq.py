@@ -28,6 +28,14 @@ SUPPORTED_RESOURCES = {
 class PaginationMode(Enum):
     date_indexed = "date_indexed"
     date_modified = "date_modified"
+    cursor = "cursor"
+
+    @classmethod
+    def supported_modes(cls):
+        return [
+            cls.date_indexed,
+            cls.cursor,
+        ]
 
 
 class SimpleSinceParams(object):
@@ -123,8 +131,10 @@ def get_paginator(
                 DatePaginator('server_date_modified', page_size),
             'messaging-event':
                 DatePaginator('date_last_activity', page_size),
+        },
+        PaginationMode.cursor: {
             'ucr': UCRPaginator(page_size),
-        }
+        },
     }[pagination_mode].get(resource, SimplePaginator(page_size))
 
 
