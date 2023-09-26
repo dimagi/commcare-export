@@ -457,6 +457,8 @@ class CheckpointManagerProvider(object):
 
         if checkpoint_manager:
             if data_source and data_source == 'ucr':
+                if not checkpoint_manager.get_last_checkpoint():
+                    return None
                 return checkpoint_manager.get_last_checkpoint().cursor
 
             since = checkpoint_manager.get_time_of_last_checkpoint()

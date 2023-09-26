@@ -273,3 +273,7 @@ class UCRPaginator(SimplePaginator):
         params = super(UCRPaginator, self).next_page_params_from_batch(batch)
         if params:
             return params | self.payload
+
+    def next_page_params_since(self, since=None):
+        params = self.payload | {'cursor': since}
+        return params
