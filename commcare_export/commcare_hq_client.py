@@ -208,38 +208,13 @@ class CommCareHqClient(object):
                         )
                         more_to_fetch = not repeated_last_page_of_non_counting_resource
 
-                    self.checkpoint(
+                    paginator.set_checkpoint(
                         checkpoint_manager,
-                        paginator,
                         batch,
                         not more_to_fetch
                     )
 
         return RepeatableIterator(iterate_resource)
-
-    def checkpoint(self, checkpoint_manager, paginator, batch, is_final):
-        from commcare_export.commcare_minilinq import DatePaginator, UCRPaginator
-        if isinstance(paginator, DatePaginator):
-            since_date = paginator.get_since_date(batch)
-            if since_date:
-                try:
-                    last_obj = batch['objects'][-1]
-                except IndexError:
-                    last_obj = {}
-                checkpoint_manager.set_checkpoint(
-                    since_date, is_final, doc_id=last_obj.get("id", None)
-                )
-            else:
-                logger.warning(
-                    'Failed to get a checkpoint date from a batch of data.'
-                )
-        if isinstance(paginator, UCRPaginator):
-            cursor = paginator.next_page_params_from_batch(batch)['cursor'][0]
-            checkpoint_manager.set_checkpoint(
-                datetime.utcnow(),
-                is_final,
-                cursor=cursor,
-            )
 
 
 class MockCommCareHqClient(object):

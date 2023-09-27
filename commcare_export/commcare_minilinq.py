@@ -5,13 +5,17 @@ To date, this is simply built-ins for querying the
 API directly.
 """
 import json
+import logging
 from enum import Enum
 from urllib.parse import parse_qs, urlparse
+from datetime import datetime
 
 from dateutil.parser import ParserError, parse
 
 from commcare_export.env import CannotBind, CannotReplace, DictEnv
 from commcare_export.misc import unwrap
+
+logger = logging.getLogger(__name__)
 
 SUPPORTED_RESOURCES = {
     'form',
@@ -215,6 +219,9 @@ class SimplePaginator(object):
         if batch['meta']['next']:
             return parse_qs(urlparse(batch['meta']['next']).query)
 
+    def set_checkpoint(self, *args, **kwargs):
+        pass
+
 
 class DatePaginator(SimplePaginator):
     """
@@ -276,6 +283,21 @@ class DatePaginator(SimplePaginator):
                 except ParserError:
                     return None
 
+    def set_checkpoint(self, checkpoint_manager, batch, is_final):
+        since_date = self.get_since_date(batch)
+        if since_date:
+            try:
+                last_obj = batch['objects'][-1]
+            except IndexError:
+                last_obj = {}
+            checkpoint_manager.set_checkpoint(
+                since_date, is_final, doc_id=last_obj.get("id", None)
+            )
+        else:
+            logger.warning(
+                'Failed to get a checkpoint date from a batch of data.'
+            )
+
 
 class UCRPaginator(SimplePaginator):
 
@@ -287,3 +309,11 @@ class UCRPaginator(SimplePaginator):
     def next_page_params_since(self, since=None):
         params = self.payload | {'cursor': since}
         return params
+
+    def set_checkpoint(self, checkpoint_manager, batch, is_final):
+        cursor = self.next_page_params_from_batch(batch)['cursor'][0]
+        checkpoint_manager.set_checkpoint(
+            datetime.utcnow(),
+            is_final,
+            cursor=cursor,
+        )
