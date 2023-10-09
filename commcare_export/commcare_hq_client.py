@@ -9,13 +9,15 @@ from __future__ import (
 
 import copy
 import logging
+import time
 from collections import OrderedDict
+from math import ceil
 from urllib.parse import urlencode
 
+import backoff
 import requests
 from requests.auth import AuthBase, HTTPDigestAuth
 
-import backoff
 import commcare_export
 from commcare_export.repeatable_iterator import RepeatableIterator
 
@@ -29,6 +31,8 @@ RESOURCE_REPEAT_LIMIT = 10
 
 
 def on_backoff(details):
+    breakpoint()
+    print()
     _log_backoff(details, 'Waiting for retry.')
 
 
@@ -120,7 +124,9 @@ class CommCareHqClient(object):
     )
     def get(self, resource, params=None):
         """
-        Gets the named resource.
+        Gets the named resource. When the server returns a 429 (too many requests), the process will sleep for
+        the amount of seconds specified in the Retry-After header from the response, after which it will raise
+        an exception to trigger the retry action.
 
         Currently a bit of a vulnerable stub that works for this
         particular use case in the hands of a trusted user; would likely
@@ -131,6 +137,10 @@ class CommCareHqClient(object):
         response = self.session.get(
             resource_url, params=params, auth=self.__auth, timeout=60
         )
+        retry_after = response.headers.get("Retry-After", None)
+        if response.status_code == 429 and retry_after:
+            retry_after = ceil(float(retry_after))
+            time.sleep(retry_after)
         response.raise_for_status()
         return response.json()
 
