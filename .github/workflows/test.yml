@@ -48,6 +48,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: sudo apt-get install pandoc
       - run: python setup.py sdist
+      - run: pip install --upgrade pip
       - run: pip install dist/*
       - run: pip install pymysql psycopg2 pyodbc
       - run: pip install coverage coveralls
