@@ -79,7 +79,7 @@ setuptools.setup(
         'alembic',
         'argparse',
         'backoff',
-        'jsonpath-ng~=1.5',
+        'jsonpath-ng~=1.6.0',
         'ndg-httpsclient',
         'openpyxl==2.5.12',
         'python-dateutil',
