@@ -463,26 +463,26 @@ class CheckpointManagerProvider(object):
             since = checkpoint_manager.get_time_of_last_checkpoint()
             return dateutil.parser.parse(since) if since else None
 
-    def get_pagination_mode(self, checkpoint_manager):
+    def get_pagination_mode(self, data_source, checkpoint_manager=None):
         """
         Always use the default pagination mode unless we are continuing
         from a previous checkpoint in which case use the same pagination
         mode as before.
         """
-        if not checkpoint_manager:
-            return PaginationMode.date_indexed
-
-        if checkpoint_manager.data_source == 'ucr':
-            return PaginationMode.cursor
-
-        if self.start_over or self.since:
-            return PaginationMode.date_indexed
+        if self.start_over or self.since or not checkpoint_manager:
+            return self.get_paginator_for_datasource(data_source)
 
         last_checkpoint = checkpoint_manager.get_last_checkpoint()
         if not last_checkpoint:
-            return PaginationMode.date_indexed
+            return self.get_paginator_for_datasource(data_source)
 
         return last_checkpoint.get_pagination_mode()
+
+    @staticmethod
+    def get_paginator_for_datasource(datasource):
+        if datasource == 'ucr':
+            return PaginationMode.cursor
+        return PaginationMode.date_indexed
 
     def get_checkpoint_manager(self, data_source, table_names):
         """
@@ -502,7 +502,7 @@ class CheckpointManagerProvider(object):
             )
 
         since = self.get_since(manager)
-        pagination_mode = self.get_pagination_mode(manager)
+        pagination_mode = self.get_pagination_mode(data_source, checkpoint_manager=manager)
         logger.info(
             "Creating checkpoint manager for tables: %s, since: %s, "
             "pagination_mode: %s",

@@ -122,7 +122,6 @@ def get_paginator(
             'form': DatePaginator('indexed_on', page_size),
             'case': DatePaginator('indexed_on', page_size),
             'messaging-event': DatePaginator('date_last_activity', page_size),
-            'ucr': UCRPaginator(page_size),
         },
         PaginationMode.date_modified: {
             'form':
