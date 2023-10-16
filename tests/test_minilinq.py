@@ -116,7 +116,7 @@ class TestMiniLinq(unittest.TestCase):
             ])
         )
         self.check_case(
-            mmap.eval(env), [['1.bar.1.bar.[0]', 'a1', '1', '1.bid', 'bob'],
+            mmap.eval(env), [["1.bar.'1.bar.[0]'", 'a1', '1', '1.bid', 'bob'],
                              ['1.bar.bazzer', 'a2', '1', '1.bid', 'bob']]
         )
 
@@ -142,8 +142,8 @@ class TestMiniLinq(unittest.TestCase):
         data = {"id": 1, "bar": [{'baz': 'a1'}, {'baz': 'a2'}]}
         self._test_value_or_root([Reference('id'),
                                   Reference('baz')], data, [
-                                      ['1.bar.1.bar.[0]', 'a1'],
-                                      ['1.bar.1.bar.[1]', 'a2'],
+                                      ["1.bar.'1.bar.[0]'", 'a1'],
+                                      ["1.bar.'1.bar.[1]'", 'a2'],
                                   ])
 
     def test_value_or_root_empty_list(self):

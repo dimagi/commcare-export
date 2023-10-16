@@ -18,6 +18,7 @@ depends_on = None
 def upgrade():
     meta = sa.MetaData(bind=op.get_bind())
     meta.reflect()
+
     if 'commcare_export_runs' not in meta.tables:
         url = op.get_bind().engine.url
         collation = 'utf8_bin' if 'mysql' in url.drivername else None

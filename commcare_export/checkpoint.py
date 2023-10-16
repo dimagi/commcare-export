@@ -36,6 +36,7 @@ class Checkpoint(Base):
     data_source = Column(String)
     last_doc_id = Column(String)
     pagination_mode = Column(String)
+    cursor = Column(String)
 
     def get_pagination_mode(self):
         """
@@ -63,7 +64,8 @@ class Checkpoint(Base):
             "final={r.final}), "
             "data_source={r.data_source}, "
             "last_doc_id={r.last_doc_id}, "
-            "pagination_mode={r.pagination_mode}>"
+            "pagination_mode={r.pagination_mode},"
+            "cursor={r.cursor}>"
         ).format(r=self)
 
 
@@ -131,12 +133,14 @@ class CheckpointManager(SqlMixin):
         pagination_mode,
         is_final=False,
         doc_id=None,
+        cursor=None,
     ):
         self._set_checkpoint(
             checkpoint_time,
             pagination_mode,
             is_final,
             doc_id=doc_id,
+            cursor=cursor,
         )
         if is_final:
             self._cleanup()
@@ -147,7 +151,8 @@ class CheckpointManager(SqlMixin):
         pagination_mode,
         final,
         time_of_run=None,
-        doc_id=None
+        doc_id=None,
+        cursor=None,
     ):
         logger.info(
             'Setting %s checkpoint: data_source: %s, tables: %s, '
@@ -188,7 +193,8 @@ class CheckpointManager(SqlMixin):
                     final=final,
                     data_source=self.data_source,
                     last_doc_id=doc_id,
-                    pagination_mode=pagination_mode.name
+                    pagination_mode=pagination_mode.name,
+                    cursor=cursor,
                 )
                 session.add(checkpoint)
                 created.append(checkpoint)
@@ -423,10 +429,10 @@ class CheckpointManagerWithDetails(object):
         self.since_param = since_param
         self.pagination_mode = pagination_mode
 
-    def set_checkpoint(self, checkpoint_time, is_final=False, doc_id=None):
+    def set_checkpoint(self, checkpoint_time, is_final=False, doc_id=None, cursor=None):
         if self.manager:
             self.manager.set_checkpoint(
-                checkpoint_time, self.pagination_mode, is_final, doc_id=doc_id
+                checkpoint_time, self.pagination_mode, is_final, doc_id=doc_id, cursor=cursor
             )
 
 
@@ -450,23 +456,33 @@ class CheckpointManagerProvider(object):
             return self.since
 
         if checkpoint_manager:
+            if checkpoint_manager.data_source == 'ucr':
+                last_checkpoint = checkpoint_manager.get_last_checkpoint()
+                return last_checkpoint.cursor if last_checkpoint else None
+
             since = checkpoint_manager.get_time_of_last_checkpoint()
             return dateutil.parser.parse(since) if since else None
 
-    def get_pagination_mode(self, checkpoint_manager):
+    def get_pagination_mode(self, data_source, checkpoint_manager=None):
         """
         Always use the default pagination mode unless we are continuing
         from a previous checkpoint in which case use the same pagination
         mode as before.
         """
         if self.start_over or self.since or not checkpoint_manager:
-            return PaginationMode.date_indexed
+            return self.get_paginator_for_datasource(data_source)
 
         last_checkpoint = checkpoint_manager.get_last_checkpoint()
         if not last_checkpoint:
-            return PaginationMode.date_indexed
+            return self.get_paginator_for_datasource(data_source)
 
         return last_checkpoint.get_pagination_mode()
+
+    @staticmethod
+    def get_paginator_for_datasource(datasource):
+        if datasource == 'ucr':
+            return PaginationMode.cursor
+        return PaginationMode.date_indexed
 
     def get_checkpoint_manager(self, data_source, table_names):
         """
@@ -486,8 +502,7 @@ class CheckpointManagerProvider(object):
             )
 
         since = self.get_since(manager)
-        pagination_mode = self.get_pagination_mode(manager)
-
+        pagination_mode = self.get_pagination_mode(data_source, checkpoint_manager=manager)
         logger.info(
             "Creating checkpoint manager for tables: %s, since: %s, "
             "pagination_mode: %s",
@@ -496,7 +511,7 @@ class CheckpointManagerProvider(object):
             since,
             pagination_mode.name,
         )
-        if pagination_mode != PaginationMode.date_indexed:
+        if pagination_mode not in PaginationMode.supported_modes():
             logger.warning(
                 "\n====================================\n"
                 "This export is using a deprecated pagination mode which will "

@@ -232,7 +232,7 @@ def test_checkpoint_details_static(
 ):
     cmp = CheckpointManagerProvider(None, since, start_over)
     assert expected_since == cmp.get_since(None)
-    assert expected_paginator == cmp.get_pagination_mode(None)
+    assert expected_paginator == cmp.get_pagination_mode('', None)
 
 
 @pytest.mark.dbtest
@@ -242,19 +242,20 @@ class TestCheckpointManagerProvider(object):
         manager = configured_manager.for_dataset('form', ['t1'])
         assert None is CheckpointManagerProvider().get_since(manager)
         assert PaginationMode.date_indexed == CheckpointManagerProvider(
-        ).get_pagination_mode(manager)
+        ).get_pagination_mode('form', manager)
 
     def test_checkpoint_details_latest_from_db(self, configured_manager):
-        manager = configured_manager.for_dataset('form', ['t1'])
+        data_source = 'form'
+        manager = configured_manager.for_dataset(data_source, ['t1'])
 
         self._test_checkpoint_details(
-            manager, datetime.datetime.utcnow(), PaginationMode.date_modified
+            manager, datetime.datetime.utcnow(), PaginationMode.date_modified, data_source
         )
         self._test_checkpoint_details(
-            manager, datetime.datetime.utcnow(), PaginationMode.date_indexed
+            manager, datetime.datetime.utcnow(), PaginationMode.date_indexed, data_source
         )
         self._test_checkpoint_details(
-            manager, datetime.datetime.utcnow(), PaginationMode.date_modified
+            manager, datetime.datetime.utcnow(), PaginationMode.date_modified, data_source
         )
 
     def _test_checkpoint_details(
@@ -262,9 +263,10 @@ class TestCheckpointManagerProvider(object):
         manager,
         checkpoint_date,
         pagination_mode,
+        data_source,
     ):
         manager.set_checkpoint(checkpoint_date, pagination_mode)
 
         cmp = CheckpointManagerProvider()
-        assert pagination_mode == cmp.get_pagination_mode(manager)
+        assert pagination_mode == cmp.get_pagination_mode(data_source, manager)
         assert checkpoint_date == cmp.get_since(manager)
