@@ -24,6 +24,9 @@ SUPPORTED_RESOURCES = {
     'ucr',
 }
 
+DEFAULT_PAGE_SIZE = 1000
+DEFAULT_UCR_PAGE_SIZE = 10000
+
 
 class PaginationMode(Enum):
     date_indexed = "date_indexed"
@@ -226,7 +229,7 @@ class DatePaginator(SimplePaginator):
     DEFAULT_PARAMS = object()
 
     def __init__(self, since_field, page_size=None, params=DEFAULT_PARAMS):
-        page_size = page_size if page_size else 1000
+        page_size = page_size if page_size else DEFAULT_PAGE_SIZE
         params = DATE_PARAMS[
             since_field] if params is DatePaginator.DEFAULT_PARAMS else params
         super(DatePaginator, self).__init__(page_size, params)
@@ -271,7 +274,7 @@ class DatePaginator(SimplePaginator):
 
 class UCRPaginator(SimplePaginator):
     def __init__(self, page_size=None, *args, **kwargs):
-        page_size = page_size if page_size else 10000
+        page_size = page_size if page_size else DEFAULT_UCR_PAGE_SIZE
         super().__init__(page_size, *args, **kwargs)
 
     def next_page_params_from_batch(self, batch):
