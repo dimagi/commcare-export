@@ -32,6 +32,12 @@ RESOURCE_REPEAT_LIMIT = 10
 
 def on_backoff(details):
     _log_backoff(details, 'Waiting for retry.')
+    response = details["exception"].response
+    if response.status_code == 429:
+        retry_after = response.headers.get("Retry-After", 0.0)
+        retry_after = ceil(float(retry_after))
+        logger.warning(f"Sleeping for {retry_after} seconds")
+        time.sleep(retry_after)
 
 
 def on_giveup(details):
@@ -135,10 +141,6 @@ class CommCareHqClient(object):
         response = self.session.get(
             resource_url, params=params, auth=self.__auth, timeout=60
         )
-        if response.status_code == 429:
-            retry_after = response.headers.get("Retry-After", 0.0)
-            retry_after = ceil(float(retry_after))
-            time.sleep(retry_after)
         response.raise_for_status()
         return response.json()
 
