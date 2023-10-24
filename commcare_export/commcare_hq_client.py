@@ -128,7 +128,7 @@ class CommCareHqClient(object):
         @backoff.on_predicate(
             backoff.runtime,
             predicate=lambda r: r.status_code == 429,
-            value=lambda r: ceil(float(r.headers.get("Retry-After", 0.0))),
+            value=lambda r: ceil(float(r.headers.get("Retry-After", 1.0))),
             jitter=None,
             on_backoff=on_wait,
         )
@@ -146,7 +146,7 @@ class CommCareHqClient(object):
             response = self.session.get(
                 resource_url, params=params, auth=self.__auth, timeout=60
             )
-            if response.status_code != 429:
+            if "Retry-After" not in response.headers:
                 response.raise_for_status()
             return response
 
