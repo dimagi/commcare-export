@@ -115,21 +115,6 @@ class CommCareHqClient(object):
     def api_url(self):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
 
-    @backoff.on_predicate(
-        backoff.runtime,
-        predicate=lambda r: r.status_code == 429,
-        value=lambda r: ceil(float(r.headers.get("Retry-After", 0.0))),
-        jitter=None,
-        on_backoff=on_wait,
-    )
-    @backoff.on_exception(
-        backoff.expo,
-        requests.exceptions.RequestException,
-        max_time=300,
-        giveup=is_client_error,
-        on_backoff=on_backoff,
-        on_giveup=on_giveup
-    )
     def get(self, resource, params=None):
         """
         Gets the named resource. When the server returns a 429 (too many requests), the process will sleep for
@@ -140,14 +125,31 @@ class CommCareHqClient(object):
         particular use case in the hands of a trusted user; would likely
         want this to work like (or via) slumber.
         """
-        logger.debug("Fetching '%s' batch: %s", resource, params)
-        resource_url = f'{self.api_url}/{resource}/'
-        response = self.session.get(
-            resource_url, params=params, auth=self.__auth, timeout=60
+        @backoff.on_predicate(
+            backoff.runtime,
+            predicate=lambda r: r.status_code == 429,
+            value=lambda r: ceil(float(r.headers.get("Retry-After", 0.0))),
+            jitter=None,
+            on_backoff=on_wait,
         )
-        if response.status_code != 429:
-            response.raise_for_status()
-        return response
+        @backoff.on_exception(
+            backoff.expo,
+            requests.exceptions.RequestException,
+            max_time=300,
+            giveup=is_client_error,
+            on_backoff=on_backoff,
+            on_giveup=on_giveup
+        )
+        def _get(resource, params=None):
+            logger.debug("Fetching '%s' batch: %s", resource, params)
+            resource_url = f'{self.api_url}/{resource}/'
+            response = self.session.get(
+                resource_url, params=params, auth=self.__auth, timeout=60
+            )
+            if response.status_code != 429:
+                response.raise_for_status()
+        response = _get(resource, params)
+        return response.json()
 
     def iterate(
         self,
