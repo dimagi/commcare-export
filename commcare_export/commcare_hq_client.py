@@ -186,8 +186,7 @@ class CommCareHqClient(object):
                         "times with same parameters"
                     )
 
-                response = self.get(resource, params)
-                batch = response.json()
+                batch = self.get(resource, params)
                 last_params = copy.copy(params)
                 batch_meta = batch['meta']
                 if total_count == UNKNOWN_COUNT or fetched >= total_count:
