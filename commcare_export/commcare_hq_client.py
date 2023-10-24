@@ -148,6 +148,8 @@ class CommCareHqClient(object):
             )
             if response.status_code != 429:
                 response.raise_for_status()
+            return response
+
         response = _get(resource, params)
         return response.json()
 
