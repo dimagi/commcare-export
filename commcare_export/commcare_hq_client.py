@@ -29,15 +29,12 @@ logger = logging.getLogger(__name__)
 LATEST_KNOWN_VERSION = '0.5'
 RESOURCE_REPEAT_LIMIT = 10
 
+def on_wait(details):
+    time_to_wait = details["wait"]
+    logger.warning(f"Rate limit reached. Waiting for {time_to_wait} seconds.")
 
 def on_backoff(details):
     _log_backoff(details, 'Waiting for retry.')
-    response = details["exception"].response
-    if response.status_code == 429:
-        retry_after = response.headers.get("Retry-After", 0.0)
-        retry_after = ceil(float(retry_after))
-        logger.warning(f"Sleeping for {retry_after} seconds")
-        time.sleep(retry_after)
 
 
 def on_giveup(details):
@@ -118,6 +115,13 @@ class CommCareHqClient(object):
     def api_url(self):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
 
+    @backoff.on_predicate(
+        backoff.runtime,
+        predicate=lambda r: r.status_code == 429,
+        value=lambda r: ceil(float(r.headers.get("Retry-After", 0.0))),
+        jitter=None,
+        on_backoff=on_wait,
+    )
     @backoff.on_exception(
         backoff.expo,
         requests.exceptions.RequestException,
@@ -141,8 +145,9 @@ class CommCareHqClient(object):
         response = self.session.get(
             resource_url, params=params, auth=self.__auth, timeout=60
         )
-        response.raise_for_status()
-        return response.json()
+        if response.status_code != 429:
+            response.raise_for_status()
+        return response
 
     def iterate(
         self,
@@ -177,7 +182,8 @@ class CommCareHqClient(object):
                         "times with same parameters"
                     )
 
-                batch = self.get(resource, params)
+                response = self.get(resource, params)
+                batch = response.json()
                 last_params = copy.copy(params)
                 batch_meta = batch['meta']
                 if total_count == UNKNOWN_COUNT or fetched >= total_count:
