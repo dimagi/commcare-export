@@ -17,7 +17,7 @@ from commcare_export.commcare_minilinq import (
     SimplePaginator,
     get_paginator,
 )
-
+from mock import Mock, patch
 
 class FakeSession(object):
 
@@ -291,6 +291,26 @@ class TestCommCareHqClient(unittest.TestCase):
             [1, 2, 3]
         )
 
+    @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")
+    def test_dont_raise_on_too_many_requests(self, session_mock):
+        response = requests.Response()
+        response.headers = {'Retry-After': "0.0"}
+        client = CommCareHqClient(
+            '/fake/commcare-hq/url', 'fake-project', None, None
+        )
+
+        self.assertFalse(client._should_raise_for_status(response))
+
+    @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")
+    def test_raise_on_too_many_requests(self, session_mock):
+        response = requests.Response()
+        response.headers = {}
+
+        client = CommCareHqClient(
+            '/fake/commcare-hq/url', 'fake-project', None, None
+        )
+
+        self.assertTrue(client._should_raise_for_status(response))
 
 class TestDatePaginator(unittest.TestCase):
 

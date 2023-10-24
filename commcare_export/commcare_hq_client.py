@@ -115,6 +115,9 @@ class CommCareHqClient(object):
     def api_url(self):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
 
+    def _should_raise_for_status(self, response):
+        return "Retry-After" not in response.headers
+
     def get(self, resource, params=None):
         """
         Gets the named resource. When the server returns a 429 (too many requests), the process will sleep for
@@ -146,7 +149,7 @@ class CommCareHqClient(object):
             response = self.session.get(
                 resource_url, params=params, auth=self.__auth, timeout=60
             )
-            if "Retry-After" not in response.headers:
+            if self._should_raise_for_status(response):
                 response.raise_for_status()
             return response
 
