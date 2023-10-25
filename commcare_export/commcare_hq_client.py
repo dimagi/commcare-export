@@ -9,13 +9,15 @@ from __future__ import (
 
 import copy
 import logging
+import time
 from collections import OrderedDict
+from math import ceil
 from urllib.parse import urlencode
 
+import backoff
 import requests
 from requests.auth import AuthBase, HTTPDigestAuth
 
-import backoff
 import commcare_export
 from commcare_export.repeatable_iterator import RepeatableIterator
 from datetime import datetime
@@ -28,6 +30,9 @@ logger = logging.getLogger(__name__)
 LATEST_KNOWN_VERSION = '0.5'
 RESOURCE_REPEAT_LIMIT = 10
 
+def on_wait(details):
+    time_to_wait = details["wait"]
+    logger.warning(f"Rate limit reached. Waiting for {time_to_wait} seconds.")
 
 def on_backoff(details):
     _log_backoff(details, 'Waiting for retry.')
@@ -111,28 +116,45 @@ class CommCareHqClient(object):
     def api_url(self):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
 
-    @backoff.on_exception(
-        backoff.expo,
-        requests.exceptions.RequestException,
-        max_time=300,
-        giveup=is_client_error,
-        on_backoff=on_backoff,
-        on_giveup=on_giveup
-    )
+    def _should_raise_for_status(self, response):
+        return "Retry-After" not in response.headers
+
     def get(self, resource, params=None):
         """
-        Gets the named resource.
+        Gets the named resource. When the server returns a 429 (too many requests), the process will sleep for
+        the amount of seconds specified in the Retry-After header from the response, after which it will raise
+        an exception to trigger the retry action.
 
         Currently a bit of a vulnerable stub that works for this
         particular use case in the hands of a trusted user; would likely
         want this to work like (or via) slumber.
         """
-        logger.debug("Fetching '%s' batch: %s", resource, params)
-        resource_url = f'{self.api_url}/{resource}/'
-        response = self.session.get(
-            resource_url, params=params, auth=self.__auth, timeout=60
+        @backoff.on_predicate(
+            backoff.runtime,
+            predicate=lambda r: r.status_code == 429,
+            value=lambda r: ceil(float(r.headers.get("Retry-After", 1.0))),
+            jitter=None,
+            on_backoff=on_wait,
         )
-        response.raise_for_status()
+        @backoff.on_exception(
+            backoff.expo,
+            requests.exceptions.RequestException,
+            max_time=300,
+            giveup=is_client_error,
+            on_backoff=on_backoff,
+            on_giveup=on_giveup
+        )
+        def _get(resource, params=None):
+            logger.debug("Fetching '%s' batch: %s", resource, params)
+            resource_url = f'{self.api_url}/{resource}/'
+            response = self.session.get(
+                resource_url, params=params, auth=self.__auth, timeout=60
+            )
+            if self._should_raise_for_status(response):
+                response.raise_for_status()
+            return response
+
+        response = _get(resource, params)
         return response.json()
 
     def iterate(
