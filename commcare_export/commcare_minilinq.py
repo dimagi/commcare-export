@@ -305,8 +305,8 @@ class DatePaginator(SimplePaginator):
 
 class UCRPaginator(SimplePaginator):
     def __init__(self, page_size=None, *args, **kwargs):
-        page_size = page_size if page_size else DEFAULT_UCR_PAGE_SIZE
         super().__init__(page_size, *args, **kwargs)
+        self.page_size = page_size if page_size else DEFAULT_UCR_PAGE_SIZE
 
     def next_page_params_from_batch(self, batch):
         params = super(UCRPaginator, self).next_page_params_from_batch(batch)
@@ -315,6 +315,7 @@ class UCRPaginator(SimplePaginator):
 
     def next_page_params_since(self, since=None):
         params = self.payload | {'cursor': since}
+        params["limit"] = self.page_size
         return params
 
     def set_checkpoint(self, checkpoint_manager, batch, is_final):
