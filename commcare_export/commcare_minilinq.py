@@ -314,7 +314,8 @@ class UCRPaginator(SimplePaginator):
             return params | self.payload
 
     def next_page_params_since(self, since=None):
-        params = self.payload | {'cursor': since}
+        params = self.payload
+        params['cursor'] = since
         params["limit"] = self.page_size
         return params
 
