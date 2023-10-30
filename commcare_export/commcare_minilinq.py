@@ -311,7 +311,7 @@ class UCRPaginator(SimplePaginator):
     def next_page_params_from_batch(self, batch):
         params = super(UCRPaginator, self).next_page_params_from_batch(batch)
         if params:
-            return params | self.payload
+            return self.payload | params
 
     def next_page_params_since(self, since=None):
         params = self.payload
