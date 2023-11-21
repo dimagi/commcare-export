@@ -242,11 +242,25 @@ As a library, the various `commcare_export` modules make it easy to
 To directly access the CommCare HQ REST API:
 
 ```python
->>> import getpass
->>> from commcare_export.commcare_hq_client import CommCareHqClient
->>> api_client = CommCareHqClient('http://commcarehq.org', 'your_project', 'your_username', getpass.getpass())
->>> forms = api_client.iterate('form', {'app_id': "whatever"})
->>> [ (form['received_on'], form['form.gender']) for form in forms ]
+from commcare_export.checkpoint import CheckpointManagerWithDetails
+from commcare_export.commcare_hq_client import CommCareHqClient, AUTH_MODE_APIKEY
+from commcare_export.commcare_minilinq import get_paginator, PaginationMode
+
+username = 'some@username.com'
+domain = 'your-awesome-domain'
+hq_host = 'https://commcarehq.org'
+API_KEY= 'your_secret_api_key'
+
+api_client = CommCareHqClient(hq_host, domain, username, API_KEY, AUTH_MODE_APIKEY)
+case_paginator=get_paginator(resource='case', pagination_mode=PaginationMode.date_modified)
+case_paginator.init()
+checkpoint_manager=CheckpointManagerWithDetails(None, None, PaginationMode.date_modified)
+
+cases = api_client.iterate('case', case_paginator, checkpoint_manager=checkpoint_manager)
+
+for case in cases:
+	print(case['case_id'])
+
 ```
 
 To issue a `minilinq` query against it, and then print out that query in a JSON serialization:
