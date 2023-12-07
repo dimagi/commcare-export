@@ -78,7 +78,7 @@ setuptools.setup(
     install_requires=[
         'alembic',
         'argparse',
-        'backoff',
+        'backoff>=2.0',
         'jsonpath-ng~=1.6.0',
         'ndg-httpsclient',
         'openpyxl==2.5.12',
