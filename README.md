@@ -656,3 +656,15 @@ export HQ_API_KEY=<apikey>
 
 For Travis builds these are included as encrypted vars in the travis
 config.
+
+Generating an executable file
+-----------------------------
+We use [pyinstaller](https://pyinstaller.org/en/stable/) to generate an executable of the data export tool.
+
+We use a `.spec` file to specify the arguments to the `pyinstaller` command, so the process of generating an 
+executable file is very straight forward. 
+
+Simply run:
+> pyinstaller commcare-export.spec
+
+The resultant executable can be found in the `dist/` folder.
