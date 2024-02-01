@@ -395,7 +395,7 @@ def evaluate_query(env, query):
             return EXIT_STATUS_ERROR
 
 
-def main_with_args(args):
+def main_with_args(args, is_gui=False):
     logger.info("CommCare Export Version {}".format(__version__))
     writer = _get_writer(args.output_format, args.output, args.strict_types)
 
@@ -406,13 +406,18 @@ def main_with_args(args):
             file=sys.stderr
         )
         return EXIT_STATUS_ERROR
-
     if not args.username:
-        args.username = input('Please provide a username: ')
+        if is_gui:
+            raise Exception("No username provided")
+        else:
+            args.username = input('Please provide a username: ')
 
     if not args.password:
-        # Windows getpass does not accept unicode
-        args.password = getpass.getpass()
+        if is_gui:
+            raise Exception("No password provided")
+        else:
+            # Windows getpass does not accept unicode
+            args.password = getpass.getpass()
 
     column_enforcer = None
     if args.with_organization:
@@ -426,8 +431,11 @@ def main_with_args(args):
     try:
         query = get_queries(args, writer, lp, column_enforcer)
     except DataExportException as e:
-        print(e.message, file=sys.stderr)
-        return EXIT_STATUS_ERROR
+        if is_gui:
+            raise
+        else:
+            print(e.message, file=sys.stderr)
+            return EXIT_STATUS_ERROR
 
     if args.dump_query:
         print(json.dumps(query.to_jvalue(), indent=4))

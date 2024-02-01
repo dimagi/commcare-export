@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['commcare_export/cli.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
     datas=[('./commcare_export', '.')],
