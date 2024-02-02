@@ -159,9 +159,9 @@ class CommCareHqClient(object):
                     if not logger.isEnabledFor(logging.DEBUG):
                         if isinstance(e, requests.exceptions.HTTPError) and response.status_code == 401:
                             logger.error(
-                                f"#{e}. Please ensure that your CommCare HQ credentials are correct & valid for "
-                                f"the auth-mode passed. Also, verify that your account has the necessary "
-                                f"permissions to access the DET tool."
+                                f"#{e}. Please ensure that your CommCare HQ credentials are correct and auth-mode"
+                                f"is passed as 'apikey' if using API Key to authenticate. Also, verify that your "
+                                f"account has the necessary permissions to access the DET tool."
                             )
                         else:
                             logger.error(str(e))
