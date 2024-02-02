@@ -15,27 +15,78 @@ A command-line tool (and Python library) to generate customized exports from the
 Installation & Quick Start
 --------------------------
 
-0a\. Install [Python 3](https://www.python.org/downloads/). This tool is [tested with Python 3.6, 3.7, and 3.8](https://app.travis-ci.com/dimagi/commcare-export).
+Following commands are to be run on a terminal or a command line.
 
-0b\. Sign up for [CommCare HQ](https://www.commcarehq.org/) if you have not already.
+Once on a terminal window or command line, for simplicity, run commands from the home directory.
 
-1\. Install CommCare Export via `pip`
+### Python
+
+Check for python installed. 
+This tool is [tested with Python 3.6, 3.7, and 3.8](https://app.travis-ci.com/dimagi/commcare-export).
+
+
+```shell
+$ python --version
+$ python3 --version
+```
+If python is installed, all of its available versions would be listed.
+
+If python isn't installed, Install Python 3.8 from [this link](https://www.python.org/downloads/). 
+
+## Virtualenv (Optional)
+
+Setup a virtual environment using:
+
+```shell
+$ python3.8.x -m venv .venv # update version for the one installed
+```
+
+Activate virtual environment by running:
+
+```shell
+source .venv/bin/activate
+```
+
+**Note**: virtualenv needs to be activated each time you start a new terminal session or command line prompt.
+
+For convenience, to avoid doing that, you can create an alias to activate virtual environments in
+".venv" directory by adding the following to your
+`.bashrc` or `.zshrc` file:
+
+```shell
+alias venv='if [[ -d .venv ]] ; then source .venv/bin/activate ; fi'
+```
+
+Then you can activate virtual environments with
+```shell
+$ venv
+```
+
+## Install CommCare Export
+
+Install CommCare Export via `pip`
 
 ```
 $ python3 -m pip install wheel
 $ python3 -m pip install commcare-export
 ```
 
-2\. Create a project space and application.
+## CommCareHQ
 
-3\. Visit the Release Manager, make a build, click the star to release it.
+1. Sign up for [CommCare HQ](https://www.commcarehq.org/) if you have not already.
 
-4\. Use Web Apps and fill out some forms.
+2. Create a project space and application.
 
-5\. Modify one of example queries in the `examples/` directory, modifying the "Filter Value" column
+3. Visit the Release Manager, make a build, click the star to release it.
+
+4. Use Web Apps and fill out some forms.
+
+5. Modify one of example queries in the `examples/` directory, modifying the "Filter Value" column
     to match your form XMLNS / case type. 
     See [this page](https://confluence.dimagi.com/display/commcarepublic/Finding+a+Form%27s+XMLNS) to 
     determine the XMLNS for your form.
+
+Now you can run the following examples:
 
 ```
 $ commcare-export \
