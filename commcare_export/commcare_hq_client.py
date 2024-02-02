@@ -9,6 +9,7 @@ from __future__ import (
 
 import copy
 import logging
+import sys
 import time
 from collections import OrderedDict
 from math import ceil
@@ -151,7 +152,15 @@ class CommCareHqClient(object):
                 resource_url, params=params, auth=self.__auth, timeout=60
             )
             if self._should_raise_for_status(response):
-                response.raise_for_status()
+                try:
+                    response.raise_for_status()
+                except Exception as e:
+                    # for non-verbose output, skip the stacktrace
+                    if not logger.isEnabledFor(logging.DEBUG):
+                        logger.error(str(e))
+                        sys.exit()
+                    raise e
+
             return response
 
         response = _get(resource, params)
