@@ -160,7 +160,7 @@ class CommCareHqClient(object):
                         if isinstance(e, requests.exceptions.HTTPError) and response.status_code == 401:
                             logger.error(
                                 f"#{e}. Please ensure that your CommCare HQ credentials are correct & valid for "
-                                f"the auth-mode passed. Also, Verify that your account has the necessary "
+                                f"the auth-mode passed. Also, verify that your account has the necessary "
                                 f"permissions to access the DET tool."
                             )
                         else:
