@@ -157,7 +157,14 @@ class CommCareHqClient(object):
                 except Exception as e:
                     # for non-verbose output, skip the stacktrace
                     if not logger.isEnabledFor(logging.DEBUG):
-                        logger.error(str(e))
+                        if isinstance(e, requests.exceptions.HTTPError) and response.status_code == 401:
+                            logger.error(
+                                f"#{e}. Please ensure that your CommCare HQ credentials are correct & valid for "
+                                f"the auth-mode passed. Also, Verify that your account has the necessary "
+                                f"permissions to access the DET tool."
+                            )
+                        else:
+                            logger.error(str(e))
                         sys.exit()
                     raise e
 
