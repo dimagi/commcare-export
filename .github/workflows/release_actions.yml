@@ -10,19 +10,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull docker images for pyinstaller/wine
         run: |
           docker pull cdrx/pyinstaller-linux
           docker pull cdrx/pyinstaller-windows
 
-      - name: Generate linux binary
+      - name: Compile linux binary
         run: |
           docker run -v "$(pwd):/src/" cdrx/pyinstaller-linux
 
-      - name: Generate windows exe
+      - name: Compile windows exe
         run: |
           docker run -v "$(pwd):/src/" cdrx/pyinstaller-windows
 
