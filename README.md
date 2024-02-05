@@ -43,7 +43,7 @@ More about virtualenvs on https://docs.python.org/3/tutorial/venv.html
 Setup a virtual environment using:
 
 ```shell
-$ python3.8.x -m venv .commcare-export-venv # update python version for the one installed
+$ python3.8 -m venv .commcare-export-venv # update python version for the one installed
 ```
 
 Activate virtual environment by running:
