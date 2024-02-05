@@ -1,0 +1,33 @@
+name: commcare-export release actions
+on:
+  release:
+    types: [published]
+
+jobs:
+  generate_release_assets:
+    name: Generate release assets
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull docker images for pyinstaller/wine
+        run: |
+          docker pull cdrx/pyinstaller-linux
+          docker pull cdrx/pyinstaller-windows
+
+      - name: Generate linux binary
+        run: |
+          docker run -v "$(pwd):/src/" cdrx/pyinstaller-linux
+
+      - name: Generate windows exe
+        run: |
+          docker run -v "$(pwd):/src/" cdrx/pyinstaller-windows
+
+      - name: Upload release assets
+        uses: AButler/upload-release-assets@v3.0
+        with:
+          files: "./dist/linux/*;./dist/windows/*"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}

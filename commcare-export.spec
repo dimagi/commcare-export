@@ -8,7 +8,6 @@ a = Analysis(
     datas=[('./commcare_export', '.')],
     hiddenimports=[],
     hookspath=[],
-    hooksconfig={},
     runtime_hooks=[],
     excludes=[],
     noarchive=False,
