@@ -35,6 +35,11 @@ If python isn't installed, Install Python 3.8 from [this link](https://www.pytho
 
 ## Virtualenv (Optional)
 
+It is recommended to set up a virtual environment for CommCare Export
+to avoid conflicts with other python applications.
+
+More about virtualenvs on https://docs.python.org/3/tutorial/venv.html
+
 Setup a virtual environment using:
 
 ```shell
