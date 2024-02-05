@@ -38,28 +38,28 @@ If python isn't installed, Install Python 3.8 from [this link](https://www.pytho
 Setup a virtual environment using:
 
 ```shell
-$ python3.8.x -m venv .venv # update version for the one installed
+$ python3.8.x -m venv .commcare-export-venv # update python version for the one installed
 ```
 
 Activate virtual environment by running:
 
 ```shell
-source .venv/bin/activate
+source .commcare-export-venv/bin/activate
 ```
 
 **Note**: virtualenv needs to be activated each time you start a new terminal session or command line prompt.
 
 For convenience, to avoid doing that, you can create an alias to activate virtual environments in
-".venv" directory by adding the following to your
+".commcare-export-venv" directory by adding the following to your
 `.bashrc` or `.zshrc` file:
 
 ```shell
-alias venv='if [[ -d .venv ]] ; then source .venv/bin/activate ; fi'
+alias commcare-export-venv='if [[ -d .commcare-export-venv ]] ; then source .commcare-export-venv/bin/activate ; fi'
 ```
 
-Then you can activate virtual environments with
+Then you can activate virtual environments with simply typing
 ```shell
-$ venv
+$ commcare-export-venv
 ```
 
 ## Install CommCare Export
