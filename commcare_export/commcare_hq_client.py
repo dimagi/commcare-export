@@ -83,7 +83,6 @@ class CommCareHqClient(object):
         password,
         auth_mode=AUTH_MODE_PASSWORD,
         version=LATEST_KNOWN_VERSION,
-        checkpoint_manager=None
     ):
         self.version = version
         self.url = url
@@ -91,7 +90,8 @@ class CommCareHqClient(object):
         self.__auth = self._get_auth(username, password, auth_mode)
         self.__session = None
 
-    def _get_auth(self, username, password, mode):
+    @staticmethod
+    def _get_auth(username, password, mode):
         if mode == AUTH_MODE_PASSWORD:
             return HTTPDigestAuth(username, password)
         elif mode == AUTH_MODE_APIKEY:
@@ -117,7 +117,8 @@ class CommCareHqClient(object):
     def api_url(self):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
 
-    def _should_raise_for_status(self, response):
+    @staticmethod
+    def _should_raise_for_status(response):
         return "Retry-After" not in response.headers
 
     def get(self, resource, params=None):
