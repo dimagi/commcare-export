@@ -28,7 +28,7 @@ from commcare_export.misc import default_to_json
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.utils import get_checkpoint_manager
 from commcare_export.version import __version__
-from commcare_export import logger
+from commcare_export import logger, Logger
 
 EXIT_STATUS_ERROR = 1
 
@@ -165,7 +165,14 @@ CLI_ARGS = [
         "form.form..case, messaging-event.messages.[*] And you want to "
         "have a record exported even if the nested document does not "
         "exist or is empty.",
-    )
+    ),
+    Argument(
+        'no-logfile',
+        default=False,
+        help="Specify in order to prevent information being logged to the log file and"
+             " show all output in the console.",
+        action='store_true',
+    ),
 ]
 
 
@@ -177,6 +184,17 @@ def main(argv):
         arg.add_to_parser(parser)
 
     args = parser.parse_args(argv)
+
+    if not args.no_logfile:
+        exe_dir = os.path.dirname(sys.executable)
+        log_file = os.path.join(exe_dir, "commcare_export.log")
+        print(f"Printing logs to {log_file}")
+        logging.basicConfig(
+            filename=log_file,
+            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+            filemode='w',
+        )
+        sys.stderr = Logger(logging.getLogger(), logging.ERROR)
 
     if args.verbose:
         logging.basicConfig(
