@@ -216,13 +216,17 @@ def main(argv):
         profile.start()
 
     try:
-        print("Running...")
+        print("Running export...")
         try:
-            exit(main_with_args(args))
+            exit_code = main_with_args(args)
+            if exit_code > 0:
+                print("Error occurred! See log file for error.")
+            exit(exit_code)
         except Exception:
             print("Error occurred! See log file for error.")
             raise
     finally:
+        print("Export finished!")
         if args.profile:
             profile.close()
             stats = hotshot.stats.load(args.profile)
@@ -415,9 +419,11 @@ def main_with_args(args):
         return EXIT_STATUS_ERROR
 
     if not args.username:
+        logger.warn("Username not provided")
         args.username = input('Please provide a username: ')
 
     if not args.password:
+        logger.warn("Password not provided")
         # Windows getpass does not accept unicode
         args.password = getpass.getpass()
 
