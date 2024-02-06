@@ -127,7 +127,7 @@ class CommCareHqClient(object):
         the amount of seconds specified in the Retry-After header from the response, after which it will raise
         an exception to trigger the retry action.
 
-        Currently a bit of a vulnerable stub that works for this
+        Currently, a bit of a vulnerable stub that works for this
         particular use case in the hands of a trusted user; would likely
         want this to work like (or via) slumber.
         """
