@@ -312,6 +312,60 @@ class TestCommCareHqClient(unittest.TestCase):
 
         self.assertTrue(client._should_raise_for_status(response))
 
+    @patch('commcare_export.commcare_hq_client.logger')
+    @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")
+    def test_get_with_forbidden_response_in_non_debug_mode(self, session_mock, logger_mock):
+        response = requests.Response()
+        response.status_code = 401
+        session_mock.get.return_value = response
+
+        logger_mock.isEnabledFor.return_value = False
+
+        with self.assertRaises(SystemExit):
+            CommCareHqClient(
+                '/fake/commcare-hq/url', 'fake-project', None, None
+            ).get("location")
+
+        logger_mock.error.assert_called_once_with(
+            "#401 Client Error: None for url: None. "
+            "Please ensure that your CommCare HQ credentials are correct and auth-mode is passed as 'apikey' "
+            "if using API Key to authenticate. Also, verify that your account has the necessary permissions "
+            "to access the DET tool.")
+
+    @patch('commcare_export.commcare_hq_client.logger')
+    @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")
+    def test_get_with_other_http_failure_response_in_non_debug_mode(self, session_mock, logger_mock):
+        response = requests.Response()
+        response.status_code = 404
+        session_mock.get.return_value = response
+
+        logger_mock.isEnabledFor.return_value = False
+
+        with self.assertRaises(SystemExit):
+            CommCareHqClient(
+                '/fake/commcare-hq/url', 'fake-project', None, None
+            ).get("location")
+
+        logger_mock.error.assert_called_once_with(
+            "404 Client Error: None for url: None")
+
+    @patch('commcare_export.commcare_hq_client.logger')
+    @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")
+    def test_get_with_http_failure_response_in_debug_mode(self, session_mock, logger_mock):
+        response = requests.Response()
+        response.status_code = 404
+        session_mock.get.return_value = response
+
+        logger_mock.isEnabledFor.return_value = True
+
+        try:
+            CommCareHqClient(
+                '/fake/commcare-hq/url', 'fake-project', None, None
+            ).get("location")
+        except Exception as e:
+            self.assertEqual(str(e), "404 Client Error: None for url: None")
+
+
 class TestDatePaginator(unittest.TestCase):
 
     @classmethod
