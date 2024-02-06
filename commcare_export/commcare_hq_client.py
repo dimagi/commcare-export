@@ -185,13 +185,13 @@ class CommCareHqClient(object):
         Assumes the endpoint is a list endpoint, and iterates over it
         making a lot of assumptions that it is like a tastypie endpoint.
         """
-        UNKNOWN_COUNT = 'unknown'
+        unknown_count = 'unknown'
         params = dict(params or {})
 
         def iterate_resource(resource=resource, params=params):
             more_to_fetch = True
             last_batch_ids = set()
-            total_count = UNKNOWN_COUNT
+            total_count = unknown_count
             fetched = 0
             repeat_counter = 0
             last_params = None
@@ -210,11 +210,11 @@ class CommCareHqClient(object):
                 batch = self.get(resource, params)
                 last_params = copy.copy(params)
                 batch_meta = batch['meta']
-                if total_count == UNKNOWN_COUNT or fetched >= total_count:
+                if total_count == unknown_count or fetched >= total_count:
                     if batch_meta.get('total_count'):
                         total_count = int(batch_meta['total_count'])
                     else:
-                        total_count = UNKNOWN_COUNT
+                        total_count = unknown_count
                     fetched = 0
 
                 batch_objects = batch['objects']
@@ -242,7 +242,7 @@ class CommCareHqClient(object):
                         # Handle the case where API is 'non-counting'
                         # and repeats the last batch
                         repeated_last_page_of_non_counting_resource = (
-                            not got_new_data and total_count == UNKNOWN_COUNT
+                            not got_new_data and total_count == unknown_count
                             and (limit and len(batch_objects) < limit)
                         )
                         more_to_fetch = not repeated_last_page_of_non_counting_resource
