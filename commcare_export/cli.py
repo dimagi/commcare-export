@@ -2,10 +2,9 @@ import argparse
 import getpass
 import io
 import json
-import logging
 import os.path
 import sys
-
+import logging
 import dateutil.parser
 import requests
 import sqlalchemy
@@ -29,10 +28,9 @@ from commcare_export.misc import default_to_json
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.utils import get_checkpoint_manager
 from commcare_export.version import __version__
+from commcare_export import logger
 
 EXIT_STATUS_ERROR = 1
-
-logger = logging.getLogger(__name__)
 
 commcare_hq_aliases = {
     'local': 'http://localhost:8000',
@@ -200,10 +198,14 @@ def main(argv):
         exit(0)
 
     if not args.project:
+        error_msg = "commcare-export: error: argument --project is required"
+        # output to log file through sys.stderr
         print(
-            'commcare-export: error: argument --project is required',
+            error_msg,
             file=sys.stderr
         )
+        # Output to console for debugging
+        print(error_msg)
         exit(1)
 
     if args.profile:
@@ -214,7 +216,12 @@ def main(argv):
         profile.start()
 
     try:
-        exit(main_with_args(args))
+        print("Running...")
+        try:
+            exit(main_with_args(args))
+        except Exception:
+            print("Error occurred! See log file for error.")
+            raise
     finally:
         if args.profile:
             profile.close()

@@ -49,3 +49,4 @@ nosetests.xml
 
 # Excel
 ~*.xlsx
+commcare_export.log

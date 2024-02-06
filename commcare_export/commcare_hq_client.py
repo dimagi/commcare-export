@@ -8,8 +8,6 @@ from __future__ import (
 )
 
 import copy
-import logging
-import time
 from collections import OrderedDict
 from math import ceil
 from urllib.parse import urlencode
@@ -20,19 +18,20 @@ from requests.auth import AuthBase, HTTPDigestAuth
 
 import commcare_export
 from commcare_export.repeatable_iterator import RepeatableIterator
-from datetime import datetime
+from commcare_export import logger
 
 AUTH_MODE_PASSWORD = 'password'
 AUTH_MODE_APIKEY = 'apikey'
 
-logger = logging.getLogger(__name__)
 
 LATEST_KNOWN_VERSION = '0.5'
 RESOURCE_REPEAT_LIMIT = 10
 
+
 def on_wait(details):
     time_to_wait = details["wait"]
     logger.warning(f"Rate limit reached. Waiting for {time_to_wait} seconds.")
+
 
 def on_backoff(details):
     _log_backoff(details, 'Waiting for retry.')

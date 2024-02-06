@@ -8,8 +8,6 @@ from commcare_export.utils import confirm, get_checkpoint_manager, print_runs
 
 EXIT_STATUS_ERROR = 1
 
-logger = logging.getLogger(__name__)
-
 
 class BaseCommand(object):
     slug = None

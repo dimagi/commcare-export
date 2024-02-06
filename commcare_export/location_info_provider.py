@@ -1,9 +1,7 @@
-import logging
 
 from commcare_export.commcare_minilinq import SimplePaginator
 from commcare_export.misc import unwrap_val
-
-logger = logging.getLogger(__name__)
+from commcare_export import logger
 
 # LocationInfoProvider uses the /location_type/ endpoint of the API to
 # retrieve location type data, stores that information in a dictionary
