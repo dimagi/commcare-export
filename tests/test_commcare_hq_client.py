@@ -330,7 +330,7 @@ class TestCommCareHqClient(unittest.TestCase):
             "#401 Client Error: None for url: None. "
             "Please ensure that your CommCare HQ credentials are correct and auth-mode is passed as 'apikey' "
             "if using API Key to authenticate. Also, verify that your account has the necessary permissions "
-            "to access the DET tool.")
+            "to use commcare-export.")
 
     @patch('commcare_export.commcare_hq_client.logger')
     @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")
