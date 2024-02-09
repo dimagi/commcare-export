@@ -9,7 +9,7 @@ from __future__ import (
 
 import copy
 import logging
-import time
+import sys
 from collections import OrderedDict
 from math import ceil
 from urllib.parse import urlencode
@@ -20,7 +20,6 @@ from requests.auth import AuthBase, HTTPDigestAuth
 
 import commcare_export
 from commcare_export.repeatable_iterator import RepeatableIterator
-from datetime import datetime
 
 AUTH_MODE_PASSWORD = 'password'
 AUTH_MODE_APIKEY = 'apikey'
@@ -30,9 +29,11 @@ logger = logging.getLogger(__name__)
 LATEST_KNOWN_VERSION = '0.5'
 RESOURCE_REPEAT_LIMIT = 10
 
+
 def on_wait(details):
     time_to_wait = details["wait"]
     logger.warning(f"Rate limit reached. Waiting for {time_to_wait} seconds.")
+
 
 def on_backoff(details):
     _log_backoff(details, 'Waiting for retry.')
@@ -82,7 +83,6 @@ class CommCareHqClient(object):
         password,
         auth_mode=AUTH_MODE_PASSWORD,
         version=LATEST_KNOWN_VERSION,
-        checkpoint_manager=None
     ):
         self.version = version
         self.url = url
@@ -90,7 +90,8 @@ class CommCareHqClient(object):
         self.__auth = self._get_auth(username, password, auth_mode)
         self.__session = None
 
-    def _get_auth(self, username, password, mode):
+    @staticmethod
+    def _get_auth(username, password, mode):
         if mode == AUTH_MODE_PASSWORD:
             return HTTPDigestAuth(username, password)
         elif mode == AUTH_MODE_APIKEY:
@@ -116,7 +117,8 @@ class CommCareHqClient(object):
     def api_url(self):
         return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
 
-    def _should_raise_for_status(self, response):
+    @staticmethod
+    def _should_raise_for_status(response):
         return "Retry-After" not in response.headers
 
     def get(self, resource, params=None):
@@ -125,7 +127,7 @@ class CommCareHqClient(object):
         the amount of seconds specified in the Retry-After header from the response, after which it will raise
         an exception to trigger the retry action.
 
-        Currently a bit of a vulnerable stub that works for this
+        Currently, a bit of a vulnerable stub that works for this
         particular use case in the hands of a trusted user; would likely
         want this to work like (or via) slumber.
         """
@@ -151,7 +153,22 @@ class CommCareHqClient(object):
                 resource_url, params=params, auth=self.__auth, timeout=60
             )
             if self._should_raise_for_status(response):
-                response.raise_for_status()
+                try:
+                    response.raise_for_status()
+                except Exception as e:
+                    # for non-verbose output, skip the stacktrace
+                    if not logger.isEnabledFor(logging.DEBUG):
+                        if isinstance(e, requests.exceptions.HTTPError) and response.status_code == 401:
+                            logger.error(
+                                f"#{e}. Please ensure that your CommCare HQ credentials are correct and auth-mode "
+                                f"is passed as 'apikey' if using API Key to authenticate. Also, verify that your "
+                                f"account has the necessary permissions to use commcare-export."
+                            )
+                        else:
+                            logger.error(str(e))
+                        sys.exit()
+                    raise e
+
             return response
 
         response = _get(resource, params)
@@ -168,13 +185,13 @@ class CommCareHqClient(object):
         Assumes the endpoint is a list endpoint, and iterates over it
         making a lot of assumptions that it is like a tastypie endpoint.
         """
-        UNKNOWN_COUNT = 'unknown'
+        unknown_count = 'unknown'
         params = dict(params or {})
 
         def iterate_resource(resource=resource, params=params):
             more_to_fetch = True
             last_batch_ids = set()
-            total_count = UNKNOWN_COUNT
+            total_count = unknown_count
             fetched = 0
             repeat_counter = 0
             last_params = None
@@ -193,11 +210,11 @@ class CommCareHqClient(object):
                 batch = self.get(resource, params)
                 last_params = copy.copy(params)
                 batch_meta = batch['meta']
-                if total_count == UNKNOWN_COUNT or fetched >= total_count:
+                if total_count == unknown_count or fetched >= total_count:
                     if batch_meta.get('total_count'):
                         total_count = int(batch_meta['total_count'])
                     else:
-                        total_count = UNKNOWN_COUNT
+                        total_count = unknown_count
                     fetched = 0
 
                 batch_objects = batch['objects']
@@ -225,7 +242,7 @@ class CommCareHqClient(object):
                         # Handle the case where API is 'non-counting'
                         # and repeats the last batch
                         repeated_last_page_of_non_counting_resource = (
-                            not got_new_data and total_count == UNKNOWN_COUNT
+                            not got_new_data and total_count == unknown_count
                             and (limit and len(batch_objects) < limit)
                         )
                         more_to_fetch = not repeated_last_page_of_non_counting_resource
