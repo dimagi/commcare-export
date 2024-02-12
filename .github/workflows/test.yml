@@ -64,4 +64,8 @@ jobs:
           HQ_API_KEY: ${{ secrets.HQ_API_KEY }}
       - run: mypy --install-types --non-interactive @mypy_typed_modules.txt
       - run: coverage lcov -o coverage/lcov.info
-      - uses: coverallsapp/github-action@v1
+      - name: Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token:
+            ${{ secrets.GITHUB_TOKEN }}
