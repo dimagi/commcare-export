@@ -28,7 +28,7 @@ from commcare_export.misc import default_to_json
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.utils import get_checkpoint_manager
 from commcare_export.version import __version__
-from commcare_export import logger, Logger
+from commcare_export import logger, get_error_logger
 
 EXIT_STATUS_ERROR = 1
 
@@ -194,7 +194,7 @@ def main(argv):
             format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
             filemode='w',
         )
-        sys.stderr = Logger(logging.getLogger(), logging.ERROR)
+        sys.stderr = get_error_logger()
 
     if args.verbose:
         logging.basicConfig(

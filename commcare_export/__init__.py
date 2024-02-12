@@ -13,5 +13,9 @@ class Logger:
             self.logger.log(self.level, line.rstrip())
 
 
+def get_error_logger():
+    return Logger(logging.getLogger(), logging.ERROR)
+
+
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
