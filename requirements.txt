@@ -1,0 +1,19 @@
+# This file is only used by pyinstaller to create the executable DET instance
+alembic
+argparse
+chardet
+backoff>=2.0
+jsonpath-ng~=1.6.0
+ndg-httpsclient
+openpyxl==2.5.12
+python-dateutil
+pytz
+psycopg2-binary
+pymysql
+pyodbc
+requests
+simplejson
+sqlalchemy~=1.4
+sqlalchemy-migrate
+urllib3==1.26.7
+xlwt

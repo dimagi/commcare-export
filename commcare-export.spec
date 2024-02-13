@@ -6,7 +6,9 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[('./commcare_export', '.')],
-    hiddenimports=[],
+    hiddenimports=[
+        'sqlalchemy.sql.default_comparator',
+    ],
     hookspath=[],
     runtime_hooks=[],
     excludes=[],
