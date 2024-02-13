@@ -26,7 +26,6 @@ Check which Python version is installed.
 This tool is tested with Python versions from 3.8 to 3.12.
 
 ```shell
-$ python --version
 $ python3 --version
 ```
 If Python is installed, its version will be listed.
