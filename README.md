@@ -320,12 +320,13 @@ for case in cases:
 To issue a `minilinq` query against it, and then print out that query in a JSON serialization:
 
 ```python
-import getpass
 import json
+import sys
 from commcare_export.minilinq import *
 from commcare_export.commcare_hq_client import CommCareHqClient
 from commcare_export.commcare_minilinq import CommCareHqEnv
-from commcare_export.env import BuiltInEnv
+from commcare_export.env import BuiltInEnv, JsonPathEnv
+from commcare_export.writers import StreamingMarkdownTableWriter
 
 api_client = CommCareHqClient(
     url="http://www.commcarehq.org",
@@ -356,20 +357,20 @@ query = Emit(
    source
 )
 
-print json.dumps(query.to_jvalue(), indent=2)
+print(json.dumps(query.to_jvalue(), indent=2))
 
 results = query.eval(BuiltInEnv() | CommCareHqEnv(api_client) | JsonPathEnv())
 
 if len(list(env.emitted_tables())) > 0:
-    # with writers.Excel2007TableWriter("excel-output.xlsx") as writer:
-    with writers.StreamingMarkdownTableWriter(sys.stdout) as writer:
+    # with Excel2007TableWriter("excel-output.xlsx") as writer:
+    with StreamingMarkdownTableWriter(sys.stdout) as writer:
         for table in env.emitted_tables():
             writer.write_table(table)
 ```
 
 Which will output JSON equivalent to this:
 
-```javascript
+```json
 {
     "Emit": {
         "headings": [
@@ -392,7 +393,7 @@ Which will output JSON equivalent to this:
                         }
                     ]
                 },
-                "name": None,
+                "name": null,
                 "source": {
                     "Apply": {
                         "args": [
