@@ -189,21 +189,21 @@ of that and adds a field to Excel query specifications to be joined on.
 Specifying the --users option or --with-organization option will export an
 additional table named 'commcare_users' containing the following columns:
 
-Column                           | Type | Note
-------                           | ---- | ----
-id                               | Text | Primary key
-default_phone_number             | Text |
-email                            | Text |
-first_name                       | Text |
-groups                           | Text |
-last_name                        | Text |
-phone_numbers                    | Text |
-resource_uri                     | Text |
-commcare_location_id             | Text | Foreign key into the commcare_locations table
-commcare_location_ids            | Text |
-commcare_primary_case_sharing_id | Text |
-commcare_project                 | Text |
-username                         | Text |
+| Column                           | Type | Note                                |
+|----------------------------------|------|-------------------------------------|
+| id                               | Text | Primary key                         |
+| default_phone_number             | Text |                                     |
+| email                            | Text |                                     |
+| first_name                       | Text |                                     |
+| groups                           | Text |                                     |
+| last_name                        | Text |                                     |
+| phone_numbers                    | Text |                                     |
+| resource_uri                     | Text |                                     |
+| commcare_location_id             | Text | Foreign key to `commcare_locations` |
+| commcare_location_ids            | Text |                                     |
+| commcare_primary_case_sharing_id | Text |                                     |
+| commcare_project                 | Text |                                     |
+| username                         | Text |                                     |
 
 The data in the 'commcare_users' table comes from the [List Mobile Workers
 API endpoint](https://confluence.dimagi.com/display/commcarepublic/List+Mobile+Workers).
@@ -211,28 +211,28 @@ API endpoint](https://confluence.dimagi.com/display/commcarepublic/List+Mobile+W
 Specifying the --locations option or --with-organization options will export
 an additional table named 'commcare_locations' containing the following columns:
 
-Column                       | Type | Note
-------                       | ---- | ----
-id                           | Text |
-created_at                   | Date |
-domain                       | Text |
-external_id                  | Text |
-last_modified                | Date |
-latitude                     | Text |
-location_data                | Text |
-location_id                  | Text | Primary key
-location_type                | Text |
-longitude                    | Text |
-name                         | Text |
-parent                       | Text | Resource URI of parent location
-resource_uri                 | Text |
-site_code                    | Text |
-location_type_administrative | Text |
-location_type_code           | Text |
-location_type_name           | Text |
-location_type_parent         | Text |
-*location level code*        | Text | Column name depends on project's organization
-*location level code*        | Text | Column name depends on project's organization
+| Column                       | Type | Note                                          |
+|------------------------------|------|-----------------------------------------------|
+| id                           | Text |                                               |
+| created_at                   | Date |                                               |
+| domain                       | Text |                                               |
+| external_id                  | Text |                                               |
+| last_modified                | Date |                                               |
+| latitude                     | Text |                                               |
+| location_data                | Text |                                               |
+| location_id                  | Text | Primary key                                   |
+| location_type                | Text |                                               |
+| longitude                    | Text |                                               |
+| name                         | Text |                                               |
+| parent                       | Text | Resource URI of parent location               |
+| resource_uri                 | Text |                                               |
+| site_code                    | Text |                                               |
+| location_type_administrative | Text |                                               |
+| location_type_code           | Text |                                               |
+| location_type_name           | Text |                                               |
+| location_type_parent         | Text |                                               |
+| *location level code*        | Text | Column name depends on project's organization |
+| *location level code*        | Text | Column name depends on project's organization |
 
 The data in the 'commcare_locations' table comes from the Location API
 endpoint along with some additional columns from the Location Type API
@@ -244,12 +244,12 @@ location at that level of your organization. Consider the example organization
 from the [CommCare help page](https://confluence.dimagi.com/display/commcarepublic/Setting+up+Organization+Levels+and+Structure).
 A piece of the 'commcare_locations' table could look like this:
 
-location_id | location_type_name | chw    | supervisor | clinic | district
------------ | ------------------ | ------ | ---------- | ------ | --------
-939fa8      | District           | NULL   | NULL       | NULL   | 939fa8
-c4cbef      | Clinic             | NULL   | NULL       | c4cbef | 939fa8
-a9ca40      | Supervisor         | NULL   | a9ca40     | c4cbef | 939fa8
-4545b9      | CHW                | 4545b9 | a9ca40     | c4cbef | 939fa8
+| location_id | location_type_name | chw    | supervisor | clinic | district |
+|-------------|--------------------|--------|------------|--------|----------|
+| 939fa8      | District           | NULL   | NULL       | NULL   | 939fa8   |
+| c4cbef      | Clinic             | NULL   | NULL       | c4cbef | 939fa8   |
+| a9ca40      | Supervisor         | NULL   | a9ca40     | c4cbef | 939fa8   |
+| 4545b9      | CHW                | 4545b9 | a9ca40     | c4cbef | 939fa8   |
 
 In order to join form or case data to 'commcare_users' and 'commcare_locations'
 the exported forms and cases need to contain a field identifying which user
@@ -448,9 +448,9 @@ referred to be name using `Ref`, and utilized via `Apply`.
 
 List of builtin functions:
 
-| Function                       | Description                                                                    | Example Usage                    |
-|--------------------------------|--------------------------------------------------------------------------------|----------------------------------|
-| `+, -, *, //, /, >, <, >=, <=` | Standard Math                                                                  |                                  |
+| Function                       | Description                                                                  | Example Usage                    |
+|--------------------------------|------------------------------------------------------------------------------|----------------------------------|
+| `+, -, *, //, /, >, <, >=, <=` | Standard Math                                                                |                                  |
 | len                          | Length                                                                         |                                  |
 | bool                         | Bool                                                                           |                                  |
 | str2bool                     | Convert string to boolean. True values are 'true', 't', '1' (case insensitive) |                                  |
@@ -462,7 +462,7 @@ List of builtin functions:
 | selected-at                  | Returns the Nth word in a string. N is zero-indexed.                           | selected-at(3) - return 4th word |
 | selected                     | Returns True if the given word is in the value.                                | selected(fever)                  |
 | count-selected               | Count the number of words                                                      |                                  |
-| json2str                     | Convert a JSON object to a string                                              |
+| json2str                     | Convert a JSON object to a string                                              |                                  |
 | template                     | Render a string template (not robust)                                          | template({} on {}, state, date)  |
 | attachment_url               | Convert an attachment name into it's download URL                              |                                  |
 | form_url                     | Output the URL to the form view on CommCare HQ                                 |                                  |
