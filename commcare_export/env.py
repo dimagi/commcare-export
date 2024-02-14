@@ -602,8 +602,11 @@ class EmitterEnv(Env):
                 and 'Row size too large' in str(err)
             ):
                 logging.error(
-                    'Row size too large. You may be trying to export too many '
-                    'columns. A maximum of 200 columns is suggested.'
+                    'Row size too large. The amount of data required by rows '
+                    'is more than this type of database table allows. One '
+                    'way to resolve this error is to reduce the number of '
+                    'columns that you are exporting. A general guideline is '
+                    'not to exceed 200 columns.'
                 )
                 sys.exit(1)
             else:
