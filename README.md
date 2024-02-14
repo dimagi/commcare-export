@@ -28,9 +28,10 @@ This tool is tested with Python versions from 3.8 to 3.12.
 ```shell
 $ python3 --version
 ```
-If Python is installed, its version will be listed.
+If Python is installed, its version will be shown.
 
-If Python isn't installed, [download and install](https://www.python.org/downloads/) the latest release. 
+If Python isn't installed, [download and install](https://www.python.org/downloads/)
+a version of Python from 3.8 to 3.12.
 
 ## Virtualenv (Optional)
 
