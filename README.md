@@ -448,26 +448,26 @@ referred to be name using `Ref`, and utilized via `Apply`.
 
 List of builtin functions:
 
-| Function                       | Description                                                                  | Example Usage                    |
-|--------------------------------|------------------------------------------------------------------------------|----------------------------------|
-| `+, -, *, //, /, >, <, >=, <=` | Standard Math                                                                |                                  |
-| len                          | Length                                                                         |                                  |
-| bool                         | Bool                                                                           |                                  |
-| str2bool                     | Convert string to boolean. True values are 'true', 't', '1' (case insensitive) |                                  |
-| str2date                     | Convert string to date                                                         |                                  |
-| bool2int                     | Convert boolean to integer (0, 1)                                              |                                  |
-| str2num                      | Parse string as a number                                                       |                                  |
-| format-uuid                  | Parse a hex UUID, and format it into hyphen-separated groups                   |                                  |
-| substr                       | Returns substring indexed by [first arg, second arg), zero-indexed.            | substr(2, 5) of 'abcdef' = 'cde' |
-| selected-at                  | Returns the Nth word in a string. N is zero-indexed.                           | selected-at(3) - return 4th word |
-| selected                     | Returns True if the given word is in the value.                                | selected(fever)                  |
-| count-selected               | Count the number of words                                                      |                                  |
-| json2str                     | Convert a JSON object to a string                                              |                                  |
-| template                     | Render a string template (not robust)                                          | template({} on {}, state, date)  |
-| attachment_url               | Convert an attachment name into it's download URL                              |                                  |
-| form_url                     | Output the URL to the form view on CommCare HQ                                 |                                  |
-| case_url                     | Output the URL to the case view on CommCare HQ                                 |                                  |
-| unique                       | Ouptut only unique values in a list                                            |                                  |
+| Function                       | Description                                                                    | Example Usage                    |
+|--------------------------------|--------------------------------------------------------------------------------|----------------------------------|
+| `+, -, *, //, /, >, <, >=, <=` | Standard Math                                                                  |                                  |
+| len                            | Length                                                                         |                                  |
+| bool                           | Bool                                                                           |                                  |
+| str2bool                       | Convert string to boolean. True values are 'true', 't', '1' (case insensitive) |                                  |
+| str2date                       | Convert string to date                                                         |                                  |
+| bool2int                       | Convert boolean to integer (0, 1)                                              |                                  |
+| str2num                        | Parse string as a number                                                       |                                  |
+| format-uuid                    | Parse a hex UUID, and format it into hyphen-separated groups                   |                                  |
+| substr                         | Returns substring indexed by [first arg, second arg), zero-indexed.            | substr(2, 5) of 'abcdef' = 'cde' |
+| selected-at                    | Returns the Nth word in a string. N is zero-indexed.                           | selected-at(3) - return 4th word |
+| selected                       | Returns True if the given word is in the value.                                | selected(fever)                  |
+| count-selected                 | Count the number of words                                                      |                                  |
+| json2str                       | Convert a JSON object to a string                                              |                                  |
+| template                       | Render a string template (not robust)                                          | template({} on {}, state, date)  |
+| attachment_url                 | Convert an attachment name into it's download URL                              |                                  |
+| form_url                       | Output the URL to the form view on CommCare HQ                                 |                                  |
+| case_url                       | Output the URL to the case view on CommCare HQ                                 |                                  |
+| unique                         | Ouptut only unique values in a list                                            |                                  |
 
 Output Formats
 --------------
