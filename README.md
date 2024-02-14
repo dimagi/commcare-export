@@ -71,6 +71,7 @@ $ venv
 Install CommCare Export via `pip`
 
 ```shell
+$ pip install setuptools
 $ pip install commcare-export
 ```
 
