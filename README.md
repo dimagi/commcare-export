@@ -74,7 +74,7 @@ Install CommCare Export via `pip`
 $ pip install commcare-export
 ```
 
-## CommCareHQ
+## CommCare HQ
 
 1. Sign up for [CommCare HQ](https://www.commcarehq.org/) if you have not already.
 
