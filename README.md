@@ -42,23 +42,23 @@ More about virtualenvs on https://docs.python.org/3/tutorial/venv.html
 Setup a virtual environment using:
 
 ```shell
-$ python3 -m venv .venv
+$ python3 -m venv venv
 ```
 
 Activate virtual environment by running:
 
 ```shell
-source .venv/bin/activate
+$ source venv/bin/activate
 ```
 
 **Note**: virtualenv needs to be activated each time you start a new terminal session or command line prompt.
 
 For convenience, to avoid doing that, you can create an alias to activate virtual environments in
-".venv" directory by adding the following to your
+"venv" directory by adding the following to your
 `.bashrc` or `.zshrc` file:
 
 ```shell
-alias venv='if [[ -d .venv ]] ; then source .venv/bin/activate ; fi'
+$ alias venv='if [[ -d venv ]] ; then source venv/bin/activate ; fi'
 ```
 
 Then you can activate virtual environments with simply typing
@@ -530,8 +530,8 @@ Contributing
 ```shell
 $ git clone git@github.com:dimagi/commcare-export.git
 $ cd commcare-export
-$ python3 -m venv .venv
-$ source .venv/bin/activate
+$ python3 -m venv venv
+$ source venv/bin/activate
 $ pip install -e ".[test]"
 $ git checkout -b my-super-duper-feature
 ```
