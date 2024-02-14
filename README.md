@@ -363,7 +363,6 @@ print(json.dumps(query.to_jvalue(), indent=2))
 results = query.eval(BuiltInEnv() | CommCareHqEnv(api_client) | JsonPathEnv())
 
 if len(list(env.emitted_tables())) > 0:
-    # with Excel2007TableWriter("excel-output.xlsx") as writer:
     with StreamingMarkdownTableWriter(sys.stdout) as writer:
         for table in env.emitted_tables():
             writer.write_table(table)
