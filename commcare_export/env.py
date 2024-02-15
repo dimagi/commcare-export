@@ -1,6 +1,8 @@
 import hashlib
 import json
+import logging
 import operator
+import sys
 import uuid
 from typing import Any, Dict, Union, overload
 
@@ -11,6 +13,8 @@ from commcare_export.misc import unwrap, unwrap_val
 from commcare_export.repeatable_iterator import RepeatableIterator
 from jsonpath_ng import jsonpath
 from jsonpath_ng.parser import parse as parse_jsonpath
+
+logger = logging.getLogger(__name__)
 
 JSONPATH_CACHE = {}
 
@@ -590,7 +594,23 @@ class EmitterEnv(Env):
     def emit_table(self, table_spec):
         self.emitted = True
         table_spec.rows = self._unwrap_row_vals(table_spec.rows)
-        self.writer.write_table(table_spec)
+        try:
+            self.writer.write_table(table_spec)
+        except Exception as err:
+            if (
+                not logger.isEnabledFor(logging.DEBUG)  # not --verbose
+                and 'Row size too large' in str(err)
+            ):
+                logging.error(
+                    'Row size too large. The amount of data required by rows '
+                    'is more than this type of database table allows. One '
+                    'way to resolve this error is to reduce the number of '
+                    'columns that you are exporting. A general guideline is '
+                    'not to exceed 200 columns.'
+                )
+                sys.exit(1)
+            else:
+                raise
 
     def has_emitted_tables(self):
         return self.emitted
