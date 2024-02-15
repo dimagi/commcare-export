@@ -21,62 +21,61 @@ Once on a terminal window or command line, for simplicity, run commands from the
 
 ### Python
 
-Check for python installed. 
-This tool is [tested with Python 3.6, 3.7, and 3.8](https://app.travis-ci.com/dimagi/commcare-export).
+Check which Python version is installed.
 
+This tool is tested with Python versions from 3.8 to 3.12.
 
 ```shell
-$ python --version
 $ python3 --version
 ```
-If python is installed, all of its available versions would be listed.
+If Python is installed, its version will be shown.
 
-If python isn't installed, Install Python 3.8 from [this link](https://www.python.org/downloads/). 
+If Python isn't installed, [download and install](https://www.python.org/downloads/)
+a version of Python from 3.8 to 3.12.
 
 ## Virtualenv (Optional)
 
 It is recommended to set up a virtual environment for CommCare Export
-to avoid conflicts with other python applications.
+to avoid conflicts with other Python applications.
 
 More about virtualenvs on https://docs.python.org/3/tutorial/venv.html
 
 Setup a virtual environment using:
 
 ```shell
-$ python3.8 -m venv .commcare-export-venv # update python version for the one installed
+$ python3 -m venv venv
 ```
 
 Activate virtual environment by running:
 
 ```shell
-source .commcare-export-venv/bin/activate
+$ source venv/bin/activate
 ```
 
 **Note**: virtualenv needs to be activated each time you start a new terminal session or command line prompt.
 
 For convenience, to avoid doing that, you can create an alias to activate virtual environments in
-".commcare-export-venv" directory by adding the following to your
+"venv" directory by adding the following to your
 `.bashrc` or `.zshrc` file:
 
 ```shell
-alias commcare-export-venv='if [[ -d .commcare-export-venv ]] ; then source .commcare-export-venv/bin/activate ; fi'
+$ alias venv='if [[ -d venv ]] ; then source venv/bin/activate ; fi'
 ```
 
 Then you can activate virtual environments with simply typing
 ```shell
-$ commcare-export-venv
+$ venv
 ```
 
 ## Install CommCare Export
 
 Install CommCare Export via `pip`
 
-```
-$ python3 -m pip install wheel
-$ python3 -m pip install commcare-export
+```shell
+$ pip install commcare-export
 ```
 
-## CommCareHQ
+## CommCare HQ
 
 1. Sign up for [CommCare HQ](https://www.commcarehq.org/) if you have not already.
 
@@ -93,7 +92,7 @@ $ python3 -m pip install commcare-export
 
 Now you can run the following examples:
 
-```
+```shell
 $ commcare-export \
      --query examples/demo-registration.xlsx \
      --project YOUR_PROJECT \
@@ -126,7 +125,7 @@ Command-line Usage
 
 The basic usage of the command-line tool is with a saved Excel or JSON query (see how to write these, below)
 
-```
+```shell
 $ commcare-export --commcare-hq <URL or alias like "local" or "prod"> \
                   --username <username> \
                   --project <project> \
@@ -191,21 +190,21 @@ of that and adds a field to Excel query specifications to be joined on.
 Specifying the --users option or --with-organization option will export an
 additional table named 'commcare_users' containing the following columns:
 
-Column                           | Type | Note
-------                           | ---- | ----
-id                               | Text | Primary key
-default_phone_number             | Text |
-email                            | Text |
-first_name                       | Text |
-groups                           | Text |
-last_name                        | Text |
-phone_numbers                    | Text |
-resource_uri                     | Text |
-commcare_location_id             | Text | Foreign key into the commcare_locations table
-commcare_location_ids            | Text |
-commcare_primary_case_sharing_id | Text |
-commcare_project                 | Text |
-username                         | Text |
+| Column                           | Type | Note                                |
+|----------------------------------|------|-------------------------------------|
+| id                               | Text | Primary key                         |
+| default_phone_number             | Text |                                     |
+| email                            | Text |                                     |
+| first_name                       | Text |                                     |
+| groups                           | Text |                                     |
+| last_name                        | Text |                                     |
+| phone_numbers                    | Text |                                     |
+| resource_uri                     | Text |                                     |
+| commcare_location_id             | Text | Foreign key to `commcare_locations` |
+| commcare_location_ids            | Text |                                     |
+| commcare_primary_case_sharing_id | Text |                                     |
+| commcare_project                 | Text |                                     |
+| username                         | Text |                                     |
 
 The data in the 'commcare_users' table comes from the [List Mobile Workers
 API endpoint](https://confluence.dimagi.com/display/commcarepublic/List+Mobile+Workers).
@@ -213,28 +212,28 @@ API endpoint](https://confluence.dimagi.com/display/commcarepublic/List+Mobile+W
 Specifying the --locations option or --with-organization options will export
 an additional table named 'commcare_locations' containing the following columns:
 
-Column                       | Type | Note
-------                       | ---- | ----
-id                           | Text |
-created_at                   | Date |
-domain                       | Text |
-external_id                  | Text |
-last_modified                | Date |
-latitude                     | Text |
-location_data                | Text |
-location_id                  | Text | Primary key
-location_type                | Text |
-longitude                    | Text |
-name                         | Text |
-parent                       | Text | Resource URI of parent location
-resource_uri                 | Text |
-site_code                    | Text |
-location_type_administrative | Text |
-location_type_code           | Text |
-location_type_name           | Text |
-location_type_parent         | Text |
-*location level code*        | Text | Column name depends on project's organization
-*location level code*        | Text | Column name depends on project's organization
+| Column                       | Type | Note                                          |
+|------------------------------|------|-----------------------------------------------|
+| id                           | Text |                                               |
+| created_at                   | Date |                                               |
+| domain                       | Text |                                               |
+| external_id                  | Text |                                               |
+| last_modified                | Date |                                               |
+| latitude                     | Text |                                               |
+| location_data                | Text |                                               |
+| location_id                  | Text | Primary key                                   |
+| location_type                | Text |                                               |
+| longitude                    | Text |                                               |
+| name                         | Text |                                               |
+| parent                       | Text | Resource URI of parent location               |
+| resource_uri                 | Text |                                               |
+| site_code                    | Text |                                               |
+| location_type_administrative | Text |                                               |
+| location_type_code           | Text |                                               |
+| location_type_name           | Text |                                               |
+| location_type_parent         | Text |                                               |
+| *location level code*        | Text | Column name depends on project's organization |
+| *location level code*        | Text | Column name depends on project's organization |
 
 The data in the 'commcare_locations' table comes from the Location API
 endpoint along with some additional columns from the Location Type API
@@ -246,12 +245,12 @@ location at that level of your organization. Consider the example organization
 from the [CommCare help page](https://confluence.dimagi.com/display/commcarepublic/Setting+up+Organization+Levels+and+Structure).
 A piece of the 'commcare_locations' table could look like this:
 
-location_id | location_type_name | chw    | supervisor | clinic | district
------------ | ------------------ | ------ | ---------- | ------ | --------
-939fa8      | District           | NULL   | NULL       | NULL   | 939fa8
-c4cbef      | Clinic             | NULL   | NULL       | c4cbef | 939fa8
-a9ca40      | Supervisor         | NULL   | a9ca40     | c4cbef | 939fa8
-4545b9      | CHW                | 4545b9 | a9ca40     | c4cbef | 939fa8
+| location_id | location_type_name | chw    | supervisor | clinic | district |
+|-------------|--------------------|--------|------------|--------|----------|
+| 939fa8      | District           | NULL   | NULL       | NULL   | 939fa8   |
+| c4cbef      | Clinic             | NULL   | NULL       | c4cbef | 939fa8   |
+| a9ca40      | Supervisor         | NULL   | a9ca40     | c4cbef | 939fa8   |
+| 4545b9      | CHW                | 4545b9 | a9ca40     | c4cbef | 939fa8   |
 
 In order to join form or case data to 'commcare_users' and 'commcare_locations'
 the exported forms and cases need to contain a field identifying which user
@@ -322,12 +321,13 @@ for case in cases:
 To issue a `minilinq` query against it, and then print out that query in a JSON serialization:
 
 ```python
-import getpass
 import json
+import sys
 from commcare_export.minilinq import *
 from commcare_export.commcare_hq_client import CommCareHqClient
 from commcare_export.commcare_minilinq import CommCareHqEnv
-from commcare_export.env import BuiltInEnv
+from commcare_export.env import BuiltInEnv, JsonPathEnv
+from commcare_export.writers import StreamingMarkdownTableWriter
 
 api_client = CommCareHqClient(
     url="http://www.commcarehq.org",
@@ -358,20 +358,19 @@ query = Emit(
    source
 )
 
-print json.dumps(query.to_jvalue(), indent=2)
+print(json.dumps(query.to_jvalue(), indent=2))
 
 results = query.eval(BuiltInEnv() | CommCareHqEnv(api_client) | JsonPathEnv())
 
 if len(list(env.emitted_tables())) > 0:
-    # with writers.Excel2007TableWriter("excel-output.xlsx") as writer:
-    with writers.StreamingMarkdownTableWriter(sys.stdout) as writer:
+    with StreamingMarkdownTableWriter(sys.stdout) as writer:
         for table in env.emitted_tables():
             writer.write_table(table)
 ```
 
 Which will output JSON equivalent to this:
 
-```javascript
+```json
 {
     "Emit": {
         "headings": [
@@ -394,7 +393,7 @@ Which will output JSON equivalent to this:
                         }
                     ]
                 },
-                "name": None,
+                "name": null,
                 "source": {
                     "Apply": {
                         "args": [
@@ -452,23 +451,23 @@ List of builtin functions:
 | Function                       | Description                                                                    | Example Usage                    |
 |--------------------------------|--------------------------------------------------------------------------------|----------------------------------|
 | `+, -, *, //, /, >, <, >=, <=` | Standard Math                                                                  |                                  |
-| len                          | Length                                                                         |                                  |
-| bool                         | Bool                                                                           |                                  |
-| str2bool                     | Convert string to boolean. True values are 'true', 't', '1' (case insensitive) |                                  |
-| str2date                     | Convert string to date                                                         |                                  |
-| bool2int                     | Convert boolean to integer (0, 1)                                              |                                  |
-| str2num                      | Parse string as a number                                                       |                                  |
-| format-uuid                  | Parse a hex UUID, and format it into hyphen-separated groups                   |                                  |
-| substr                       | Returns substring indexed by [first arg, second arg), zero-indexed.            | substr(2, 5) of 'abcdef' = 'cde' |
-| selected-at                  | Returns the Nth word in a string. N is zero-indexed.                           | selected-at(3) - return 4th word |
-| selected                     | Returns True if the given word is in the value.                                | selected(fever)                  |
-| count-selected               | Count the number of words                                                      |                                  |
-| json2str                     | Convert a JSON object to a string                                              |
-| template                     | Render a string template (not robust)                                          | template({} on {}, state, date)  |
-| attachment_url               | Convert an attachment name into it's download URL                              |                                  |
-| form_url                     | Output the URL to the form view on CommCare HQ                                 |                                  |
-| case_url                     | Output the URL to the case view on CommCare HQ                                 |                                  |
-| unique                       | Ouptut only unique values in a list                                            |                                  |
+| len                            | Length                                                                         |                                  |
+| bool                           | Bool                                                                           |                                  |
+| str2bool                       | Convert string to boolean. True values are 'true', 't', '1' (case insensitive) |                                  |
+| str2date                       | Convert string to date                                                         |                                  |
+| bool2int                       | Convert boolean to integer (0, 1)                                              |                                  |
+| str2num                        | Parse string as a number                                                       |                                  |
+| format-uuid                    | Parse a hex UUID, and format it into hyphen-separated groups                   |                                  |
+| substr                         | Returns substring indexed by [first arg, second arg), zero-indexed.            | substr(2, 5) of 'abcdef' = 'cde' |
+| selected-at                    | Returns the Nth word in a string. N is zero-indexed.                           | selected-at(3) - return 4th word |
+| selected                       | Returns True if the given word is in the value.                                | selected(fever)                  |
+| count-selected                 | Count the number of words                                                      |                                  |
+| json2str                       | Convert a JSON object to a string                                              |                                  |
+| template                       | Render a string template (not robust)                                          | template({} on {}, state, date)  |
+| attachment_url                 | Convert an attachment name into it's download URL                              |                                  |
+| form_url                       | Output the URL to the form view on CommCare HQ                                 |                                  |
+| case_url                       | Output the URL to the case view on CommCare HQ                                 |                                  |
+| unique                         | Ouptut only unique values in a list                                            |                                  |
 
 Output Formats
 --------------
@@ -497,7 +496,7 @@ Required dependencies will be automatically installed via pip. But since
 you may not care about all export formats, the various dependencies there
 are optional. Here is how you might install them:
 
-```
+```shell
 # To export "xlsx"
 $ pip install "commcare-export[xlsx]"
 
@@ -515,7 +514,7 @@ $ pip install "commcare-export[odbc]"
 
 # To sync with another SQL database supported by SQLAlchemy
 $ pip install "commcare-export[base_sql]"
-# Then install the python package for your database
+# Then install the Python package for your database
 ```
 
 Contributing
@@ -525,12 +524,13 @@ Contributing
 
 1\. Fork the repository at https://github.com/dimagi/commcare-export.
 
-2\. Clone your fork, install into a `virtualenv`, and start a feature branch
+2\. Clone your fork, install into a virtualenv, and start a feature branch
 
-```
-$ mkvirtualenv commcare-export
+```shell
 $ git clone git@github.com:dimagi/commcare-export.git
 $ cd commcare-export
+$ python3 -m venv venv
+$ source venv/bin/activate
 $ pip install -e ".[test]"
 $ git checkout -b my-super-duper-feature
 ```
@@ -539,7 +539,7 @@ $ git checkout -b my-super-duper-feature
 
 4\. Make sure the tests pass. The best way to test for all versions is to sign up for https://travis-ci.org and turn on automatic continuous testing for your fork.
 
-```
+```shell
 $ py.test
 =============== test session starts ===============
 platform darwin -- Python 2.7.3 -- pytest-2.3.4
@@ -556,13 +556,13 @@ tests/test_writers.py ...
 
 5\. Type hints are used in the `env` and `minilinq` modules. Check that any changes in those modules adhere to those types:
 
-```
+```shell
 $ mypy --install-types @mypy_typed_modules.txt
 ```
 
 6\. Push the feature branch up
 
-```
+```shell
 $ git push -u origin my-super-duper-feature
 ```
 
@@ -575,21 +575,21 @@ Release process
 
 1\. Create a tag for the release
 
-```
+```shell
 $ git tag -a "X.YY.0" -m "Release X.YY.0"
 $ git push --tags
 ```
 
 2\. Create the source distribution
 
-```
+```shell
 $ python setup.py sdist
 ```
 Ensure that the archive (`dist/commcare-export-X.YY.0.tar.gz`) has the correct version number (matching the tag name).
 
 3\. Upload to pypi
 
-```
+```shell
 $ pip install twine
 $ twine upload -u dimagi dist/commcare-export-X.YY.0.tar.gz
 ```
@@ -608,28 +608,28 @@ Testing and Test Databases
 
 The following command will run the entire test suite (requires DB environment variables to be set as per below):
 
-```
+```shell
 $ py.test
 ```
 
 To run an individual test class or method you can run, e.g.:
 
-```
+```shell
 $ py.test -k "TestExcelQuery"
 $ py.test -k "test_get_queries_from_excel"
 ```
 
 To exclude the database tests you can run:
 
-```
+```shell
 $ py.test -m "not dbtest"
 ```
 
 When running database tests, supported databases are PostgreSQL, MySQL, MSSQL.
 
 To run tests against selected databases can be done using test marks as follows:
-```
-py.test -m [postgres,mysql,mssql]
+```shell
+$ py.test -m [postgres,mysql,mssql]
 ```
 
 Database URLs can be overridden via environment variables:
@@ -641,7 +641,7 @@ MSSQL_URL=mssql+pyodbc://user:password@host/
 
 Postgresql
 ==========
-```
+```shell
 $ docker pull postgres:9.6
 $ docker run --name ccexport-postgres -p 5432:5432 -e POSTGRES_PASSWORD=postgres -d postgres:9.6
 $ export POSTGRES_URL=postgresql://postgres:postgres@localhost/
@@ -651,7 +651,7 @@ $ export POSTGRES_URL=postgresql://postgres:postgres@localhost/
 
 MySQL
 =====
-```
+```shell
 $ docker pull mysql
 $ docker run --name ccexport-mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=pw -e MYSQL_USER=travis -e MYSQL_PASSWORD='' -d mysql
 
@@ -663,7 +663,7 @@ mysql> GRANT ALL PRIVILEGES ON *.* TO 'travis'@'%';
 
 MSSQL
 =====
-```
+```shell
 $ docker pull mcr.microsoft.com/mssql/server:2017-latest 
 $ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=Password@123" -p 1433:1433 --name mssql1 -d microsoft/mssql-server-linux:2017-latest
 
@@ -678,7 +678,7 @@ $ odbcinst -q -d
 
 MSSQL for Mac OS
 ==========
-```
+```shell
 $ docker pull mcr.microsoft.com/mssql/server:2017-latest 
 $ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=Password@123" -p 1433:1433 --name mssql1 -d microsoft/mssql-server-linux:2017-latest
 
@@ -693,7 +693,7 @@ Setup=/usr/local/lib/libtdsodbc.so
 UsageCount=1
 
 # Create a soft link from /etc/odbcinst.ini to actual file
-sudo ln -s /usr/local/etc/odbcinst.ini /etc/odbcinst.ini
+$ sudo ln -s /usr/local/etc/odbcinst.ini /etc/odbcinst.ini
 
 ```
 
@@ -705,9 +705,9 @@ access to the corpora domain.
 
 These need to be set as environment variables as follows:
 
-```
-export HQ_USERNAME=<username>
-export HQ_API_KEY=<apikey>
+```shell
+$ export HQ_USERNAME=<username>
+$ export HQ_API_KEY=<apikey>
 ```
 
 For Travis builds these are included as encrypted vars in the travis
