@@ -661,18 +661,3 @@ export HQ_API_KEY=<apikey>
 
 For Travis builds these are included as encrypted vars in the travis
 config.
-
-
-Compiling executable files locally
------------------------------------
-The DET executable files are compiled using a tool called [pyinstaller](https://pyinstaller.org/en/stable/).
-Pyinstaller is very easy to use, but only works out-of-the-box for Linux as support for cross-compilation was
-dropped in earlier releases. Another tool, [wine](https://www.winehq.org/), can be used in conjuction with
-pyinstaller to compile the Windows exe files.
-
-Luckily in the world we live there's a repo out there called [docker-pyinstaller](https://github.com/cdrx/docker-pyinstaller)
-which takes you through very simple steps to pull and use docker images to generate both the Linux binary and 
-Windows .exe files, so we don't ever have to worry about installing any additional packages ourselves.
-
-Please note that the `commcare-export.spec` file used by the docker containers is already defined and sits at the top of this project.
-It shouldn't be necessary for you to change any parameters in the file.
