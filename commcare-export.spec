@@ -5,7 +5,10 @@ a = Analysis(
     ['commcare_export/cli.py'],
     pathex=[],
     binaries=[],
-    datas=[('./commcare_export', '.')],
+    datas=[
+        ('./commcare_export', './commcare_export'),
+        ('./migrations', './migrations'),
+    ],
     hiddenimports=[
         'sqlalchemy.sql.default_comparator',
     ],
