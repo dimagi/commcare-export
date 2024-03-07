@@ -8,7 +8,7 @@ set -e
 
 cd /src
 
-pip install .
+pip install commcare-export
 pip install -r build_exe/requirements.txt
 
 pyinstaller --clean -y --dist ./dist/linux --workpath /tmp *.spec
