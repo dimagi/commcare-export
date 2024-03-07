@@ -602,6 +602,12 @@ https://pypi.python.org/pypi/commcare-export
 
 https://github.com/dimagi/commcare-export/releases
 
+Once the release is published a GitHub workflow is kicked off that compiles an executable of the DET compatible with
+running on a Linux machine (Windows coming soon), adding it as a release asset.
+
+If you decide to download and use the executable file, please make sure the file has the executable permission enabled,
+after which it can be invoked like any other executable though the command line.
+
 
 Testing and Test Databases
 --------------------------
