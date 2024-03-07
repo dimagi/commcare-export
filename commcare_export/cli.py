@@ -197,14 +197,14 @@ def main(argv):
 
     if args.version:
         print('commcare-export version {}'.format(__version__))
-        exit(0)
+        sys.exit(0)
 
     if not args.project:
         print(
             'commcare-export: error: argument --project is required',
             file=sys.stderr
         )
-        exit(1)
+        sys.exit(1)
 
     if args.profile:
         # hotshot is gone in Python 3
@@ -214,7 +214,7 @@ def main(argv):
         profile.start()
 
     try:
-        exit(main_with_args(args))
+        sys.exit(main_with_args(args))
     finally:
         if args.profile:
             profile.close()
