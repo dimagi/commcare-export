@@ -1,0 +1,26 @@
+name: commcare-export release actions
+on:
+  release:
+    types: [published]
+
+jobs:
+  generate_release_assets:
+    name: Generate release assets
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Pull pyinstaller docker image
+        run: |
+          docker pull dimagi/commcare-export-pyinstaller-linux
+
+      - name: Compile linux binary
+        run: |
+          docker run -v "$(pwd):/src/" dimagi/commcare-export-pyinstaller-linux
+
+      - name: Upload release assets
+        uses: AButler/upload-release-assets@v3.0
+        with:
+          files: "./dist/linux/*"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
