@@ -11,8 +11,9 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from commcare_export.data_types import UnknownDataType, get_sqlalchemy_type
 from commcare_export.specs import TableSpec
-from commcare_export import logger
+from commcare_export import get_logger
 
+logger = get_logger(__file__)
 MAX_COLUMN_SIZE = 2000
 
 

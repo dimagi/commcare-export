@@ -28,9 +28,10 @@ from commcare_export.misc import default_to_json
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.utils import get_checkpoint_manager
 from commcare_export.version import __version__
-from commcare_export import logger, get_error_logger
+from commcare_export import get_logger, get_error_logger
 
 EXIT_STATUS_ERROR = 1
+logger = get_logger(__file__)
 
 commcare_hq_aliases = {
     'local': 'http://localhost:8000',

@@ -6,7 +6,9 @@ from commcare_export.env import Env
 from commcare_export.misc import unwrap, unwrap_val
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.specs import TableSpec
-from commcare_export import logger
+from commcare_export import get_logger
+
+logger = get_logger(__file__)
 
 
 class MiniLinq(object):

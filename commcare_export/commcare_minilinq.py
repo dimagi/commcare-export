@@ -13,7 +13,9 @@ from dateutil.parser import ParserError, parse
 
 from commcare_export.env import CannotBind, CannotReplace, DictEnv
 from commcare_export.misc import unwrap
-from commcare_export import logger
+from commcare_export import get_logger
+
+logger = get_logger(__file__)
 
 SUPPORTED_RESOURCES = {
     'form',

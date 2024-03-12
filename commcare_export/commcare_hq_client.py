@@ -20,7 +20,7 @@ from requests.auth import AuthBase, HTTPDigestAuth
 
 import commcare_export
 from commcare_export.repeatable_iterator import RepeatableIterator
-from commcare_export import logger
+from commcare_export import get_logger
 
 AUTH_MODE_PASSWORD = 'password'
 AUTH_MODE_APIKEY = 'apikey'
@@ -28,6 +28,8 @@ AUTH_MODE_APIKEY = 'apikey'
 
 LATEST_KNOWN_VERSION = '0.5'
 RESOURCE_REPEAT_LIMIT = 10
+
+logger = get_logger(__file__)
 
 
 def on_wait(details):

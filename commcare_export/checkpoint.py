@@ -12,10 +12,9 @@ from sqlalchemy.orm import sessionmaker
 from commcare_export.commcare_minilinq import PaginationMode
 from commcare_export.exceptions import DataExportException
 from commcare_export.writers import SqlMixin
-from commcare_export import logger
+from commcare_export import get_logger, repo_root
 
-repo_root = os.path.abspath(os.path.join(__file__, os.pardir, os.pardir))
-
+logger = get_logger(__file__)
 Base = declarative_base()
 
 
