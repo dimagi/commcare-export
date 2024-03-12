@@ -24,7 +24,7 @@ version = commcare_export.version.version()
 # Crash if the VERSION is not a simple version and it is going to register or upload
 if 'register' in sys.argv or 'upload' in sys.argv:
     version = commcare_export.version.stored_version()
-    if not version or not re.match('\d+\.\d+\.\d+', version):
+    if not version or not re.match(r'\d+\.\d+\.\d+', version):
         print('Version %s is not an appropriate version for publicizing!' %
               version)
         sys.exit(1)
@@ -109,9 +109,11 @@ setuptools.setup(
         'Intended Audience :: End Users/Desktop',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
         'Topic :: Database',
         'Topic :: Software Development :: Interpreters',
         'Topic :: System :: Archiving',
