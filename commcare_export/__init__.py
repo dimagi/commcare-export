@@ -21,7 +21,7 @@ def logger_name_from_filepath(filepath):
     return (
         relative_path.
         replace('/', '.').
-        replace('.py', '')
+        strip('.py')
     )
 
 
