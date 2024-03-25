@@ -151,7 +151,7 @@ def main(argv):
         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
     )
 
-    exit(main_with_args(args))
+    sys.exit(main_with_args(args))
 
 
 def main_with_args(args):

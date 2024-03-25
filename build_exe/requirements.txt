@@ -1,0 +1,8 @@
+# This file is only used by pyinstaller to create the executable DET instance
+chardet
+psycopg2-binary
+pymysql
+pyodbc
+urllib3==1.26.7
+xlwt
+openpyxl
