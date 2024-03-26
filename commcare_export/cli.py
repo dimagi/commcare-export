@@ -214,7 +214,7 @@ def main(argv):
 
     if args.version:
         print('commcare-export version {}'.format(__version__))
-        exit(0)
+        sys.exit(0)
 
     if not args.project:
         error_msg = "commcare-export: error: argument --project is required"
@@ -225,7 +225,7 @@ def main(argv):
         )
         # Output to console for debugging
         print(error_msg)
-        exit(1)
+        sys.exit(1)
 
     if args.profile:
         # hotshot is gone in Python 3
@@ -240,7 +240,7 @@ def main(argv):
             exit_code = main_with_args(args)
             if exit_code > 0:
                 print("Error occurred! See log file for error.")
-            exit(exit_code)
+            sys.exit(exit_code)
         except Exception:
             print("Error occurred! See log file for error.")
             raise
