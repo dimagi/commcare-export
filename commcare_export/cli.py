@@ -2,10 +2,9 @@ import argparse
 import getpass
 import io
 import json
-import logging
 import os.path
 import sys
-
+import logging
 import dateutil.parser
 import requests
 import sqlalchemy
@@ -29,10 +28,10 @@ from commcare_export.misc import default_to_json
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.utils import get_checkpoint_manager
 from commcare_export.version import __version__
+from commcare_export import get_logger, get_error_logger
 
 EXIT_STATUS_ERROR = 1
-
-logger = logging.getLogger(__name__)
+logger = get_logger(__file__)
 
 commcare_hq_aliases = {
     'local': 'http://localhost:8000',
@@ -167,7 +166,14 @@ CLI_ARGS = [
         "form.form..case, messaging-event.messages.[*] And you want to "
         "have a record exported even if the nested document does not "
         "exist or is empty.",
-    )
+    ),
+    Argument(
+        'no-logfile',
+        default=False,
+        help="Specify in order to prevent information being logged to the log file and"
+             " show all output in the console.",
+        action='store_true',
+    ),
 ]
 
 
@@ -179,6 +185,17 @@ def main(argv):
         arg.add_to_parser(parser)
 
     args = parser.parse_args(argv)
+
+    if not args.no_logfile:
+        exe_dir = os.path.dirname(sys.executable)
+        log_file = os.path.join(exe_dir, "commcare_export.log")
+        print(f"Printing logs to {log_file}")
+        logging.basicConfig(
+            filename=log_file,
+            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+            filemode='w',
+        )
+        sys.stderr = get_error_logger()
 
     if args.verbose:
         logging.basicConfig(
@@ -200,10 +217,14 @@ def main(argv):
         sys.exit(0)
 
     if not args.project:
+        error_msg = "commcare-export: error: argument --project is required"
+        # output to log file through sys.stderr
         print(
-            'commcare-export: error: argument --project is required',
+            error_msg,
             file=sys.stderr
         )
+        # Output to console for debugging
+        print(error_msg)
         sys.exit(1)
 
     if args.profile:
@@ -214,8 +235,17 @@ def main(argv):
         profile.start()
 
     try:
-        sys.exit(main_with_args(args))
+        print("Running export...")
+        try:
+            exit_code = main_with_args(args)
+            if exit_code > 0:
+                print("Error occurred! See log file for error.")
+            sys.exit(exit_code)
+        except Exception:
+            print("Error occurred! See log file for error.")
+            raise
     finally:
+        print("Export finished!")
         if args.profile:
             profile.close()
             stats = hotshot.stats.load(args.profile)
@@ -408,9 +438,11 @@ def main_with_args(args):
         return EXIT_STATUS_ERROR
 
     if not args.username:
+        logger.warn("Username not provided")
         args.username = input('Please provide a username: ')
 
     if not args.password:
+        logger.warn("Password not provided")
         # Windows getpass does not accept unicode
         args.password = getpass.getpass()
 

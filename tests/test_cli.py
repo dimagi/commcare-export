@@ -351,6 +351,7 @@ def _pull_data(writer, checkpoint_manager, query, since, until, batch_size=10):
         batch_size=batch_size,
         since=since,
         until=until,
+        no_logfile=True,
     )
 
     # set this so that it gets written to the checkpoints
