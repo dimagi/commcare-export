@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from .version import __version__
 
 repo_root = os.path.abspath(os.path.join(__file__, os.pardir, os.pardir))
@@ -18,11 +19,8 @@ class Logger:
 
 def logger_name_from_filepath(filepath):
     relative_path = os.path.relpath(filepath, start=repo_root)
-    return (
-        relative_path.
-        replace('/', '.').
-        strip('.py')
-    )
+    cleaned_path = relative_path.replace('/', '.')
+    return re.sub(r'\.py$', '', cleaned_path)
 
 
 def get_error_logger():

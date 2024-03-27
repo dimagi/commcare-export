@@ -27,3 +27,7 @@ class TestLoggerNameFromFilePath:
     def test_file_dir_contains_periods(self):
         path = self._file_path("sub.dir/pytest.py")
         assert logger_name_from_filepath(path) == 'sub.dir.pytest'
+
+    def test_random_file_name(self):
+        path = self._file_path("pyppy.excel_query.py")
+        assert logger_name_from_filepath(path) == 'pyppy.excel_query'
