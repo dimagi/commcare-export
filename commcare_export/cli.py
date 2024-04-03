@@ -186,6 +186,12 @@ def main(argv):
 
     args = parser.parse_args(argv)
 
+    if args.output_format and args.output:
+        errors = []
+        errors.extend(validate_output_filename(args.output_format, args.output))
+        if errors:
+            raise Exception(f"Could not proceed. Following issues were found: {', '.join(errors)}.")
+
     if not args.no_logfile:
         exe_dir = os.path.dirname(sys.executable)
         log_file = os.path.join(exe_dir, "commcare_export.log")
@@ -252,6 +258,23 @@ def main(argv):
             stats.strip_dirs()
             stats.sort_stats('cumulative', 'calls')
             stats.print_stats(100)
+
+
+def validate_output_filename(output_format, output_filename):
+    """
+    Validate file extensions for csv, xls and xlsx output formats.
+    Ensure extension unless using sql output_format.
+    """
+    errors = []
+    if output_format == 'csv' and not output_filename.endswith('.zip'):
+        errors.append("For output format as csv, output file name should have extension zip")
+    elif output_format == 'xls' and not output_filename.endswith('.xls'):
+        errors.append("For output format as xls, output file name should have extension xls")
+    elif output_format == 'xlsx' and not output_filename.endswith('.xlsx'):
+        errors.append("For output format as xlsx, output file name should have extension xlsx")
+    elif output_format != 'sql' and "." not in output_filename:
+        errors.append("Missing extension in output file name")
+    return errors
 
 
 def _get_query(args, writer, column_enforcer=None):
