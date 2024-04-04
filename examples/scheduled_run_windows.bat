@@ -4,4 +4,4 @@ commcare-export --output-format <output_format> ^
  --project <domain> ^
  --commcare-hq https://commcarehq.org ^
  --auth-mode apikey ^
- --password <password> ^
+ --password <password>
