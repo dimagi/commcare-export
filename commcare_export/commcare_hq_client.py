@@ -164,7 +164,8 @@ class CommCareHqClient(object):
                             logger.error(
                                 f"#{e}. Please ensure that your CommCare HQ credentials are correct and auth-mode "
                                 f"is passed as 'apikey' if using API Key to authenticate. Also, verify that your "
-                                f"account has the necessary permissions to use commcare-export."
+                                f"account has access to the project and the necessary permissions to use "
+                                f"commcare-export."
                             )
                         else:
                             logger.error(str(e))

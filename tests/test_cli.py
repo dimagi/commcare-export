@@ -16,7 +16,7 @@ from commcare_export.checkpoint import (
     CheckpointManager,
     session_scope,
 )
-from commcare_export.cli import CLI_ARGS, main_with_args
+from commcare_export.cli import CLI_ARGS, main_with_args, validate_output_filename
 from commcare_export.commcare_hq_client import (
     CommCareHqClient,
     MockCommCareHqClient,
@@ -911,3 +911,71 @@ class TestCLIPaginationMode(object):
         assert checkpoint.pagination_mode == pagination_mode
         assert checkpoint.since_param == since_param
         assert checkpoint.last_doc_id == doc_id
+
+
+class TestValidateOutputFilename(unittest.TestCase):
+    def _test_file_extension(self, output_format, expected_extension):
+        error_message = (f"For output format as {output_format}, "
+                         f"output file name should have extension {expected_extension}")
+
+        errors = validate_output_filename(
+            output_format=output_format,
+            output_filename=f'correct_file_extension.{expected_extension}'
+        )
+        self.assertEqual(len(errors), 0)
+
+        errors = validate_output_filename(
+            output_format=output_format,
+            output_filename=f'incorrect_file_extension.abc'
+        )
+        self.assertListEqual(
+            errors,
+            [error_message]
+        )
+
+        # incorrectly using sql output with non sql formats
+        errors = validate_output_filename(
+            output_format=output_format,
+            output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase'
+        )
+        self.assertListEqual(
+            errors,
+            [error_message]
+        )
+
+    def test_for_csv_output(self):
+        self._test_file_extension(output_format='csv', expected_extension='zip')
+
+    def test_for_xls_output(self):
+        self._test_file_extension(output_format='xls', expected_extension='xls')
+
+    def test_for_xlsx_output(self):
+        self._test_file_extension(output_format='xlsx', expected_extension='xlsx')
+
+    def test_for_other_non_sql_output(self):
+        error_message = "Missing extension in output file name"
+
+        errors = validate_output_filename(
+            output_format='non_sql',
+            output_filename='correct_file.abc'
+        )
+        self.assertEqual(len(errors), 0)
+
+        errors = validate_output_filename(
+            output_format='non_sql',
+            output_filename='filename_without_extensionxls'
+        )
+        self.assertListEqual(
+            errors,
+            [error_message]
+        )
+
+        # incorrectly using sql output with non sql output formats
+        errors = validate_output_filename(
+            output_format='non_sql',
+            output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase'
+        )
+        self.assertListEqual(
+            errors,
+            [error_message]
+        )
