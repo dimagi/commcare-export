@@ -4,23 +4,50 @@ on:
     types: [published]
 
 jobs:
-  generate_release_assets:
-    name: Generate release assets
+  generate_linux_bin:
+    name: Generate Linux binary as release asset
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Pull pyinstaller docker image
-        run: |
-          docker pull dimagi/commcare-export-pyinstaller-linux
+      - name: Install pyinstaller
+        shell: bash
+        run: python -m pip install pyinstaller
 
-      - name: Compile linux binary
+      - name: Generate exe
+        shell: bash
         run: |
-          docker run -v "$(pwd):/src/" dimagi/commcare-export-pyinstaller-linux
+          pip install commcare-export
+          pip install -r build_exe/requirements.txt
+          pyinstaller --dist ./dist/linux commcare-export.spec
 
       - name: Upload release assets
         uses: AButler/upload-release-assets@v3.0
         with:
           files: "./dist/linux/*"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+  generate_windows_exe:
+    name: Generate Windows exe as release asset
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install pyinstaller
+        shell: pwsh
+        run: python -m pip install pyinstaller
+
+      - name: Generate exe
+        shell: pwsh
+        run: |
+          pip install commcare-export
+          pip install -r build_exe/requirements.txt
+          pyinstaller --dist ./dist/windows commcare-export.spec
+
+      - name: Upload release assets
+        uses: AButler/upload-release-assets@v3.0
+        with:
+          files: "./dist/windows/*"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
