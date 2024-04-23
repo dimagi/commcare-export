@@ -22,13 +22,15 @@ def digest_file(path):
 def unwrap(arg_name):
 
     def unwrapper(fn):
+        sig = inspect.signature(fn)
+        parameters = list(sig.parameters.keys())
+        position = parameters.index(arg_name)
 
         @functools.wraps(fn)
         def _inner(*args):
-            callargs = inspect.getcallargs(fn, *args)
-            val = callargs[arg_name]
-            callargs[arg_name] = unwrap_val(val)
-            return fn(**callargs)
+            args = list(args)
+            args[position] = unwrap_val(args[position])
+            return fn(*args)
 
         return _inner
 
