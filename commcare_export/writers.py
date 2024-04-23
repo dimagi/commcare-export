@@ -1,6 +1,6 @@
 import csv
 import datetime
-import io
+from tempfile import NamedTemporaryFile
 import zipfile
 from itertools import zip_longest
 
@@ -86,20 +86,20 @@ class CsvTableWriter(TableWriter):
 
     def write_table(self, table):
         if self.archive is None:
-            raise Exception('Attempt to write to a closed CsvWriter')
+            raise RuntimeError('Attempt to write to a closed CsvWriter')
 
-        tempfile = io.StringIO()
-        writer = csv.writer(tempfile, dialect=csv.excel)
-        writer.writerow(table.headings)
-        for row in table.rows:
-            writer.writerow(row)
+        with NamedTemporaryFile(mode='w') as tempfile:
+            writer = csv.writer(tempfile, dialect=csv.excel)
+            writer.writerow(table.headings)
+            for row in table.rows:
+                writer.writerow(row)
 
-        # TODO: make this a polite zip and put everything in a subfolder
-        #       with the same basename as the zipfile
-        self.archive.writestr(
-            f'{self.zip_safe_name(table.name)}.csv',
-            tempfile.getvalue().encode('utf-8')
-        )
+            # TODO: make this a polite zip and put everything in a subfolder
+            #       with the same basename as the zipfile
+            self.archive.write(
+                tempfile.name,
+                f'{self.zip_safe_name(table.name)}.csv',
+            )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.archive.close()
