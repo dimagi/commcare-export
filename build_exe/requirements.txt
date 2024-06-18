@@ -3,6 +3,6 @@ chardet
 psycopg2-binary
 pymysql
 pyodbc
-urllib3==1.26.7
+urllib3==1.26.19
 xlwt
 openpyxl
