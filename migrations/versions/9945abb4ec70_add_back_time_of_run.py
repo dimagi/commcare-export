@@ -16,8 +16,8 @@ depends_on = None
 
 
 def upgrade():
-    meta = sa.MetaData(bind=op.get_bind())
-    table = sa.Table('commcare_export_runs', meta, autoload=True)
+    meta = sa.MetaData(bind=op.get_bind(), future=True)
+    table = sa.Table('commcare_export_runs', meta, autoload_with=op.get_bind())
     if 'time_of_run' not in table.c:
         url = op.get_bind().engine.url
         collation = 'utf8_bin' if 'mysql' in url.drivername else None

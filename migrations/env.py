@@ -12,7 +12,7 @@ def run_migrations_online():
     if connectable is None:
         cmd_line_url = context.get_x_argument(as_dictionary=True).get('url')
         if cmd_line_url:
-            connectable = create_engine(cmd_line_url)
+            connectable = create_engine(cmd_line_url, future=True)
         else:
             raise Exception("No connection URL. Use '-x url=<url>'")
 

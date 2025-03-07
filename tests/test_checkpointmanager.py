@@ -1,7 +1,8 @@
 import datetime
 import uuid
 
-import sqlalchemy
+from sqlalchemy import text
+from sqlalchemy.pool import NullPool
 
 import pytest
 from commcare_export.checkpoint import (
@@ -21,18 +22,17 @@ def manager(db_params):
         '123',
         'test',
         'hq',
-        poolclass=sqlalchemy.pool.NullPool
+        poolclass=NullPool
     )
     try:
         yield manager
     finally:
         with manager:
             manager.connection.execute(
-                sqlalchemy.sql
-                .text('DROP TABLE IF EXISTS commcare_export_runs')
+                text('DROP TABLE IF EXISTS commcare_export_runs')
             )
             manager.connection.execute(
-                sqlalchemy.sql.text('DROP TABLE IF EXISTS alembic_version')
+                text('DROP TABLE IF EXISTS alembic_version')
             )
 
 
@@ -58,7 +58,7 @@ class TestCheckpointManager(object):
         self.test_create_checkpoint_table(manager, '9945abb4ec70')
         with manager:
             manager.connection.execute(
-                sqlalchemy.sql.text('DROP TABLE alembic_version')
+                text('DROP TABLE alembic_version')
             )
         manager.create_checkpoint_table()
 

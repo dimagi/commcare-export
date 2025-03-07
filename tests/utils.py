@@ -1,4 +1,5 @@
 from commcare_export.writers import SqlTableWriter
+from sqlalchemy import text
 
 
 class SqlWriterWithTearDown(SqlTableWriter):
@@ -14,5 +15,5 @@ class SqlWriterWithTearDown(SqlTableWriter):
 
     def tear_down(self):
         for table in self.tables:
-            self.engine.execute(f'DROP TABLE "{table}"')
+            self.engine.execute(text(f'DROP TABLE "{table}"'))
         self.tables = set()

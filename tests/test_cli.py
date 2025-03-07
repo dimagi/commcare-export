@@ -723,7 +723,7 @@ class TestCLIWithDataTypes(object):
             'tests/014_ExportWithDataTypes.xlsx'
         )
 
-        metadata = sqlalchemy.schema.MetaData(bind=writer.engine)
+        metadata = sqlalchemy.schema.MetaData(bind=writer.engine, future=True)
         table = sqlalchemy.Table(
             'forms',
             metadata,

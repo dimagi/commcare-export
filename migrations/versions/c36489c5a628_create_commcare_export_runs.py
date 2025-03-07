@@ -16,7 +16,7 @@ depends_on = None
 
 
 def upgrade():
-    meta = sa.MetaData(bind=op.get_bind())
+    meta = sa.MetaData(bind=op.get_bind(), future=True)
     meta.reflect()
 
     if 'commcare_export_runs' not in meta.tables:

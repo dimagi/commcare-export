@@ -4,6 +4,7 @@ import uuid
 
 import sqlalchemy
 from sqlalchemy.exc import DBAPIError
+from sqlalchemy import text
 
 import pytest
 
@@ -26,20 +27,21 @@ def _db_params(request, db_name):
     db_url = request.param['url']
     sudo_engine = sqlalchemy.create_engine(
         db_url % request.param.get('admin_db', ''),
-        poolclass=sqlalchemy.pool.NullPool
+        poolclass=sqlalchemy.pool.NullPool,
+        future=True
     )
     db_connection_url = db_url % db_name
 
     def tear_down():
         with sudo_engine.connect() as conn:
             if 'postgres' in db_url:
-                conn.execute('rollback')
+                conn.execute(text('rollback'))
             if 'mssql' in db_url:
                 conn.connection.connection.autocommit = True
-            conn.execute('drop database if exists %s' % db_name)
+            conn.execute(text('drop database if exists %s' % db_name))
 
     try:
-        with sqlalchemy.create_engine(db_connection_url).connect():
+        with sqlalchemy.create_engine(db_connection_url, future=True).connect():
             pass
     except (
         sqlalchemy.exc.OperationalError, sqlalchemy.exc.InternalError,
@@ -47,10 +49,10 @@ def _db_params(request, db_name):
     ):
         with sudo_engine.connect() as conn:
             if 'postgres' in db_url:
-                conn.execute('rollback')
+                conn.execute(text('rollback'))
             if 'mssql' in db_url:
                 conn.connection.connection.autocommit = True
-            conn.execute('create database %s' % db_name)
+            conn.execute(text('create database %s' % db_name))
     else:
         raise Exception(
             'Database %s already exists; refusing to overwrite' % db_name

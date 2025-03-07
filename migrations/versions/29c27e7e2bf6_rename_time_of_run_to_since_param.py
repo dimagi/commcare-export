@@ -15,8 +15,8 @@ depends_on = None
 
 
 def upgrade():
-    meta = sa.MetaData(bind=op.get_bind())
-    table = sa.Table('commcare_export_runs', meta, autoload=True)
+    meta = sa.MetaData(bind=op.get_bind(), future=True)
+    table = sa.Table('commcare_export_runs', meta, autoload_with=op.get_bind())
     if 'since_param' not in table.c:
         op.alter_column(
             'commcare_export_runs', 'time_of_run',

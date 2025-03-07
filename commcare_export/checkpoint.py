@@ -6,8 +6,7 @@ from operator import attrgetter
 
 import dateutil.parser
 from sqlalchemy import Boolean, Column, String, and_, func
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 
 from commcare_export.commcare_minilinq import PaginationMode
 from commcare_export.exceptions import DataExportException
@@ -108,7 +107,7 @@ class CheckpointManager(SqlMixin):
         self.project = project
         self.commcare = commcare
         self.key = key
-        self.Session = sessionmaker(self.engine, expire_on_commit=False)
+        self.Session = sessionmaker(self.engine, expire_on_commit=False, future=True)
         self.table_names = table_names
         self.data_source = data_source
 

@@ -277,7 +277,7 @@ class SqlMixin(object):
         self.db_url = db_url
         self.collation = 'utf8mb4_unicode_ci' if 'mysql' in db_url else None
         self.engine = engine or sqlalchemy.create_engine(
-            db_url, poolclass=poolclass
+            db_url, poolclass=poolclass, future=True
         )
         self._metadata = None
 
@@ -549,7 +549,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             create_sql = sqlalchemy.schema.CreateTable(
                 sqlalchemy.Table(
                     table_name,
-                    sqlalchemy.MetaData(),
+                    sqlalchemy.MetaData(future=True),
                     *self._get_columns_for_data(row_dict, data_type_dict)
                 )
             ).compile(self.connection.engine)
@@ -583,16 +583,15 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
         # strip out values that are None since the column may not exist
         # yet
-        row_dict = {
-            col: val for col, val in row_dict.items() if val is not None
-        }
+        row_dict = {k: v for k, v in row_dict.items() if v is not None}
+        insert = table.insert().values(**row_dict)
+        update = table.update().where(
+            table.c.id == row_dict['id']
+        ).values(**row_dict)
+
         try:
-            insert = table.insert().values(**row_dict)
             self.connection.execute(insert)
         except sqlalchemy.exc.IntegrityError:
-            update = (table.update()
-                      .where(table.c.id == row_dict['id'])
-                      .values(**row_dict))
             self.connection.execute(update)
 
     def write_table(self, table_spec: TableSpec) -> None:
