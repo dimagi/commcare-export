@@ -396,18 +396,18 @@ class TestDatePaginator(unittest.TestCase):
             paginator.get_since_date({'objects': [{
                 's1': d1,
                 's2': d2
-            }]}), datetime.strptime(d1, '%Y-%m-%dT%H:%M:%SZ')
+            }]}), datetime.fromisoformat(d1.replace('Z', '+00:00'))
         )
 
         self.assertEqual(
             paginator.get_since_date({'objects': [{
                 's2': d2
-            }]}), datetime.strptime(d2, '%Y-%m-%dT%H:%M:%SZ')
+            }]}), datetime.fromisoformat(d2.replace('Z', '+00:00'))
         )
 
         self.assertEqual(
             paginator.get_since_date({'objects': [{
                 's1': None,
                 's2': d2
-            }]}), datetime.strptime(d2, '%Y-%m-%dT%H:%M:%SZ')
+            }]}), datetime.fromisoformat(d2.replace('Z', '+00:00'))
         )

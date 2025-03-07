@@ -342,7 +342,7 @@ class TestSQLWriters(object):
             connection = writer.connection
             result = dict([
                 (row['id'], row) for row in connection
-                .execute('SELECT id, a, b, c, d, e FROM %s' % table_name)
+                .execute(f'SELECT id, a, b, c, d, e FROM {table_name}')
             ])
 
             assert len(result) == 2

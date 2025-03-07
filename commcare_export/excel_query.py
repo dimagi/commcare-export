@@ -335,7 +335,7 @@ def compile_source(worksheet, value_or_root=False):
     # out the first field
     if not isinstance(data_source,
                       jsonpath.Fields) or len(data_source.fields) > 1:
-        raise Exception('Bad value for data source: %s' % str(data_source))
+        raise Exception(f'Bad value for data source: {str(data_source)}')
 
     data_source = data_source.fields[0]
 

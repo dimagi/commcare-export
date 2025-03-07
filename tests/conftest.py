@@ -38,7 +38,7 @@ def _db_params(request, db_name):
                 conn.execute(text('rollback'))
             if 'mssql' in db_url:
                 conn.connection.connection.autocommit = True
-            conn.execute(text('drop database if exists %s' % db_name))
+            conn.execute(text(f'drop database if exists {db_name}'))
 
     try:
         with sqlalchemy.create_engine(db_connection_url, future=True).connect():
@@ -52,10 +52,10 @@ def _db_params(request, db_name):
                 conn.execute(text('rollback'))
             if 'mssql' in db_url:
                 conn.connection.connection.autocommit = True
-            conn.execute(text('create database %s' % db_name))
+            conn.execute(text(f'create database {db_name}'))
     else:
         raise Exception(
-            'Database %s already exists; refusing to overwrite' % db_name
+            f'Database {db_name} already exists; refusing to overwrite'
         )
 
     request.addfinalizer(tear_down)

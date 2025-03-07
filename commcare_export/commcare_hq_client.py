@@ -99,7 +99,7 @@ class CommCareHqClient(object):
         elif mode == AUTH_MODE_APIKEY:
             return ApiKeyAuth(username, password)
         else:
-            raise Exception('Unknown auth mode: %s' % mode)
+            raise Exception(f'Unknown auth mode: {mode}')
 
     @property
     def session(self):
@@ -117,7 +117,7 @@ class CommCareHqClient(object):
 
     @property
     def api_url(self):
-        return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
+        return f'{self.url}/a/{self.project}/api/v{self.version}'
 
     @staticmethod
     def _should_raise_for_status(response):
@@ -149,7 +149,7 @@ class CommCareHqClient(object):
             on_giveup=on_giveup
         )
         def _get(resource, params=None):
-            logger.debug("Fetching '%s' batch: %s", resource, params)
+            logger.debug(f"Fetching '{resource}' batch: {params}")
             resource_url = f'{self.api_url}/{resource}/'
             response = self.session.get(
                 resource_url, params=params, auth=self.__auth, timeout=60
@@ -222,7 +222,7 @@ class CommCareHqClient(object):
 
                 batch_objects = batch['objects']
                 fetched += len(batch_objects)
-                logger.debug('Received %s of %s', fetched, total_count)
+                logger.debug(f'Received {fetched} of {total_count}')
                 if not batch_objects:
                     more_to_fetch = False
                 else:
@@ -291,14 +291,12 @@ class MockCommCareHqClient(object):
         self, resource, paginator, params=None, checkpoint_manager=None
     ):
         logger.debug(
-            'Mock client call to resource "%s" with params "%s"',
-            resource,
-            params
+            f'Mock client call to resource "{resource}" with params "{params}"'
         )
         return self.mock_data[resource][_params_to_url(params)]
 
     def get(self, resource):
-        logger.debug('Mock client call to get resource "%s"', resource)
+        logger.debug(f'Mock client call to get resource "{resource}"')
         objects = self.mock_data[resource][_params_to_url({'get': True})]
         if objects:
             return {

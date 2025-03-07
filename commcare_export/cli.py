@@ -219,7 +219,7 @@ def main(argv):
     logging.getLogger('urllib3').setLevel(logging.WARN)
 
     if args.version:
-        print('commcare-export version {}'.format(__version__))
+        print(f'commcare-export version {__version__}')
         sys.exit(0)
 
     if not args.project:
@@ -344,8 +344,8 @@ def _get_writer(output_format, output, strict_types):
     elif output_format == 'csv':
         if not output.endswith(".zip"):
             print(
-                "WARNING: csv output is a zip file, but "
-                "will be written to %s" % output
+                f"WARNING: csv output is a zip file, but "
+                f"will be written to {output}"
             )
             print(
                 "Consider appending .zip to the file name to avoid confusion."
@@ -449,7 +449,8 @@ def evaluate_query(env, query):
 
 
 def main_with_args(args):
-    logger.info("CommCare Export Version {}".format(__version__))
+    logger.info(f"CommCare Export Version {__version__}")
+    logger.debug(f'Starting from {args.since}')
     writer = _get_writer(args.output_format, args.output, args.strict_types)
 
     if args.query is None and args.users is False and args.locations is False:

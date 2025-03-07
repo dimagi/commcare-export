@@ -48,22 +48,22 @@ class Checkpoint(Base):
 
     def __repr__(self):
         return (
-            "<Checkpoint("
-            "id={r.id}, "
-            "query_file_name={r.query_file_name}, "
-            "query_file_md5={r.query_file_md5}, "
-            "table_name={r.table_name}, "
-            "key={r.key}, "
-            "project={r.project}, "
-            "commcare={r.commcare}, "
-            "since_param={r.since_param}, "
-            "time_of_run={r.time_of_run}, "
-            "final={r.final}), "
-            "data_source={r.data_source}, "
-            "last_doc_id={r.last_doc_id}, "
-            "pagination_mode={r.pagination_mode},"
-            "cursor={r.cursor}>"
-        ).format(r=self)
+            f"<Checkpoint("
+            f"id={self.id}, "
+            f"query_file_name={self.query_file_name}, "
+            f"query_file_md5={self.query_file_md5}, "
+            f"table_name={self.table_name}, "
+            f"key={self.key}, "
+            f"project={self.project}, "
+            f"commcare={self.commcare}, "
+            f"since_param={self.since_param}, "
+            f"time_of_run={self.time_of_run}, "
+            f"final={self.final}), "
+            f"data_source={self.data_source}, "
+            f"last_doc_id={self.last_doc_id}, "
+            f"pagination_mode={self.pagination_mode},"
+            f"cursor={self.cursor}>"
+        )
 
 
 @contextmanager
@@ -152,15 +152,8 @@ class CheckpointManager(SqlMixin):
         cursor=None,
     ):
         logger.info(
-            'Setting %s checkpoint: data_source: %s, tables: %s, '
-            'pagination_mode: %s, checkpoint: %s:%s',
-            #
-            'final' if final else 'batch',
-            self.data_source,
-            ', '.join(self.table_names),
-            pagination_mode.name,
-            checkpoint_time,
-            doc_id,
+            f'Setting {"final" if final else "batch"} checkpoint: data_source: {self.data_source}, tables: '
+            f'{", ".join(self.table_names)}, pagination_mode: {pagination_mode.name}, checkpoint: {checkpoint_time}:{doc_id}'
         )
         if not checkpoint_time:
             raise DataExportException(
@@ -309,18 +302,10 @@ class CheckpointManager(SqlMixin):
         return query.order_by(Checkpoint.time_of_run.desc()).first()
 
     def log_warnings(self, run: Checkpoint) -> None:
-        md5_mismatch = run.query_file_md5 != self.query_md5
-        name_mismatch = run.query_file_name != self.query
-        if md5_mismatch or name_mismatch:
+        if run.query_file_name != self.query and run.query_file_md5 != self.query_md5:
             logger.warning(
-                "Query differs from most recent checkpoint:\n"
-                "From checkpoint:         name=%s, md5=%s\n"
-                "From command line args:  name=%s, md5=%s\n",
-                #
-                run.query_file_name,
-                run.query_file_md5,
-                self.query,
-                self.query_md5
+                f"From checkpoint:         name={run.query_file_name}, md5={run.query_file_md5}\n"
+                f"From command line args:  name={self.query}, md5={self.query_md5}\n"
             )
 
     def list_checkpoints(self, limit=20):
@@ -501,12 +486,8 @@ class CheckpointManagerProvider(object):
         since = self.get_since(manager)
         pagination_mode = self.get_pagination_mode(data_source, checkpoint_manager=manager)
         logger.info(
-            "Creating checkpoint manager for tables: %s, since: %s, "
-            "pagination_mode: %s",
-            #
-            ', '.join(table_names),
-            since,
-            pagination_mode.name,
+            f"Creating checkpoint manager for tables: {table_names}, since: {since}, "
+            f"pagination_mode: {pagination_mode.name}"
         )
         if pagination_mode not in PaginationMode.supported_modes():
             logger.warning(
@@ -519,4 +500,11 @@ class CheckpointManagerProvider(object):
                 "\n====================================\n",  #
                 "https://github.com/dimagi/commcare-export/releases/tag/1.5.0"
             )
+
+        if self.start_over:
+            logger.warning(
+                "Ignoring existing checkpoints and starting from the beginning due to "
+                f"`--start-over`. For more details see: {HELP_MSG}"
+            )
+
         return CheckpointManagerWithDetails(manager, since, pagination_mode)

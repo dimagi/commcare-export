@@ -25,8 +25,7 @@ version = commcare_export.version.version()
 if 'register' in sys.argv or 'upload' in sys.argv:
     version = commcare_export.version.stored_version()
     if not version or not re.match(r'\d+\.\d+\.\d+', version):
-        print('Version %s is not an appropriate version for publicizing!' %
-              version)
+        print(f'Version {version} is not an appropriate version for publicizing!')
         sys.exit(1)
 
 readme = 'README.md'

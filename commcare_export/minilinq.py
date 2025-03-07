@@ -63,8 +63,7 @@ class MiniLinq(object):
 
             if slug not in cls._node_classes:
                 raise ValueError(
-                    'JValue serialization of AST contains unknown node type: %s'
-                    % slug
+                    f'JValue serialization of AST contains unknown node type: {slug}'
                 )
 
             return cls._node_classes[slug].from_jvalue(jvalue)
@@ -101,7 +100,7 @@ class Reference(MiniLinq):
         return {'Ref': self.ref.to_jvalue() if self.nested else self.ref}
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.ref)
+        return f'{self.__class__.__name__}({repr(self.ref)})'
 
 
 class Literal(MiniLinq):
@@ -122,7 +121,7 @@ class Literal(MiniLinq):
         return isinstance(other, Literal) and self.v == other.v
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.v)
+        return f'{self.__class__.__name__}({repr(self.v)})'
 
     @classmethod
     def from_jvalue(cls, jvalue):
@@ -154,9 +153,7 @@ class Bind(MiniLinq):
         ) and self.name == other.name and self.value == other.value and self.body == other.body
 
     def __repr__(self):
-        return '%s(name=%r, value=%r, body=%r)' % (
-            self.__class__.__name__, self.name, self.value, self.body
-        )
+        return f'{self.__class__.__name__}(name={self.name!r}, value={self.value!r}, body={self.body!r})'
 
     @classmethod
     def from_jvalue(cls, jvalue):
@@ -238,9 +235,7 @@ class Filter(MiniLinq):
         }
 
     def __repr__(self):
-        return '%s(source=%r, name=%r, predicate=%r)' % (
-            self.__class__.__name__, self.source, self.name, self.predicate
-        )
+        return f'{self.__class__.__name__}(source={self.source!r}, name={self.name!r}, predicate={self.predicate!r})'
 
 
 class List(MiniLinq):
@@ -259,7 +254,7 @@ class List(MiniLinq):
         return isinstance(other, List) and self.items == other.items
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, self.items)
+        return f'{self.__class__.__name__}({self.items})'
 
     @classmethod
     def from_jvalue(cls, jvalue):
@@ -566,12 +561,12 @@ class Emit(MiniLinq):
         )
 
     def __repr__(self):
-        return '%s(table=%r, headings=%r, source=%r, missing_value=%r)' % (
-            self.__class__.__name__,
-            self.table,
-            self.headings,
-            self.source,
-            self.missing_value
+        return (
+            f'{self.__class__.__name__}('
+            f'table={repr(self.table)}, '
+            f'headings={repr(self.headings)}, '
+            f'source={repr(self.source)}, '
+            f'missing_value={repr(self.missing_value)})'
         )
 
 

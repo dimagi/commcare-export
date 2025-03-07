@@ -165,7 +165,7 @@ class CommCareHqEnv(DictEnv):
         include_referenced_items=None
     ):
         if resource not in SUPPORTED_RESOURCES:
-            raise ValueError('Unknown API resource "%s' % resource)
+            raise ValueError(f'Unknown API resource "{resource}"')
 
         paginator = get_paginator(
             resource, self.page_size, checkpoint_manager.pagination_mode
