@@ -25,6 +25,7 @@ from commcare_export.commcare_hq_client import (
 from commcare_export.commcare_minilinq import PaginationMode
 from commcare_export.specs import TableSpec
 from commcare_export.writers import JValueTableWriter
+from sqlalchemy import text
 
 CLI_ARGS_BY_NAME = {arg.name: arg for arg in CLI_ARGS}
 
@@ -421,10 +422,8 @@ class TestCLIIntegrationTests(object):
 
         runs = list(
             writer.engine.execute(
-                'SELECT * FROM commcare_export_runs '
-                'WHERE query_file_name = %s',
-
-                'tests/009_integration.xlsx'
+                text('SELECT * FROM commcare_export_runs WHERE query_file_name = :filename'),
+                {'filename': 'tests/009_integration.xlsx'}
             )
         )
         assert len(runs) == 2, runs
@@ -456,11 +455,8 @@ class TestCLIIntegrationTests(object):
 
         runs = list(
             writer.engine.execute(
-                'SELECT table_name, since_param '
-                'FROM commcare_export_runs '
-                'WHERE query_file_name = %s',
-
-                'tests/009b_integration_multiple.xlsx'
+                text('SELECT table_name, since_param FROM commcare_export_runs WHERE query_file_name = :filename'),
+                {'filename': 'tests/009b_integration_multiple.xlsx'}
             )
         )
         assert {r[0]: r[1] for r in runs} == {
@@ -680,12 +676,8 @@ class TestCLIWithDatabaseErrors(object):
         # not the 2nd
         runs = list(
             strict_writer.engine.execute(
-                sqlalchemy.text(
-                    'SELECT table_name, since_param, last_doc_id '
-                    'FROM commcare_export_runs '
-                    'WHERE query_file_name = :file'
-                ),
-                file='tests/013_ConflictingTypes.xlsx'
+                text('SELECT * FROM commcare_export_runs WHERE query_file_name = :filename'),
+                {'filename': 'tests/013_ConflictingTypes.xlsx'}
             )
         )
         assert runs == [
