@@ -101,7 +101,6 @@ CLI_ARGS = [
         help='When saving to a SQL database; the default is to pick up '
         'since the last success. This disables that.'
     ),
-    Argument('profile'),
     Argument('verbose', default=False, action='store_true'),
     Argument(
         'output-format',
@@ -233,13 +232,6 @@ def main(argv):
         print(error_msg)
         sys.exit(1)
 
-    if args.profile:
-        # hotshot is gone in Python 3
-        import hotshot
-        import hotshot.stats
-        profile = hotshot.Profile(args.profile)
-        profile.start()
-
     try:
         print("Running export...")
         try:
@@ -252,12 +244,6 @@ def main(argv):
             raise
     finally:
         print("Export finished!")
-        if args.profile:
-            profile.close()
-            stats = hotshot.stats.load(args.profile)
-            stats.strip_dirs()
-            stats.sort_stats('cumulative', 'calls')
-            stats.print_stats(100)
 
 
 def validate_output_filename(output_format, output_filename):
