@@ -232,16 +232,15 @@ def main(argv):
         print(error_msg)
         sys.exit(1)
 
+    print("Running export...")
     try:
-        print("Running export...")
-        try:
-            exit_code = main_with_args(args)
-            if exit_code > 0:
-                print("Error occurred! See log file for error.")
-            sys.exit(exit_code)
-        except Exception:
+        exit_code = main_with_args(args)
+        if exit_code > 0:
             print("Error occurred! See log file for error.")
-            raise
+        sys.exit(exit_code)
+    except Exception:
+        print("Error occurred! See log file for error.")
+        raise
     finally:
         print("Export finished!")
 
