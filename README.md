@@ -23,7 +23,7 @@ Once on a terminal window or command line, for simplicity, run commands from the
 
 Check which Python version is installed.
 
-This tool is tested with Python versions from 3.8 to 3.12.
+This tool is tested with Python versions from 3.9 to 3.13.
 
 ```shell
 $ python3 --version
@@ -31,7 +31,7 @@ $ python3 --version
 If Python is installed, its version will be shown.
 
 If Python isn't installed, [download and install](https://www.python.org/downloads/)
-a version of Python from 3.8 to 3.12.
+a version of Python from 3.9 to 3.13.
 
 ## Virtualenv (Optional)
 

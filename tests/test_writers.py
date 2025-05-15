@@ -664,7 +664,7 @@ class TestSQLWriters(object):
             )
             assert result['some_data'] == ('some_data', 'nvarchar', -1)
 
-    def test_big_lump_of_poo(self, writer):
+    def test_emoji(self, writer):
         with writer:
             writer.write_table(
                 TableSpec(
@@ -672,7 +672,7 @@ class TestSQLWriters(object):
                         'name': 'foo_with_emoji',
                         'headings': ['id', 'fun_to_be_had'],
                         'rows': [
-                            ['A steaming poo', '💩'],
+                            ['woodstock', '🎸🕊🎶💜'],
                             ['2020', '😷'],
                         ],
                     }
