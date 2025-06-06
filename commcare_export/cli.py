@@ -39,7 +39,7 @@ commcare_hq_aliases = {
 }
 
 
-class Argument(object):
+class Argument:
 
     def __init__(self, name, *args, **kwargs):
         self.name = name.replace('-', '_')

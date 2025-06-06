@@ -38,7 +38,7 @@ TYPE_MAP = {
 }
 
 
-class TestWriters(object):
+class TestWriters:
 
     def test_JValueTableWriter(self):
         writer = JValueTableWriter()
@@ -169,7 +169,7 @@ class TestWriters(object):
 
 
 @pytest.mark.dbtest
-class TestSQLWriters(object):
+class TestSQLWriters:
 
     def _type_convert(self, connection, row):
         """

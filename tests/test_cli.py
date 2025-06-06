@@ -391,7 +391,7 @@ def _check_data(writer, expected, table_name, columns):
 
 
 @pytest.mark.dbtest
-class TestCLIIntegrationTests(object):
+class TestCLIIntegrationTests:
 
     def test_write_to_sql_with_checkpoints(
         self, writer, checkpoint_manager, caplog
@@ -649,7 +649,7 @@ def _pull_mock_data(
 
 
 @pytest.mark.dbtest
-class TestCLIWithDatabaseErrors(object):
+class TestCLIWithDatabaseErrors:
 
     def test_cli_database_error(
         self, strict_writer, all_db_checkpoint_manager, capfd
@@ -710,7 +710,7 @@ DATA_TYPES_CLIENT = MockCommCareHqClient({
 
 
 @pytest.mark.dbtest
-class TestCLIWithDataTypes(object):
+class TestCLIWithDataTypes:
 
     def test_cli_data_types_add_columns(
         self,
@@ -780,7 +780,7 @@ def get_indexed_on_client(page):
 
 
 @pytest.mark.dbtest
-class TestCLIPaginationMode(object):
+class TestCLIPaginationMode:
 
     def test_cli_pagination_fresh(self, writer, all_db_checkpoint_manager):
         checkpoint_manager = all_db_checkpoint_manager.for_dataset(

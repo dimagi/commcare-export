@@ -11,7 +11,7 @@ from commcare_export import get_logger
 logger = get_logger(__file__)
 
 
-class MiniLinq(object):
+class MiniLinq:
     """
     The abstract base class for MiniLinqs, and also the factory/registry
     for dispatching parsing, etc.

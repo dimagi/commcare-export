@@ -9,7 +9,7 @@ from commcare_export.utils import confirm, get_checkpoint_manager, print_runs
 EXIT_STATUS_ERROR = 1
 
 
-class BaseCommand(object):
+class BaseCommand:
     slug = None
     help = None
 

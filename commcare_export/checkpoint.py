@@ -420,7 +420,7 @@ class CheckpointManager(SqlMixin):
             raise Exception("Not tables set in checkpoint manager")
 
 
-class CheckpointManagerWithDetails(object):
+class CheckpointManagerWithDetails:
 
     def __init__(self, manager, since_param, pagination_mode):
         self.manager = manager
@@ -434,7 +434,7 @@ class CheckpointManagerWithDetails(object):
             )
 
 
-class CheckpointManagerProvider(object):
+class CheckpointManagerProvider:
 
     def __init__(
         self,

@@ -1,11 +1,3 @@
-from __future__ import (
-    absolute_import,
-    division,
-    generators,
-    nested_scopes,
-    print_function,
-    unicode_literals,
-)
 
 import copy
 import logging
@@ -72,7 +64,7 @@ class ResourceRepeatException(Exception):
         return self.message
 
 
-class CommCareHqClient(object):
+class CommCareHqClient:
     """
     A connection to CommCareHQ for a particular version, project, and user.
     """
@@ -259,7 +251,7 @@ class CommCareHqClient(object):
         return RepeatableIterator(iterate_resource)
 
 
-class MockCommCareHqClient(object):
+class MockCommCareHqClient:
     """
     An in-memory mock of the hq client, instantiated with a simple
     mapping of resource and params to results.

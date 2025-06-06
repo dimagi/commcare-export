@@ -45,7 +45,7 @@ class PaginationMode(Enum):
         ]
 
 
-class SimpleSinceParams(object):
+class SimpleSinceParams:
 
     def __init__(self, start, end):
         self.start_param = start
@@ -60,7 +60,7 @@ class SimpleSinceParams(object):
         return params
 
 
-class FormFilterSinceParams(object):
+class FormFilterSinceParams:
 
     def __call__(self, since, until):
         range_expression = {}
@@ -188,7 +188,7 @@ class CommCareHqEnv(DictEnv):
         raise CannotReplace()
 
 
-class SimplePaginator(object):
+class SimplePaginator:
     """
     Paginate based on the 'next' URL provided in the API response.
     """

@@ -45,7 +45,7 @@ def to_jvalue(v):
         return str(v)
 
 
-class TableWriter(object):
+class TableWriter:
     """
     Interface for export writers: Usable in a "with" statement, and
     while open one can call write_table.
@@ -262,7 +262,7 @@ class StreamingMarkdownTableWriter(TableWriter):
         return list(col_widths)
 
 
-class SqlMixin(object):
+class SqlMixin:
     """
     Write tables to a database specified by URL
     (TODO) with "upsert" based on primary key.

@@ -43,7 +43,7 @@ def configured_manager(manager):
 
 
 @pytest.mark.dbtest
-class TestCheckpointManager(object):
+class TestCheckpointManager:
 
     def test_create_checkpoint_table(self, manager, revision='head'):
         manager.create_checkpoint_table(revision)
@@ -236,7 +236,7 @@ def test_checkpoint_details_static(
 
 
 @pytest.mark.dbtest
-class TestCheckpointManagerProvider(object):
+class TestCheckpointManagerProvider:
 
     def test_checkpoint_details_no_checkpoint(self, configured_manager):
         manager = configured_manager.for_dataset('form', ['t1'])

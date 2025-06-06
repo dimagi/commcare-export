@@ -19,7 +19,7 @@ from commcare_export.commcare_minilinq import (
 )
 from mock import Mock, patch
 
-class FakeSession(object):
+class FakeSession:
 
     def get(self, resource_url, params=None, auth=None, timeout=None):
         result = self._get_results(params)
