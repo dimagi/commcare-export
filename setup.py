@@ -74,7 +74,7 @@ setuptools.setup(
     ],
     include_package_data=True,
     license='MIT',
-    python_requires=">=3.6",
+    python_requires=">=3.9",
     install_requires=[
         'alembic',
         'backoff>=2.0',
