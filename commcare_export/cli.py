@@ -43,7 +43,7 @@ class Argument:
 
     def __init__(self, name, *args, **kwargs):
         self.name = name.replace('-', '_')
-        self._args = ['--{}'.format(name)] + list(args)
+        self._args = [f'--{name}'] + list(args)
         self._kwargs = kwargs
 
     @property
@@ -218,7 +218,7 @@ def main(argv):
     logging.getLogger('urllib3').setLevel(logging.WARN)
 
     if args.version:
-        print('commcare-export version {}'.format(__version__))
+        print(f'commcare-export version {__version__}')
         sys.exit(0)
 
     if not args.project:
@@ -330,7 +330,7 @@ def _get_writer(output_format, output, strict_types):
         if not output.endswith(".zip"):
             print(
                 "WARNING: csv output is a zip file, but "
-                "will be written to %s" % output
+                f"will be written to {output}"
             )
             print(
                 "Consider appending .zip to the file name to avoid confusion."
@@ -354,7 +354,7 @@ def _get_writer(output_format, output, strict_types):
 
         return writers.SqlTableWriter(output, strict_types)
     else:
-        raise Exception("Unknown output format: {}".format(output_format))
+        raise Exception(f"Unknown output format: {output_format}")
 
 
 def get_date_params(args):
@@ -434,7 +434,7 @@ def evaluate_query(env, query):
 
 
 def main_with_args(args):
-    logger.info("CommCare Export Version {}".format(__version__))
+    logger.info(f"CommCare Export Version {__version__}")
     writer = _get_writer(args.output_format, args.output, args.strict_types)
 
     if args.query is None and args.users is False and args.locations is False:

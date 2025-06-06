@@ -201,7 +201,7 @@ class FakeDateFormSession(FakeSession):
                 'objects': [{
                     'id': 1,
                     'foo': 1,
-                    'indexed_on': '{}Z'.format(since1)
+                    'indexed_on': f'{since1}Z'
                 }]
             }
         else:
@@ -222,7 +222,7 @@ class FakeDateFormSession(FakeSession):
                     }, {
                         'id': 2,
                         'foo': 2,
-                        'indexed_on': '{}Z'.format(since2)
+                        'indexed_on': f'{since2}Z'
                     }]
                 }
             elif indexed_on == since2:

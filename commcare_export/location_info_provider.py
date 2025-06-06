@@ -81,7 +81,7 @@ class LocationInfoProvider:
             while loc_uri is not None:
                 if loc_uri not in location_data:
                     logger.warning(
-                        'Unknown location referenced: {}'.format(loc_uri)
+                        f'Unknown location referenced: {loc_uri}'
                     )
                     break
 
@@ -89,8 +89,7 @@ class LocationInfoProvider:
                 loc_type = loc_data['location_type']
                 if loc_type not in self.location_types:
                     logger.warning(
-                        'Unknown location type referenced: {}'
-                        .format(loc_type)
+                        f'Unknown location type referenced: {loc_type}'
                     )
                     break
 

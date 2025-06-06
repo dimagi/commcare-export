@@ -91,7 +91,7 @@ class CommCareHqClient:
         elif mode == AUTH_MODE_APIKEY:
             return ApiKeyAuth(username, password)
         else:
-            raise Exception('Unknown auth mode: %s' % mode)
+            raise Exception(f'Unknown auth mode: {mode}')
 
     @property
     def session(self):
@@ -109,7 +109,7 @@ class CommCareHqClient:
 
     @property
     def api_url(self):
-        return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
+        return f'{self.url}/a/{self.project}/api/v{self.version}'
 
     @staticmethod
     def _should_raise_for_status(response):

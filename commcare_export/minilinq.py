@@ -63,8 +63,7 @@ class MiniLinq:
 
             if slug not in cls._node_classes:
                 raise ValueError(
-                    'JValue serialization of AST contains unknown node type: %s'
-                    % slug
+                    f'JValue serialization of AST contains unknown node type: {slug}'
                 )
 
             return cls._node_classes[slug].from_jvalue(jvalue)
@@ -101,7 +100,7 @@ class Reference(MiniLinq):
         return {'Ref': self.ref.to_jvalue() if self.nested else self.ref}
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.ref)
+        return f'{self.__class__.__name__}({self.ref!r})'
 
 
 class Literal(MiniLinq):
@@ -122,7 +121,7 @@ class Literal(MiniLinq):
         return isinstance(other, Literal) and self.v == other.v
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.v)
+        return f'{self.__class__.__name__}({self.v!r})'
 
     @classmethod
     def from_jvalue(cls, jvalue):
@@ -154,8 +153,11 @@ class Bind(MiniLinq):
         ) and self.name == other.name and self.value == other.value and self.body == other.body
 
     def __repr__(self):
-        return '%s(name=%r, value=%r, body=%r)' % (
-            self.__class__.__name__, self.name, self.value, self.body
+        return (
+            f'{self.__class__.__name__}'
+            f'(name={self.name!r}, '
+            f'value={self.value!r}, '
+            f'body={self.body!r})'
         )
 
     @classmethod
@@ -238,8 +240,11 @@ class Filter(MiniLinq):
         }
 
     def __repr__(self):
-        return '%s(source=%r, name=%r, predicate=%r)' % (
-            self.__class__.__name__, self.source, self.name, self.predicate
+        return (
+            f'{self.__class__.__name__}'
+            f'(source={self.source!r}, '
+            f'name={self.name!r}, '
+            f'predicate={self.predicate!r})'
         )
 
 
@@ -259,7 +264,7 @@ class List(MiniLinq):
         return isinstance(other, List) and self.items == other.items
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, self.items)
+        return f'{self.__class__.__name__}({self.items})'
 
     @classmethod
     def from_jvalue(cls, jvalue):
@@ -510,7 +515,7 @@ class Emit(MiniLinq):
             return self.coerce_cell_blithely(cell)
         except Exception:
             logger.exception(
-                'Error converting value to exportable form: %r' % cell
+                f'Error converting value to exportable form: {cell!r}'
             )
             return ''
 
@@ -566,12 +571,12 @@ class Emit(MiniLinq):
         )
 
     def __repr__(self):
-        return '%s(table=%r, headings=%r, source=%r, missing_value=%r)' % (
-            self.__class__.__name__,
-            self.table,
-            self.headings,
-            self.source,
-            self.missing_value
+        return (
+            f'{self.__class__.__name__}'
+            f'(table={self.table!r}, '
+            f'headings={self.headings!r}, '
+            f'source={self.source!r}, '
+            f'missing_value={self.missing_value!r})'
         )
 
 

@@ -380,13 +380,11 @@ def _check_data(writer, expected, table_name, columns):
     if actual != expected:
         message += 'Data not equal to expected:\n'
         if len(actual) != len(expected):
-            message += '    {} rows compared to {} expected\n'.format(
-                len(actual), len(expected)
-            )
+            message += f'    {len(actual)} rows compared to {len(expected)} expected\n'
         message += 'Diff:\n'
         for i, rows in enumerate(zip_longest(actual, expected)):
             if rows[0] != rows[1]:
-                message += '{}: {} != {}\n'.format(i, rows[0], rows[1])
+                message += f'{i}: {rows[0]} != {rows[1]}\n'
         assert actual == expected, message
 
 
@@ -483,10 +481,10 @@ class TestCLIIntegrationTests:
         message = ''
         for i, items in enumerate(zip_longest(expected, log_messages)):
             if not items[0] or not items[1] or items[0] not in items[1]:
-                message += 'X {}: {} not in {}\n'.format(i, items[0], items[1])
+                message += f'X {i}: {items[0]} not in {items[1]}\n'
                 fail = True
             else:
-                message += '✓ {}: {} in {}\n'.format(i, items[0], items[1])
+                message += f'✓ {i}: {items[0]} in {items[1]}\n'
         assert not fail, 'Checkpoint comparison failed:\n' + message
 
 

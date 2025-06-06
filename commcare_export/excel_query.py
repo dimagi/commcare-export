@@ -136,7 +136,7 @@ def _get_safe_source_field(source_field):
             parse_jsonpath(node)
         except Exception:
             # quote nodes with special characters
-            return '"{}"'.format(node)
+            return f'"{node}"'
         else:
             return node
 
@@ -148,7 +148,7 @@ def _get_safe_source_field(source_field):
             for node in source_field.split('.')
         ])
         if source_field.endswith('.'):
-            raise Exception("Blank node path: {}".format(source_field))
+            raise Exception(f"Blank node path: {source_field}")
 
     return Reference(source_field)
 
@@ -327,7 +327,7 @@ def compile_source(worksheet, value_or_root=False):
     # out the first field
     if not isinstance(data_source,
                       jsonpath.Fields) or len(data_source.fields) > 1:
-        raise Exception('Bad value for data source: %s' % str(data_source))
+        raise Exception(f'Bad value for data source: {str(data_source)}')
 
     data_source = data_source.fields[0]
 
@@ -412,8 +412,7 @@ def require_column_in_sheet(
                     continue
                 else:
                     raise Exception(
-                        'Field name "{}" conflicts with an internal name.'
-                        .format(required_column.name.v)
+                        f'Field name "{required_column.name.v}" conflicts with an internal name.'
                     )
 
     if extend_fields:
@@ -558,7 +557,7 @@ def parse_workbook(workbook, column_enforcer=None, value_or_root=False):
                 workbook[sheet], mappings, column_enforcer, value_or_root
             )
         except Exception as e:
-            msg = 'Ignoring sheet "{}": {}'.format(sheet, str(e))
+            msg = f'Ignoring sheet "{sheet}": {str(e)}'
             if logger.isEnabledFor(logging.DEBUG):
                 logger.exception(msg)
             else:

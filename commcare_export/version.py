@@ -36,7 +36,7 @@ def parse_version(version_raw):
     if match:
         tag_version, lead_count = match.groups()
         if lead_count:
-            tag_version += ".dev{}".format(lead_count)
+            tag_version += f".dev{lead_count}"
         return tag_version
 
     return version_raw
