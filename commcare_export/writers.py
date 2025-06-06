@@ -45,7 +45,7 @@ def to_jvalue(v):
         return str(v)
 
 
-class TableWriter(object):
+class TableWriter:
     """
     Interface for export writers: Usable in a "with" statement, and
     while open one can call write_table.
@@ -97,7 +97,7 @@ class CsvTableWriter(TableWriter):
         # TODO: make this a polite zip and put everything in a subfolder
         #       with the same basename as the zipfile
         self.archive.writestr(
-            '%s.csv' % self.zip_safe_name(table.name),
+            f'{self.zip_safe_name(table.name)}.csv',
             tempfile.getvalue().encode('utf-8')
         )
 
@@ -232,27 +232,26 @@ class StreamingMarkdownTableWriter(TableWriter):
         if self.compute_widths:
             col_widths = self._get_column_widths(table)
             row_template = ' | '.join([
-                '{{:<{}}}'.format(width) for width in col_widths
+                f'{{:<{width}}}' for width in col_widths
             ])
         else:
             row_template = ' | '.join(['{}'] * len(table.headings))
 
         if table.name:
-            self.output_stream.write('\n# %s \n\n' % table.name)
+            self.output_stream.write(f'\n# {table.name} \n\n')
 
         self.output_stream.write(
-            '| %s |\n' % row_template.format(*table.headings)
+            f'| {row_template.format(*table.headings)} |\n'
         )
         if col_widths:
             self.output_stream.write(
-                '| %s |\n'
-                % row_template.format(*['-' * width for width in col_widths])
+                f'| {row_template.format(*["-" * width for width in col_widths])} |\n'
             )
 
         for row in table.rows:
             text_row = (ensure_text(val, convert_none=True) for val in row)
             self.output_stream.write(
-                '| %s |\n' % row_template.format(*text_row)
+                f'| {row_template.format(*text_row)} |\n'
             )
 
     def _get_column_widths(self, table):
@@ -262,7 +261,7 @@ class StreamingMarkdownTableWriter(TableWriter):
         return list(col_widths)
 
 
-class SqlMixin(object):
+class SqlMixin:
     """
     Write tables to a database specified by URL
     (TODO) with "upsert" based on primary key.
@@ -317,7 +316,7 @@ class SqlMixin(object):
             return 128
         if self.is_oracle:
             return 128
-        raise Exception("Unknown database dialect: {}".format(self.db_url))
+        raise Exception(f"Unknown database dialect: {self.db_url}")
 
     @property
     def metadata(self):
@@ -372,9 +371,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
         except UnknownDataType:
             if data_type:
                 logger.warning(
-                    "Found unknown data type '{data_type}'".format(
-                        data_type=data_type,
-                    )
+                    f"Found unknown data type '{data_type}'"
                 )
             return self.best_type_for('')  # todo: more explicit fallback
 

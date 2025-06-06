@@ -35,7 +35,7 @@ class NotFound(Exception):
     pass
 
 
-class Env(object):
+class Env:
     """
     An abstract model of an "environment" where data can be bound to
     names and later looked up. Not simply a dictionary as lookup in our

@@ -9,7 +9,7 @@ from commcare_export.utils import confirm, get_checkpoint_manager, print_runs
 EXIT_STATUS_ERROR = 1
 
 
-class BaseCommand(object):
+class BaseCommand:
     slug = None
     help = None
 
@@ -46,15 +46,15 @@ class ListHistoryCommand(BaseCommand):
         manager = get_checkpoint_manager(args, require_query=False)
         manager.create_checkpoint_table()
 
-        print("Listing checkpoints (most recent {}):".format(args.limit))
+        print(f"Listing checkpoints (most recent {args.limit}):")
         if args.project:
-            print("    project:        {}".format(args.project))
+            print(f"    project:        {args.project}")
         if args.commcare_hq != 'prod':
-            print("    commcare-hq:    {}".format(args.commcare_hq))
+            print(f"    commcare-hq:    {args.commcare_hq}")
         if args.query:
-            print("    query filename: {}".format(args.query))
+            print(f"    query filename: {args.query}")
         if manager.key:
-            print("    key:            {}".format(manager.key))
+            print(f"    key:            {manager.key}")
 
         runs = manager.list_checkpoints(args.limit)
         print_runs(runs)

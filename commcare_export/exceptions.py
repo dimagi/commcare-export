@@ -17,7 +17,7 @@ class LongFieldsException(DataExportException):
                 f'allowed for this database ({self.max_length}):\n'
             )
             for header in headers:
-                message += '    {}\n'.format(header)
+                message += f'    {header}\n'
 
         message += (
             '\nPlease adjust field names to be within the maximum length '
@@ -34,8 +34,7 @@ class MissingColumnException(DataExportException):
     @property
     def message(self):
         lines = [
-            'Sheet "{}" is missing definitions for required fields: "{}"'
-            .format(sheet, '", "'.join(missing_cols))
+            f'Sheet "{sheet}" is missing definitions for required fields: "{", ".join(missing_cols)}"'
             for (sheet, missing_cols) in self.errors_by_sheet.items()
         ]
         return '\n'.join(lines)

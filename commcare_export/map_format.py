@@ -22,12 +22,12 @@ def parse_function_arg(slug, expr_string):
     slug = selected
     should return Other_(Specify)
     """
-    regex = r'^{0}\((.*)\)$'.format(slug)
+    regex = rf'^{slug}\((.*)\)$'
     matches = re.match(regex, expr_string)
 
     if not matches:
         raise ParsingException(
-            'Error: Unable to parse: {}'.format(expr_string)
+            f'Error: Unable to parse: {expr_string}'
         )
 
     return matches.groups()[0]
@@ -39,8 +39,7 @@ def parse_selected_at(value_expr, selected_at_expr_string):
         index = int(index)
     except ValueError:
         return Literal(
-            'Error: selected-at index must be an integer: {}'
-            .format(selected_at_expr_string)
+            f'Error: selected-at index must be an integer: {selected_at_expr_string}'
         )
 
     return Apply(Reference(SELECTED_AT), value_expr, Literal(index))

@@ -50,21 +50,21 @@ class Checkpoint(Base):
     def __repr__(self):
         return (
             "<Checkpoint("
-            "id={r.id}, "
-            "query_file_name={r.query_file_name}, "
-            "query_file_md5={r.query_file_md5}, "
-            "table_name={r.table_name}, "
-            "key={r.key}, "
-            "project={r.project}, "
-            "commcare={r.commcare}, "
-            "since_param={r.since_param}, "
-            "time_of_run={r.time_of_run}, "
-            "final={r.final}), "
-            "data_source={r.data_source}, "
-            "last_doc_id={r.last_doc_id}, "
-            "pagination_mode={r.pagination_mode},"
-            "cursor={r.cursor}>"
-        ).format(r=self)
+            f"id={self.id}, "
+            f"query_file_name={self.query_file_name}, "
+            f"query_file_md5={self.query_file_md5}, "
+            f"table_name={self.table_name}, "
+            f"key={self.key}, "
+            f"project={self.project}, "
+            f"commcare={self.commcare}, "
+            f"since_param={self.since_param}, "
+            f"time_of_run={self.time_of_run}, "
+            f"final={self.final}), "
+            f"data_source={self.data_source}, "
+            f"last_doc_id={self.last_doc_id}, "
+            f"pagination_mode={self.pagination_mode},"
+            f"cursor={self.cursor}>"
+        )
 
 
 @contextmanager
@@ -420,7 +420,7 @@ class CheckpointManager(SqlMixin):
             raise Exception("Not tables set in checkpoint manager")
 
 
-class CheckpointManagerWithDetails(object):
+class CheckpointManagerWithDetails:
 
     def __init__(self, manager, since_param, pagination_mode):
         self.manager = manager
@@ -434,7 +434,7 @@ class CheckpointManagerWithDetails(object):
             )
 
 
-class CheckpointManagerProvider(object):
+class CheckpointManagerProvider:
 
     def __init__(
         self,

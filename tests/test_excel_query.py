@@ -93,7 +93,7 @@ class TestExcelQuery(unittest.TestCase):
             )
             # Print will be suppressed by pytest unless it fails
             if not (flatten(compiled) == mappings):
-                print('In %s:' % filename)
+                print(f'In {filename}:')
                 pprint.pprint(flatten(compiled))
                 print('!=')
                 pprint.pprint(mappings)
@@ -327,7 +327,7 @@ class TestExcelQuery(unittest.TestCase):
             compiled = parse_workbook(openpyxl.load_workbook(abs_path))
             # Print will be suppressed by pytest unless it fails
             if not (compiled == minilinq):
-                print('In %s:' % filename)
+                print(f'In {filename}:')
                 pprint.pprint(compiled)
                 print('!=')
                 pprint.pprint(minilinq)
@@ -852,7 +852,7 @@ class TestExcelQuery(unittest.TestCase):
         )
 
     def _compare_minilinq_to_compiled(self, minilinq, filename, **kwargs):
-        print("Parsing {}".format(filename))
+        print(f"Parsing {filename}")
         abs_path = os.path.join(os.path.dirname(__file__), filename)
         compiled = get_queries_from_excel(
             openpyxl.load_workbook(abs_path), missing_value='---', **kwargs
