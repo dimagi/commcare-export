@@ -77,7 +77,6 @@ setuptools.setup(
     python_requires=">=3.6",
     install_requires=[
         'alembic',
-        'argparse',
         'backoff>=2.0',
         'jsonpath-ng~=1.6.0',
         'ndg-httpsclient',
