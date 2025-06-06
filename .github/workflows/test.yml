@@ -33,19 +33,20 @@ jobs:
       matrix:
         python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 50
-      - run: git fetch --tags origin # So we can use git describe. actions/checkout@v3 does not pull tags.
+      - run: git fetch --tags origin # So we can use git describe. actions/checkout@v4 does not pull tags.
 
       # MySQL set up
       - run: sudo service mysql start # Ubuntu already includes mysql no need to use service
       - run: mysql -uroot -proot -e "CREATE USER '${{ env.DB_USER }}'@'%';"
       - run: mysql -uroot -proot -e "GRANT ALL PRIVILEGES ON *.* TO '${{ env.DB_USER }}'@'%';"
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip'
       - run: sudo apt-get install pandoc
       - run: pip install --upgrade pip
       - run: pip install setuptools
@@ -68,5 +69,4 @@ jobs:
       - name: Coveralls
         uses: coverallsapp/github-action@v2
         with:
-          github-token:
-            ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
