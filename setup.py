@@ -81,7 +81,7 @@ setuptools.setup(
         'backoff>=2.0',
         'jsonpath-ng~=1.6.0',
         'ndg-httpsclient',
-        'openpyxl==2.5.12',
+        'openpyxl==3.1.5',
         'python-dateutil',
         'pytz',
         'requests',
