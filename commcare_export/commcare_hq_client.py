@@ -2,7 +2,6 @@
 import copy
 import logging
 import sys
-from collections import OrderedDict
 from math import ceil
 from urllib.parse import urlencode
 
@@ -308,7 +307,7 @@ class MockCommCareHqClient:
 
 
 def _params_to_url(params):
-    return urlencode(OrderedDict(sorted(params.items())))
+    return urlencode(dict(sorted(params.items())))
 
 
 class ApiKeyAuth(AuthBase):
