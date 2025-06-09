@@ -380,18 +380,16 @@ def _check_data(writer, expected, table_name, columns):
     if actual != expected:
         message += 'Data not equal to expected:\n'
         if len(actual) != len(expected):
-            message += '    {} rows compared to {} expected\n'.format(
-                len(actual), len(expected)
-            )
+            message += f'    {len(actual)} rows compared to {len(expected)} expected\n'
         message += 'Diff:\n'
         for i, rows in enumerate(zip_longest(actual, expected)):
             if rows[0] != rows[1]:
-                message += '{}: {} != {}\n'.format(i, rows[0], rows[1])
+                message += f'{i}: {rows[0]} != {rows[1]}\n'
         assert actual == expected, message
 
 
 @pytest.mark.dbtest
-class TestCLIIntegrationTests(object):
+class TestCLIIntegrationTests:
 
     def test_write_to_sql_with_checkpoints(
         self, writer, checkpoint_manager, caplog
@@ -483,10 +481,10 @@ class TestCLIIntegrationTests(object):
         message = ''
         for i, items in enumerate(zip_longest(expected, log_messages)):
             if not items[0] or not items[1] or items[0] not in items[1]:
-                message += 'X {}: {} not in {}\n'.format(i, items[0], items[1])
+                message += f'X {i}: {items[0]} not in {items[1]}\n'
                 fail = True
             else:
-                message += '✓ {}: {} in {}\n'.format(i, items[0], items[1])
+                message += f'✓ {i}: {items[0]} in {items[1]}\n'
         assert not fail, 'Checkpoint comparison failed:\n' + message
 
 
@@ -649,7 +647,7 @@ def _pull_mock_data(
 
 
 @pytest.mark.dbtest
-class TestCLIWithDatabaseErrors(object):
+class TestCLIWithDatabaseErrors:
 
     def test_cli_database_error(
         self, strict_writer, all_db_checkpoint_manager, capfd
@@ -710,7 +708,7 @@ DATA_TYPES_CLIENT = MockCommCareHqClient({
 
 
 @pytest.mark.dbtest
-class TestCLIWithDataTypes(object):
+class TestCLIWithDataTypes:
 
     def test_cli_data_types_add_columns(
         self,
@@ -780,7 +778,7 @@ def get_indexed_on_client(page):
 
 
 @pytest.mark.dbtest
-class TestCLIPaginationMode(object):
+class TestCLIPaginationMode:
 
     def test_cli_pagination_fresh(self, writer, all_db_checkpoint_manager):
         checkpoint_manager = all_db_checkpoint_manager.for_dataset(

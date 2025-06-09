@@ -38,7 +38,7 @@ TYPE_MAP = {
 }
 
 
-class TestWriters(object):
+class TestWriters:
 
     def test_JValueTableWriter(self):
         writer = JValueTableWriter()
@@ -169,7 +169,7 @@ class TestWriters(object):
 
 
 @pytest.mark.dbtest
-class TestSQLWriters(object):
+class TestSQLWriters:
 
     def _type_convert(self, connection, row):
         """
@@ -342,7 +342,7 @@ class TestSQLWriters(object):
             connection = writer.connection
             result = dict([
                 (row['id'], row) for row in connection
-                .execute('SELECT id, a, b, c, d, e FROM %s' % table_name)
+                .execute(f'SELECT id, a, b, c, d, e FROM {table_name}')
             ])
 
             assert len(result) == 2
@@ -684,6 +684,6 @@ class TestSQLWriters(object):
             row['COLUMN_NAME']: row for row in connection.execute(
                 "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH "
                 "FROM INFORMATION_SCHEMA.COLUMNS "
-                "WHERE TABLE_NAME = '{}';".format(table_name)
+                f"WHERE TABLE_NAME = '{table_name}';"
             )
         }

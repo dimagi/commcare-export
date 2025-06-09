@@ -19,7 +19,7 @@ from commcare_export.commcare_minilinq import (
 )
 from mock import Mock, patch
 
-class FakeSession(object):
+class FakeSession:
 
     def get(self, resource_url, params=None, auth=None, timeout=None):
         result = self._get_results(params)
@@ -201,7 +201,7 @@ class FakeDateFormSession(FakeSession):
                 'objects': [{
                     'id': 1,
                     'foo': 1,
-                    'indexed_on': '{}Z'.format(since1)
+                    'indexed_on': f'{since1}Z'
                 }]
             }
         else:
@@ -222,7 +222,7 @@ class FakeDateFormSession(FakeSession):
                     }, {
                         'id': 2,
                         'foo': 2,
-                        'indexed_on': '{}Z'.format(since2)
+                        'indexed_on': f'{since2}Z'
                     }]
                 }
             elif indexed_on == since2:

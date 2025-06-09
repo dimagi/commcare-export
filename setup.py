@@ -74,10 +74,9 @@ setuptools.setup(
     ],
     include_package_data=True,
     license='MIT',
-    python_requires=">=3.6",
+    python_requires=">=3.9",
     install_requires=[
         'alembic',
-        'argparse',
         'backoff>=2.0',
         'jsonpath-ng~=1.6.0',
         'ndg-httpsclient',

@@ -1,10 +1,13 @@
-class TableSpec:
+from dataclasses import dataclass, field
+from typing import Any, Iterable, List, Optional
 
-    def __init__(self, name, headings, rows, data_types=None):
-        self.name = name
-        self.headings = headings
-        self.rows = rows
-        self.data_types = data_types or []
+
+@dataclass
+class TableSpec:
+    name: str
+    headings: List[str]
+    rows: Iterable[List[Any]]
+    data_types: List[Optional[str]] = field(default_factory=list)
 
     def __eq__(self, other):
         return (

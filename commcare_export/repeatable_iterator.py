@@ -1,4 +1,4 @@
-class RepeatableIterator(object):
+class RepeatableIterator:
     """
     Pass something iterable into this and, unless it has crufty issues,
     voila.

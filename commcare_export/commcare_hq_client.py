@@ -1,16 +1,7 @@
-from __future__ import (
-    absolute_import,
-    division,
-    generators,
-    nested_scopes,
-    print_function,
-    unicode_literals,
-)
 
 import copy
 import logging
 import sys
-from collections import OrderedDict
 from math import ceil
 from urllib.parse import urlencode
 
@@ -72,7 +63,7 @@ class ResourceRepeatException(Exception):
         return self.message
 
 
-class CommCareHqClient(object):
+class CommCareHqClient:
     """
     A connection to CommCareHQ for a particular version, project, and user.
     """
@@ -99,7 +90,7 @@ class CommCareHqClient(object):
         elif mode == AUTH_MODE_APIKEY:
             return ApiKeyAuth(username, password)
         else:
-            raise Exception('Unknown auth mode: %s' % mode)
+            raise Exception(f'Unknown auth mode: {mode}')
 
     @property
     def session(self):
@@ -117,7 +108,7 @@ class CommCareHqClient(object):
 
     @property
     def api_url(self):
-        return '%s/a/%s/api/v%s' % (self.url, self.project, self.version)
+        return f'{self.url}/a/{self.project}/api/v{self.version}'
 
     @staticmethod
     def _should_raise_for_status(response):
@@ -259,7 +250,7 @@ class CommCareHqClient(object):
         return RepeatableIterator(iterate_resource)
 
 
-class MockCommCareHqClient(object):
+class MockCommCareHqClient:
     """
     An in-memory mock of the hq client, instantiated with a simple
     mapping of resource and params to results.
@@ -316,7 +307,7 @@ class MockCommCareHqClient(object):
 
 
 def _params_to_url(params):
-    return urlencode(OrderedDict(sorted(params.items())))
+    return urlencode(dict(sorted(params.items())))
 
 
 class ApiKeyAuth(AuthBase):
