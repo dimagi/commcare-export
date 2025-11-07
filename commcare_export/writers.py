@@ -94,8 +94,7 @@ class CsvTableWriter(TableWriter):
             for row in table.rows:
                 writer.writerow(row)
 
-            # TODO: make this a polite zip and put everything in a subfolder
-            #       with the same basename as the zipfile
+            tempfile.flush()  # Flush buffer before zip reads tempfile
             self.archive.write(
                 tempfile.name,
                 f'{self.zip_safe_name(table.name)}.csv',
