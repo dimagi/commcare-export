@@ -67,9 +67,8 @@ class TestUnwrap:
     def test_unwrap_last_argument(self):
         @misc.unwrap('data')
         def process_last(operation, multiplier, data):
-            if operation == "multiply":
-                return data * multiplier
-            return data
+            assert operation == "multiply"
+            return data * multiplier
 
         ri = RepeatableIterator(lambda: iter([7]))
         assert process_last("multiply", 3, ri) == 21
