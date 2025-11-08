@@ -45,9 +45,9 @@ class PyTest(TestCommand):
         sys.exit(errno)
 
 
-test_deps = ['pytest', 'psycopg2', 'mock']
+test_deps = ['pytest', 'psycopg2-binary', 'mock']
 base_sql_deps = ["SQLAlchemy", "alembic"]
-postgres = ["psycopg2"]
+postgres = ["psycopg2-binary"]
 mysql = ["pymysql"]
 odbc = ["pyodbc"]
 
