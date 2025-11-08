@@ -1,3 +1,4 @@
+import doctest
 import hashlib
 import struct
 import tempfile
@@ -155,3 +156,8 @@ class TestUnwrap(unittest.TestCase):
 
         ri = RepeatableIterator(lambda: iter([5]))
         self.assertEqual(proc.process(ri), 105)
+
+
+def test_doctests():
+    results = doctest.testmod(misc)
+    assert results.failed == 0
