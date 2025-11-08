@@ -4,6 +4,8 @@ import struct
 import tempfile
 import unittest
 
+import pytest
+
 from commcare_export import misc
 from commcare_export.repeatable_iterator import RepeatableIterator
 from jsonpath_ng import jsonpath
@@ -35,7 +37,7 @@ class TestDigestFile(unittest.TestCase):
         self.check_digest(struct.pack('III'.encode('ascii'), 1, 2, 3))
 
 
-class TestUnwrap(unittest.TestCase):
+class TestUnwrap:
     """
     Tests for the @unwrap decorator, which unwraps RepeatableIterators,
     single-element lists, and jsonpath DatumInContext objects before
@@ -48,21 +50,19 @@ class TestUnwrap(unittest.TestCase):
             return val * multiplier
 
         ri = RepeatableIterator(lambda: iter([42]))
-        self.assertEqual(process_value(ri, 2), 84)
-
-        self.assertEqual(process_value([10], 3), 30)
-
-        self.assertEqual(process_value(5, 4), 20)
+        assert process_value(ri, 2) == 84
+        assert process_value([10], 3) == 30
+        assert process_value(5, 4) == 20
 
     def test_unwrap_middle_argument(self):
         @misc.unwrap('target')
         def process_middle(prefix, target, suffix):
             return f"{prefix}_{target}_{suffix}"
 
-        self.assertEqual(process_middle("a", ["b"], "c"), "a_b_c")
+        assert process_middle("a", ["b"], "c") == "a_b_c"
 
         ri = RepeatableIterator(lambda: iter(["x"]))
-        self.assertEqual(process_middle("start", ri, "end"), "start_x_end")
+        assert process_middle("start", ri, "end") == "start_x_end"
 
     def test_unwrap_last_argument(self):
         @misc.unwrap('data')
@@ -72,30 +72,32 @@ class TestUnwrap(unittest.TestCase):
             return data
 
         ri = RepeatableIterator(lambda: iter([7]))
-        self.assertEqual(process_last("multiply", 3, ri), 21)
+        assert process_last("multiply", 3, ri) == 21
 
-    def test_unwrap_repeatable_iterator(self):
+    @pytest.mark.parametrize("iterator_data,expected", [
+        ([42], 42),
+        ([1, 2, 3], [1, 2, 3]),
+        ([], []),
+    ])
+    def test_unwrap_repeatable_iterator(self, iterator_data, expected):
         @misc.unwrap('val')
         def get_value(val):
             return val
 
-        ri_single = RepeatableIterator(lambda: iter([42]))
-        self.assertEqual(get_value(ri_single), 42)
+        ri = RepeatableIterator(lambda: iter(iterator_data))
+        assert get_value(ri) == expected
 
-        ri_multi = RepeatableIterator(lambda: iter([1, 2, 3]))
-        self.assertEqual(get_value(ri_multi), [1, 2, 3])
-
-        ri_empty = RepeatableIterator(lambda: iter([]))
-        self.assertEqual(get_value(ri_empty), [])
-
-    def test_unwrap_single_element_list(self):
+    @pytest.mark.parametrize("input_val,expected", [
+        ([42], 42),
+        (["text"], "text"),
+        ([{"key": "value"}], {"key": "value"}),
+    ])
+    def test_unwrap_single_element_list(self, input_val, expected):
         @misc.unwrap('val')
         def get_value(val):
             return val
 
-        self.assertEqual(get_value([42]), 42)
-        self.assertEqual(get_value(["text"]), "text")
-        self.assertEqual(get_value([{"key": "value"}]), {"key": "value"})
+        assert get_value(input_val) == expected
 
     def test_unwrap_multi_element_list(self):
         @misc.unwrap('val')
@@ -103,44 +105,46 @@ class TestUnwrap(unittest.TestCase):
             return val
 
         result = get_value([[1], [2], [3]])
-        self.assertEqual(result, [1, 2, 3])
+        assert result == [1, 2, 3]
 
-    def test_unwrap_jsonpath_datum(self):
+    @pytest.mark.parametrize("value,wrap_in_list", [
+        ("extracted_value", False),
+        (42, True),
+        ("nested", True),
+    ])
+    def test_unwrap_jsonpath_datum(self, value, wrap_in_list):
         @misc.unwrap('val')
         def get_value(val):
             return val
 
-        datum = jsonpath.DatumInContext(value="extracted_value", path=None, context=None)
-        self.assertEqual(get_value(datum), "extracted_value")
+        datum = jsonpath.DatumInContext(value=value, path=None, context=None)
+        input_val = [datum] if wrap_in_list else datum
+        assert get_value(input_val) == value
 
-        datum_nested = jsonpath.DatumInContext(value=42, path=None, context=None)
-        self.assertEqual(get_value([datum_nested]), 42)
-
-    def test_unwrap_nested_structures(self):
+    @pytest.mark.parametrize("iterator_data,expected", [
+        ([[10]], [10]),
+    ])
+    def test_unwrap_nested_structures(self, iterator_data, expected):
         @misc.unwrap('val')
         def get_value(val):
             return val
 
-        ri = RepeatableIterator(lambda: iter([[10]]))
-        self.assertEqual(get_value(ri), [10])
+        ri = RepeatableIterator(lambda: iter(iterator_data))
+        assert get_value(ri) == expected
 
-        datum = jsonpath.DatumInContext(value="nested", path=None, context=None)
-        self.assertEqual(get_value([datum]), "nested")
-
-        ri_simple = RepeatableIterator(lambda: iter([42]))
-        self.assertEqual(get_value(ri_simple), 42)
-
-    def test_unwrap_preserves_non_wrappable_values(self):
+    @pytest.mark.parametrize("input_val,expected", [
+        (42, 42),
+        ("text", "text"),
+        (None, None),
+        ({"key": "value"}, {"key": "value"}),
+        ([1, 2, 3], [1, 2, 3]),
+    ])
+    def test_unwrap_preserves_non_wrappable_values(self, input_val, expected):
         @misc.unwrap('val')
         def get_value(val):
             return val
 
-        self.assertEqual(get_value(42), 42)
-        self.assertEqual(get_value("text"), "text")
-        self.assertEqual(get_value(None), None)
-        self.assertEqual(get_value({"key": "value"}), {"key": "value"})
-
-        self.assertEqual(get_value([1, 2, 3]), [1, 2, 3])
+        assert get_value(input_val) == expected
 
     def test_unwrap_with_methods(self):
         class Processor:
@@ -152,10 +156,10 @@ class TestUnwrap(unittest.TestCase):
                 return self.base + val
 
         proc = Processor(100)
-        self.assertEqual(proc.process([10]), 110)
+        assert proc.process([10]) == 110
 
         ri = RepeatableIterator(lambda: iter([5]))
-        self.assertEqual(proc.process(ri), 105)
+        assert proc.process(ri) == 105
 
 
 def test_doctests():
