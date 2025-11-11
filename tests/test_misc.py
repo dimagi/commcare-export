@@ -44,25 +44,28 @@ class TestUnwrap:
     passing them to the decorated function.
     """
 
-    def test_unwrap_first_argument(self):
+    @pytest.mark.parametrize("arguments,expected", [
+        ((RepeatableIterator(lambda: iter([42])), 2), 84),
+        (([10], 3), 30),
+        ((5, 4), 20),
+    ])
+    def test_unwrap_first_argument(self, arguments, expected):
         @misc.unwrap('val')
         def process_value(val, multiplier):
             return val * multiplier
 
-        ri = RepeatableIterator(lambda: iter([42]))
-        assert process_value(ri, 2) == 84
-        assert process_value([10], 3) == 30
-        assert process_value(5, 4) == 20
+        assert process_value(*arguments) == expected
 
-    def test_unwrap_middle_argument(self):
+    @pytest.mark.parametrize("arguments,expected", [
+        (("a", ["b"], "c"), "a_b_c"),
+        (("start", RepeatableIterator(lambda: iter(["x"])), "end"), "start_x_end"),
+    ])
+    def test_unwrap_middle_argument(self, arguments, expected):
         @misc.unwrap('target')
         def process_middle(prefix, target, suffix):
             return f"{prefix}_{target}_{suffix}"
 
-        assert process_middle("a", ["b"], "c") == "a_b_c"
-
-        ri = RepeatableIterator(lambda: iter(["x"]))
-        assert process_middle("start", ri, "end") == "start_x_end"
+        assert process_middle(*arguments) == expected
 
     def test_unwrap_last_argument(self):
         @misc.unwrap('data')
@@ -145,7 +148,11 @@ class TestUnwrap:
 
         assert get_value(input_val) == expected
 
-    def test_unwrap_with_methods(self):
+    @pytest.mark.parametrize("input_val,expected", [
+        ([10], 110),
+        (RepeatableIterator(lambda: iter([5])), 105),
+    ])
+    def test_unwrap_with_methods(self, input_val, expected):
         class Processor:
             def __init__(self, base):
                 self.base = base
@@ -155,10 +162,7 @@ class TestUnwrap:
                 return self.base + val
 
         proc = Processor(100)
-        assert proc.process([10]) == 110
-
-        ri = RepeatableIterator(lambda: iter([5]))
-        assert proc.process(ri) == 105
+        assert proc.process(input_val) == expected
 
 
 def test_doctests():
