@@ -20,8 +20,22 @@ def digest_file(path):
 
 
 def unwrap(arg_name):
+    """
+    A decorator that extracts the inner value of a named parameter
+    ``arg_name``, and passes it to the decorated function.
+
+    e.g.
+
+    >>> @unwrap('val')
+    ... def get_value(val):
+    ...     return val
+    >>> get_value([42])
+    42
+
+    """
 
     def unwrapper(fn):
+        # Find the position of `arg_name` among the arguments of `fn`
         sig = inspect.signature(fn)
         parameters = list(sig.parameters.keys())
         position = parameters.index(arg_name)
@@ -29,7 +43,7 @@ def unwrap(arg_name):
         @functools.wraps(fn)
         def _inner(*args):
             args = list(args)
-            args[position] = unwrap_val(args[position])
+            args[position] = unwrap_val(args[position])  # Unwrap `arg_name`
             return fn(*args)
 
         return _inner
@@ -38,6 +52,15 @@ def unwrap(arg_name):
 
 
 def unwrap_val(val):
+    """
+    Extracts the inner value of ``val``.
+
+    e.g.
+
+    >>> unwrap_val([42])
+    42
+
+    """
     if isinstance(val, RepeatableIterator):
         val = list(val)
 
