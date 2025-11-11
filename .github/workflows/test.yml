@@ -57,6 +57,8 @@ jobs:
       - run: pip install mypy
       - run: pip install pytest
       - run: pip install -e ".[test]"
+
+      # Run tests and save test coverage
       - run: coverage run -m pytest
         env:
           POSTGRES_URL: postgresql://${{ env.DB_USER }}:${{ env.DB_PASSWORD }}@localhost/
@@ -64,9 +66,13 @@ jobs:
           MSSQL_URL: mssql+pyodbc://sa:${{ env.DB_PASSWORD }}@localhost/
           HQ_USERNAME: ${{ secrets.HQ_USERNAME }}
           HQ_API_KEY: ${{ secrets.HQ_API_KEY }}
-      - run: mypy --install-types --non-interactive @mypy_typed_modules.txt
+      # Convert coverage data for Coveralls
       - run: coverage lcov -o coverage/lcov.info
+      # Use Coveralls to track coverage
       - name: Coveralls
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Check typing
+      - run: mypy --install-types --non-interactive @mypy_typed_modules.txt
