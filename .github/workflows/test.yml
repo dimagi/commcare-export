@@ -72,7 +72,21 @@ jobs:
       - name: Coveralls
         uses: coverallsapp/github-action@v2
         with:
+          parallel: true
+          flag-name: run-${{ join(matrix.*, '-') }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Check typing
       - run: mypy --install-types --non-interactive @mypy_typed_modules.txt
+
+  finish:
+    needs: test
+    if: ${{ always() }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Close parallel build
+        uses: coverallsapp/github-action@v2
+        with:
+          parallel-finished: true
+          carryforward: "run-3.9,run-3.10,run-3.11,run-3.12,run-3.13"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
