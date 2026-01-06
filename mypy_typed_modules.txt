@@ -1,2 +1,0 @@
-commcare_export/env.py
-commcare_export/minilinq.py
