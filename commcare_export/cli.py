@@ -30,6 +30,7 @@ from commcare_export.utils import get_checkpoint_manager
 from commcare_export.version import __version__
 from commcare_export import get_logger, get_error_logger
 
+EXIT_STATUS_SUCCESS = 0
 EXIT_STATUS_ERROR = 1
 logger = get_logger(__file__)
 
@@ -471,7 +472,7 @@ def main_with_args(args):
 
     if args.dump_query:
         print(json.dumps(query.to_jvalue(), indent=4))
-        return
+        return EXIT_STATUS_SUCCESS
 
     checkpoint_manager = None
     if writer.support_checkpoints:
