@@ -1,52 +1,36 @@
-import io
-import re
-import os.path
-import subprocess
+"""Version information for commcare-export.
 
-__all__ = ['__version__', 'stored_version', 'git_version']
+The version is managed by setuptools-scm and stored in the VERSION file.
+"""
+from pathlib import Path
 
-VERSION_PATH = os.path.join(os.path.dirname(__file__), 'VERSION')
+__all__ = ['__version__']
 
-
-def stored_version():
-    if os.path.exists(VERSION_PATH):
-        with io.open(VERSION_PATH, encoding='ascii') as fh:
-            return fh.read().strip()
-    else:
-        return None
+VERSION_PATH = Path(__file__).parent / 'VERSION'
 
 
-def git_version():
-    if os.environ.get('DET_EXECUTABLE'):
-        return None
+def get_version():
+    """Read version from VERSION file written by setuptools-scm during build.
 
-    described_version_bytes = subprocess.Popen(
-        ['git', 'describe'],
-        stdout=subprocess.PIPE
-    ).communicate()[0].strip()
-    version_raw = described_version_bytes.decode('ascii')
-    return parse_version(version_raw)
-
-
-def parse_version(version_raw):
-    """Attempt to convert a git version to a version
-    compatible with PEP440: https://peps.python.org/pep-0440/
+    For development installs, setuptools-scm handles version detection automatically.
+    For built distributions, the version is in the VERSION file.
     """
-    match = re.match('(\d+\.\d+\.\d+)(?:-(\d+).*)?', version_raw)
-    if match:
-        tag_version, lead_count = match.groups()
-        if lead_count:
-            tag_version += f".dev{lead_count}"
-        return tag_version
+    if VERSION_PATH.exists():
+        return VERSION_PATH.read_text(encoding='ascii').strip()
 
-    return version_raw
+    # During development with editable install, try to get version from setuptools-scm
+    try:
+        from setuptools_scm import get_version as scm_get_version
+        return scm_get_version(root='..', relative_to=__file__)
+    except Exception:
+        pass
+
+    # Final fallback for edge cases (e.g., PyInstaller executable)
+    return "unknown"
 
 
-def version():
-    return stored_version() or git_version()
+__version__ = get_version()
 
-
-__version__ = version()
 
 if __name__ == '__main__':
     print(__version__)

@@ -69,10 +69,10 @@ $ venv
 
 ## Install CommCare Export
 
-Install CommCare Export via `pip`
+[uv](https://docs.astral.sh/uv/) is a fast Python package installer and resolver.
 
 ```shell
-$ pip install commcare-export
+$ uv pip install commcare-export
 ```
 
 ## CommCare HQ
@@ -535,28 +535,27 @@ via the `--output-format <format>` option, and it can be directed to a file with
 Dependencies
 ------------
 
-Required dependencies will be automatically installed via pip. But since
-you may not care about all export formats, the various dependencies there
-are optional. Here is how you might install them:
+Required dependencies will be automatically installed. Optional dependencies
+for specific export formats can be installed as extras:
 
 ```shell
 # To export "xlsx"
-$ pip install "commcare-export[xlsx]"
+$ uv pip install "commcare-export[xlsx]"
 
 # To export "xls"
-$ pip install "commcare-export[xls]"
+$ uv pip install "commcare-export[xls]"
 
 # To sync with a Postgres database
-$ pip install "commcare-export[postgres]"
+$ uv pip install "commcare-export[postgres]"
 
 # To sync with a mysql database
-$ pip install "commcare-export[mysql]"
+$ uv pip install "commcare-export[mysql]"
 
 # To sync with a database which uses odbc (e.g. mssql)
-$ pip install "commcare-export[odbc]"
+$ uv pip install "commcare-export[odbc]"
 
 # To sync with another SQL database supported by SQLAlchemy
-$ pip install "commcare-export[base_sql]"
+$ uv pip install "commcare-export[base_sql]"
 # Then install the Python package for your database
 ```
 
@@ -570,11 +569,11 @@ Contributing
 2\. Clone your fork, install into a virtualenv, and start a feature branch
 
 ```shell
-$ git clone git@github.com:dimagi/commcare-export.git
+$ git clone git@github.com:your-username/commcare-export.git
 $ cd commcare-export
-$ python3 -m venv venv
-$ source venv/bin/activate
-$ pip install -e ".[test]"
+$ uv venv
+$ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+$ uv pip install -e ".[test]"
 $ git checkout -b my-super-duper-feature
 ```
 
@@ -623,18 +622,18 @@ $ git tag -a "X.YY.0" -m "Release X.YY.0"
 $ git push --tags
 ```
 
-2\. Create the source distribution
+2\. Create the distribution
 
 ```shell
-$ python setup.py sdist
+$ uv build
 ```
-Ensure that the archive (`dist/commcare-export-X.YY.0.tar.gz`) has the correct version number (matching the tag name).
+
+Ensure that the archives in `dist/` have the correct version number (matching the tag name).
 
 3\. Upload to pypi
 
 ```shell
-$ pip install twine
-$ twine upload -u dimagi dist/commcare-export-X.YY.0.tar.gz
+$ uv publish
 ```
 
 4\. Verify upload

@@ -35,28 +35,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 50
-      - run: git fetch --tags origin # So we can use git describe. actions/checkout@v4 does not pull tags.
+          fetch-depth: 0  # setuptools-scm needs full git history
 
       # MySQL set up
-      - run: sudo service mysql start # Ubuntu already includes mysql no need to use service
+      - run: sudo service mysql start
       - run: mysql -uroot -proot -e "CREATE USER '${{ env.DB_USER }}'@'%';"
       - run: mysql -uroot -proot -e "GRANT ALL PRIVILEGES ON *.* TO '${{ env.DB_USER }}'@'%';"
 
-      - uses: actions/setup-python@v5
+      # Install uv
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
+
       - run: sudo apt-get install pandoc
-      - run: pip install --upgrade pip
-      - run: pip install setuptools
-      - run: python setup.py sdist
-      - run: pip install dist/*
-      - run: pip install pymysql psycopg2 pyodbc
-      - run: pip install coverage coveralls
-      - run: pip install mypy
-      - run: pip install pytest
-      - run: pip install -e ".[test]"
+
+      # Build and install package
+      - name: Build distribution
+        run: uv build
+
+      - name: Install package with extras
+        run: |
+          uv pip install --system dist/*.whl
+          uv pip install --system pymysql psycopg2 pyodbc
+          uv pip install --system coverage coveralls
+          uv pip install --system mypy
+          uv pip install --system pytest
+          uv pip install --system -e ".[test]"
 
       # Run tests and save test coverage
       - run: coverage run -m pytest
@@ -66,8 +77,10 @@ jobs:
           MSSQL_URL: mssql+pyodbc://sa:${{ env.DB_PASSWORD }}@localhost/
           HQ_USERNAME: ${{ secrets.HQ_USERNAME }}
           HQ_API_KEY: ${{ secrets.HQ_API_KEY }}
+
       # Convert coverage data for Coveralls
       - run: coverage lcov -o coverage/lcov.info
+
       # Use Coveralls to track coverage
       - name: Coveralls
         uses: coverallsapp/github-action@v2
