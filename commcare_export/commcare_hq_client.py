@@ -179,7 +179,7 @@ class CommCareHqClient:
         Assumes the endpoint is a list endpoint, and iterates over it
         making a lot of assumptions that it is like a tastypie endpoint.
         """
-        unknown_count = 'unknown'
+        unknown_count = -1
         params = dict(params or {})
 
         def iterate_resource(resource=resource, params=params):

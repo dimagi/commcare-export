@@ -10,8 +10,8 @@ EXIT_STATUS_ERROR = 1
 
 
 class BaseCommand:
-    slug = None
-    help = None
+    slug: str | None = None
+    help: str | None = None
 
     @classmethod
     def add_arguments(cls, parser):
@@ -134,6 +134,8 @@ def main(argv):
     parser = argparse.ArgumentParser('commcare-export-utils')
     subparsers = parser.add_subparsers(dest='command')
     for command_type in COMMANDS:
+        assert command_type.slug is not None
+        assert command_type.help is not None
         sub = subparsers.add_parser(
             command_type.slug,
             help=inspect.cleandoc(command_type.help).splitlines()[0],
