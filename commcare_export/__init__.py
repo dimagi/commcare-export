@@ -3,6 +3,15 @@ import os
 import re
 from .version import __version__
 
+__all__ = [
+    '__version__',
+    'get_logger',
+    'get_error_logger',
+    'logger_name_from_filepath',
+    'Logger',
+    'repo_root',
+]
+
 repo_root = os.path.abspath(os.path.join(__file__, os.pardir, os.pardir))
 
 

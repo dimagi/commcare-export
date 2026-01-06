@@ -3,6 +3,7 @@ import datetime
 from tempfile import NamedTemporaryFile
 import zipfile
 from itertools import zip_longest
+from typing import Optional
 
 import sqlalchemy
 from sqlalchemy.exc import NoSuchTableError
@@ -53,14 +54,13 @@ class TableWriter:
     If the implementing class does not actually need any set up, no-op
     defaults have been provided.
     """
-    max_column_length = None
     support_checkpoints = False
 
     # set to False if writer does not support writing to the same table
     # multiple times
     supports_multi_table_write = True
 
-    required_columns = None
+    required_columns: Optional[list[str]] = None
 
     def __enter__(self):
         return self
@@ -101,7 +101,8 @@ class CsvTableWriter(TableWriter):
             )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.archive.close()
+        if self.archive:
+            self.archive.close()
 
     def zip_safe_name(self, name):
         return name[:31]

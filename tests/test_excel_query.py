@@ -1,13 +1,17 @@
 import os.path
 import pprint
 import unittest
+from collections import defaultdict
 
 import openpyxl
+from jsonpath_ng import jsonpath
+from jsonpath_ng.parser import parse as parse_jsonpath
 
 from commcare_export.builtin_queries import ColumnEnforcer
 from commcare_export.env import BuiltInEnv, JsonPathEnv
 from commcare_export.excel_query import *
 from commcare_export.excel_query import _get_safe_source_field
+from commcare_export.jsonpath_utils import split_leftmost
 
 
 class TestExcelQuery(unittest.TestCase):

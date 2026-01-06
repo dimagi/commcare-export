@@ -32,7 +32,7 @@ if 'register' in sys.argv or 'upload' in sys.argv:
 readme = 'README.md'
 
 
-class PyTest(TestCommand):
+class PyTest(TestCommand):  # type: ignore
     def finalize_options(self):
         TestCommand.finalize_options(self)
         self.test_args = ['-vv', '--tb=short']

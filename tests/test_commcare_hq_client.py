@@ -3,6 +3,7 @@ from datetime import datetime
 
 import requests
 import simplejson
+from requests.structures import CaseInsensitiveDict
 
 import pytest
 from commcare_export.checkpoint import CheckpointManagerWithDetails
@@ -294,7 +295,7 @@ class TestCommCareHqClient(unittest.TestCase):
     @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")
     def test_dont_raise_on_too_many_requests(self, session_mock):
         response = requests.Response()
-        response.headers = {'Retry-After': "0.0"}
+        response.headers = CaseInsensitiveDict({'Retry-After': "0.0"})
         client = CommCareHqClient(
             '/fake/commcare-hq/url', 'fake-project', None, None
         )
@@ -304,7 +305,7 @@ class TestCommCareHqClient(unittest.TestCase):
     @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")
     def test_raise_on_too_many_requests(self, session_mock):
         response = requests.Response()
-        response.headers = {}
+        response.headers = CaseInsensitiveDict({})
 
         client = CommCareHqClient(
             '/fake/commcare-hq/url', 'fake-project', None, None
