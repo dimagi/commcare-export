@@ -315,6 +315,108 @@ class TestCli(unittest.TestCase):
             + get_expected_locations_results(True)
         )
 
+    @mock.patch('logging.basicConfig')
+    @mock.patch('os.getcwd', return_value='/mock/cwd')
+    @mock.patch('os.makedirs')
+    @mock.patch('builtins.open', new_callable=mock.mock_open)
+    def test_log_dir_default(
+        self,
+        mock_open,
+        mock_makedirs,
+        mock_getcwd,
+        mock_basicConfig,
+    ):
+        from commcare_export.cli import set_up_logging
+
+        success, log_file, error = set_up_logging()
+
+        assert success is True
+        assert log_file == '/mock/cwd/commcare_export.log'
+        assert error is None
+        mock_makedirs.assert_called_once_with('/mock/cwd', exist_ok=True)
+        mock_basicConfig.assert_called_once()
+        call_kwargs = mock_basicConfig.call_args[1]
+        assert call_kwargs['filename'] == '/mock/cwd/commcare_export.log'
+        assert call_kwargs['filemode'] == 'a'
+
+    @mock.patch('logging.basicConfig')
+    @mock.patch('os.makedirs')
+    @mock.patch('builtins.open', new_callable=mock.mock_open)
+    def test_log_dir_custom(
+        self,
+        mock_open,
+        mock_makedirs,
+        mock_basicConfig,
+    ):
+        from commcare_export.cli import set_up_logging
+
+        success, log_file, error = set_up_logging('/custom/log/path')
+
+        assert success is True
+        assert log_file == '/custom/log/path/commcare_export.log'
+        assert error is None
+        mock_makedirs.assert_called_once_with('/custom/log/path', exist_ok=True)
+        mock_basicConfig.assert_called_once()
+        call_kwargs = mock_basicConfig.call_args[1]
+        assert call_kwargs['filename'] == '/custom/log/path/commcare_export.log'
+
+    @mock.patch('os.makedirs', side_effect=PermissionError("Permission denied"))
+    def test_log_dir_permission_error(
+        self,
+        mock_makedirs,
+    ):
+        from commcare_export.cli import set_up_logging
+
+        success, log_file, error = set_up_logging('/restricted/path')
+
+        assert success is False
+        assert log_file == '/restricted/path/commcare_export.log'
+        assert error == "Permission denied"
+        mock_makedirs.assert_called_once_with('/restricted/path', exist_ok=True)
+
+    @mock.patch('logging.basicConfig')
+    @mock.patch('os.getcwd', return_value='/test/dir')
+    @mock.patch('os.makedirs')
+    @mock.patch('builtins.open', new_callable=mock.mock_open)
+    def test_log_append_mode(
+        self,
+        mock_open,
+        mock_makedirs,
+        mock_getcwd,
+        mock_basicConfig,
+    ):
+        from commcare_export.cli import set_up_logging
+
+        success, log_file, error = set_up_logging()
+
+        assert success is True
+        mock_basicConfig.assert_called_once()
+        call_kwargs = mock_basicConfig.call_args[1]
+        assert call_kwargs['filemode'] == 'a'
+
+    @mock.patch('commcare_export.cli._get_api_client', return_value=mock_hq_client(True))
+    @mock.patch('commcare_export.cli.set_up_logging')
+    @mock.patch('sys.exit')
+    def test_no_logfile_still_works(
+        self,
+        mock_exit,
+        mock_set_up_logging,
+        mock_client,
+    ):
+        from commcare_export.cli import main
+
+        main([
+            '--query', 'tests/008_multiple-tables.xlsx',
+            '--project', 'test',
+            '--username', 'test',
+            '--password', 'test',
+            '--output-format', 'json',
+            '--no-logfile',
+            '--log-dir', '/some/path'  # Should be ignored
+        ])
+
+        mock_set_up_logging.assert_not_called()
+
 
 @pytest.fixture(scope='function')
 def writer(pg_db_params):

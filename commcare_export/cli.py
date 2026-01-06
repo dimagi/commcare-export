@@ -2,7 +2,7 @@ import argparse
 import getpass
 import io
 import json
-import os.path
+import os
 import sys
 import logging
 import dateutil.parser
@@ -174,7 +174,44 @@ CLI_ARGS = [
              " show all output in the console.",
         action='store_true',
     ),
+    Argument(
+        'log-dir',
+        default=None,
+        help="Directory where the log file (commcare_export.log) will be written. "
+             "Defaults to the current working directory. Log entries are appended "
+             "to preserve history across runs."
+    ),
 ]
+
+
+def set_up_logging(log_dir=None):
+    """
+    Set up file-based logging.
+
+    :param log_dir: Directory where the log file will be written. If
+        None, uses the current working directory.
+    :returns tuple: (success, log_file_path, error_msg)
+    """
+    if log_dir is None:
+        log_dir = os.getcwd()
+
+    log_file = os.path.join(log_dir, "commcare_export.log")
+
+    try:
+        os.makedirs(log_dir, exist_ok=True)  # Create if it doesn't exist
+
+        with open(log_file, 'a'):  # Test write permissions
+            pass
+
+        logging.basicConfig(
+            filename=log_file,
+            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+            filemode='a',
+        )
+        sys.stderr = get_error_logger()
+        return True, log_file, None
+    except (OSError, IOError, PermissionError) as err:
+        return False, log_file, str(err)
 
 
 def main(argv):
@@ -193,15 +230,12 @@ def main(argv):
             raise Exception(f"Could not proceed. Following issues were found: {', '.join(errors)}.")
 
     if not args.no_logfile:
-        exe_dir = os.path.dirname(sys.executable)
-        log_file = os.path.join(exe_dir, "commcare_export.log")
-        print(f"Printing logs to {log_file}")
-        logging.basicConfig(
-            filename=log_file,
-            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-            filemode='w',
-        )
-        sys.stderr = get_error_logger()
+        success, log_file, error = set_up_logging(args.log_dir)
+        if success:
+            print(f'Writing logs to {log_file}')
+        else:
+            print(f'Warning: Unable to write to log file {log_file}: {error}')
+            print('Logging to console only.')
 
     if args.verbose:
         logging.basicConfig(
