@@ -681,70 +681,71 @@ To run tests against selected databases can be done using test marks as follows:
 $ py.test -m [postgres,mysql,mssql]
 ```
 
-Database URLs can be overridden via environment variables:
-```
-POSTGRES_URL=postgresql://user:password@host/
-MYSQL_URL=mysql+pymysql://user:password@host/
-MSSQL_URL=mssql+pyodbc://user:password@host/
-```
+Use Docker and docker-compose to start database services for tests:
 
-Postgresql
-==========
+1. Start the services:
+   ```shell
+   docker-compose up -d
+   ```
+
+2. Wait for services to be healthy:
+   ```shell
+   docker-compose ps
+   ```
+
+3. Run your tests. The default environment variables in
+   `tests/conftest.py` work automatically:
+   - PostgreSQL: `postgresql://postgres@localhost/`
+   - MySQL: `mysql+pymysql://travis@/`
+   - MS SQL Server: `mssql+pyodbc://SA:Password-123@localhost/`
+
+   If needed, you can override with environment variables:
+   ```shell
+   export POSTGRES_URL='postgresql://postgres@localhost/'
+   export MYSQL_URL='mysql+pymysql://root@localhost/'
+   export MSSQL_URL='mssql+pyodbc://SA:Password-123@localhost/'
+   ```
+4. Stop the services when done:
+   ```shell
+   docker-compose down
+   ```
+   To also remove the data volumes:
+   ```shell
+   docker-compose down -v
+   ```
+
+> [!NOTE]
+> For MS SQL Server tests, you'll need the ODBC Driver for SQL Server
+> installed on your host system for the `pyodbc` connection to work.
+
+From [learn.microsoft.com](https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server)
+([source](https://github.com/MicrosoftDocs/sql-docs/blob/live/docs/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server.md))
+
+#### Debian/Ubuntu
+
 ```shell
-$ docker pull postgres:9.6
-$ docker run --name ccexport-postgres -p 5432:5432 -e POSTGRES_PASSWORD=postgres -d postgres:9.6
-$ export POSTGRES_URL=postgresql://postgres:postgres@localhost/
+# Download the package to configure the Microsoft repo
+curl -sSL -O https://packages.microsoft.com/config/debian/$(grep VERSION_ID /etc/os-release | cut -d '"' -f 2 | cut -d '.' -f 1)/packages-microsoft-prod.deb
+# Install the package
+sudo dpkg -i packages-microsoft-prod.deb
+# Delete the file
+rm packages-microsoft-prod.deb
+
+sudo apt-get update
+sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
+
+odbcinst -q -d
 ```
 
-[Docker postgres image docs](https://hub.docker.com/_/postgres/)
+#### Mac OS
 
-MySQL
-=====
 ```shell
-$ docker pull mysql
-$ docker run --name ccexport-mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=pw -e MYSQL_USER=travis -e MYSQL_PASSWORD='' -d mysql
-
-# create travis user
-$ docker run -it --link ccexport-mysql:mysql --rm mysql sh -c 'exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD"'
-mysql> CREATE USER 'travis'@'%';
-mysql> GRANT ALL PRIVILEGES ON *.* TO 'travis'@'%';
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
+brew update
+HOMEBREW_ACCEPT_EULA=Y brew install msodbcsql18
 ```
 
-MSSQL
-=====
-```shell
-$ docker pull mcr.microsoft.com/mssql/server:2017-latest 
-$ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=Password@123" -p 1433:1433 --name mssql1 -d microsoft/mssql-server-linux:2017-latest
-
-# install driver
-$ curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-$ echo "deb [arch=amd64] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -rs) main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
-
-$ sudo apt-get update
-$ sudo ACCEPT_EULA=Y apt-get install msodbcsql17
-$ odbcinst -q -d
-```
-
-MSSQL for Mac OS
-==========
-```shell
-$ docker pull mcr.microsoft.com/mssql/server:2017-latest 
-$ docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=Password@123" -p 1433:1433 --name mssql1 -d microsoft/mssql-server-linux:2017-latest
-
-# Install driver
-$ brew install unixodbc freetds
-
-# Add the following 5 lines to /usr/local/etc/odbcinst.ini
-[ODBC Driver 17 for SQL Server]
-Description=FreeTDS Driver for Linux & MSSQL
-Driver=/usr/local/lib/libtdsodbc.so
-Setup=/usr/local/lib/libtdsodbc.so
-UsageCount=1
-
-# Create a soft link from /etc/odbcinst.ini to actual file
-$ sudo ln -s /usr/local/etc/odbcinst.ini /etc/odbcinst.ini
-
-```
 
 Integration Tests
 -----------------
