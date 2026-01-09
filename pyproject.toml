@@ -101,9 +101,10 @@ include-package-data = true
 [tool.setuptools.package-data]
 commcare_export = ["VERSION"]
 
-[tool.setuptools-scm]
+[tool.setuptools_scm]
 version_file = "commcare_export/VERSION"
-version_scheme = "guess-next-dev"
+version_file_template = "{version}"
+version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
 
 [tool.pytest.ini_options]
