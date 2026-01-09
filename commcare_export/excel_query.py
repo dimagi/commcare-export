@@ -1,5 +1,6 @@
-
+import logging
 from collections import defaultdict, namedtuple
+from typing import Any
 
 from commcare_export.exceptions import (
     LongFieldsException,
@@ -86,7 +87,7 @@ def compile_mappings(worksheet):
         len(mapping_names), get_column_by_name(worksheet, "destination")
     )
 
-    mappings = defaultdict(lambda: defaultdict(lambda: None))
+    mappings: dict[Any, Any] = defaultdict(lambda: defaultdict(lambda: None))
 
     for mapping_name, source, dest in zip(
         mapping_names, sources, destinations
@@ -571,7 +572,7 @@ def parse_workbook(workbook, column_enforcer=None, value_or_root=False):
 
 def compile_queries(parsed_sheets, missing_value, combine_emits):
     # group sheets by source
-    sheets_by_source = []
+    sheets_by_source: list[Any] = []
     for sheet in parsed_sheets:
         # Not easy to implement hashing on MiniLinq objects so can't use
         # a dict
@@ -605,7 +606,7 @@ def get_multi_emit_query(source, sheets, missing_value):
     reverse the `Map` so that we apply each `Emit` repeatedly for each
     doc produced by the data source.
     """
-    emits = []
+    emits: list[Any] = []
     # the filter here is to prevent accumulating a `[None]` value for
     # each doc
     multi_query = Filter(

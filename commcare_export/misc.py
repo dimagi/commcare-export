@@ -42,9 +42,9 @@ def unwrap(arg_name):
 
         @functools.wraps(fn)
         def _inner(*args):
-            args = list(args)
-            args[position] = unwrap_val(args[position])  # Unwrap `arg_name`
-            return fn(*args)
+            args_list = list(args)
+            args_list[position] = unwrap_val(args_list[position])  # Unwrap `arg_name`
+            return fn(*args_list)
 
         return _inner
 

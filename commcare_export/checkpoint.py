@@ -18,7 +18,7 @@ logger = get_logger(__file__)
 Base = declarative_base()
 
 
-class Checkpoint(Base):
+class Checkpoint(Base):  # type: ignore[misc, valid-type]
     __tablename__ = 'commcare_export_runs'
 
     id = Column(String, primary_key=True)

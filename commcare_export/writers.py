@@ -3,6 +3,7 @@ import datetime
 from tempfile import NamedTemporaryFile
 import zipfile
 from itertools import zip_longest
+from typing import Optional
 
 import sqlalchemy
 from sqlalchemy.exc import NoSuchTableError
@@ -50,17 +51,20 @@ class TableWriter:
     Interface for export writers: Usable in a "with" statement, and
     while open one can call write_table.
 
-    If the implementing class does not actually need any set up, no-op
-    defaults have been provided.
+    If the implementing class does not need any setup, no-op defaults
+    have been provided.
     """
-    max_column_length = None
     support_checkpoints = False
 
     # set to False if writer does not support writing to the same table
     # multiple times
     supports_multi_table_write = True
 
-    required_columns = None
+    required_columns: Optional[list[str]] = None
+
+    @property
+    def max_column_length(self):
+        return None
 
     def __enter__(self):
         return self
@@ -101,7 +105,8 @@ class CsvTableWriter(TableWriter):
             )
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.archive.close()
+        if self.archive:
+            self.archive.close()
 
     def zip_safe_name(self, name):
         return name[:31]
@@ -254,7 +259,7 @@ class StreamingMarkdownTableWriter(TableWriter):
             )
 
     def _get_column_widths(self, table):
-        all_rows = [table.headings] + table.rows
+        all_rows = [table.headings] + list(table.rows)
         columns = list(map(list, zip(*all_rows)))
         col_widths = map(len, [max(col, key=len) for col in columns])
         return list(col_widths)
