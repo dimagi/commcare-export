@@ -141,9 +141,7 @@ class TestTableSpec:
         rows_data = [['a'], ['b'], ['c']]
         table = TableSpec('test', ['col1'], iter(rows_data))
 
-        consumed_rows = []
-        for row in table.rows:
-            consumed_rows.append(row)
+        consumed_rows = list(table.rows)
 
         assert consumed_rows == rows_data
 
