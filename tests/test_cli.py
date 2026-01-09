@@ -371,7 +371,7 @@ class TestCli(unittest.TestCase):
 
         assert success is False
         assert log_file == '/restricted/path/commcare_export.log'
-        assert error == "Permission denied"
+        assert error == "PermissionError: Permission denied"
         mock_makedirs.assert_called_once_with('/restricted/path', exist_ok=True)
 
     @mock.patch('logging.basicConfig')

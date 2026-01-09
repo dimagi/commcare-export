@@ -211,7 +211,7 @@ def set_up_logging(log_dir=None):
         sys.stderr = get_error_logger()
         return True, log_file, None
     except (OSError, IOError, PermissionError) as err:
-        return False, log_file, str(err)
+        return False, log_file, f"{type(err).__name__}: {err}"
 
 
 def main(argv):
