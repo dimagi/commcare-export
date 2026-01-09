@@ -81,7 +81,7 @@ def get_locations_query(lp):
 
     # For test stability and clarity, we order location types from
     # deepest to shallowest.
-    depth = {}
+    depth: dict[str, int] = {}
 
     def set_depth(lt):
         if lt not in depth:

@@ -90,7 +90,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Check typing
-      - run: mypy --install-types --non-interactive @mypy_typed_modules.txt
+      - run: mypy --install-types --non-interactive commcare_export/ tests/ migrations/ setup.py
 
   finish:
     needs: test

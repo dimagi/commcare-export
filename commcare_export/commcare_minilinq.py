@@ -6,6 +6,7 @@ API directly.
 """
 import json
 from enum import Enum
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 from datetime import datetime
 
@@ -120,7 +121,7 @@ def get_paginator(
     page_size=None,
     pagination_mode=PaginationMode.date_indexed,
 ):
-    return {
+    paginators: dict[PaginationMode, dict[str, Any]] = {
         PaginationMode.date_indexed: {
             'form': DatePaginator('indexed_on', page_size),
             'case': DatePaginator('indexed_on', page_size),
@@ -141,7 +142,8 @@ def get_paginator(
         PaginationMode.cursor: {
             'ucr': UCRPaginator(page_size),
         },
-    }[pagination_mode].get(resource, SimplePaginator(page_size))
+    }
+    return paginators[pagination_mode].get(resource, SimplePaginator(page_size))
 
 
 class CommCareHqEnv(DictEnv):

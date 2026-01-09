@@ -7,6 +7,9 @@ import pytest
 from commcare_export.env import *
 from commcare_export.excel_query import get_value_or_root_expression
 from commcare_export.minilinq import *
+from commcare_export.misc import unwrap_val
+from commcare_export.repeatable_iterator import RepeatableIterator
+from commcare_export.specs import TableSpec
 from commcare_export.writers import JValueTableWriter
 
 

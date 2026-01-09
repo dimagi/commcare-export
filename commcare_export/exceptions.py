@@ -1,5 +1,7 @@
 class DataExportException(Exception):
-    message = None
+    @property
+    def message(self):
+        raise NotImplementedError
 
 
 class LongFieldsException(DataExportException):

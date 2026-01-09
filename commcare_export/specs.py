@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, Optional
 
 
 @dataclass
 class TableSpec:
     name: str
-    headings: List[str]
-    rows: Iterable[List[Any]]
-    data_types: List[Optional[str]] = field(default_factory=list)
+    headings: list[str]
+    rows: Iterable[list[Any]]  # Generator for lazy evaluation
+    data_types: list[Optional[str]] = field(default_factory=list)
 
     def __eq__(self, other):
         return (
