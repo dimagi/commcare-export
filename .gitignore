@@ -50,3 +50,10 @@ nosetests.xml
 # Excel
 ~*.xlsx
 commcare_export.log
+
+# uv
+.uv/
+uv.lock
+
+# Build artifacts
+*.whl
