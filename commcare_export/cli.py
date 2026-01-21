@@ -4,7 +4,6 @@ import io
 import json
 import os
 import sys
-import logging
 import dateutil.parser
 import requests
 import sqlalchemy
@@ -28,11 +27,11 @@ from commcare_export.misc import default_to_json
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.utils import get_checkpoint_manager
 from commcare_export.version import __version__
-from commcare_export import get_logger
+import logging
 
 EXIT_STATUS_SUCCESS = 0
 EXIT_STATUS_ERROR = 1
-logger = get_logger(__file__)
+logger = logging.getLogger(__name__)
 
 commcare_hq_aliases = {
     'local': 'http://localhost:8000',

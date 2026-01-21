@@ -5,6 +5,7 @@ To date, this is simply built-ins for querying the
 API directly.
 """
 import json
+import logging
 from enum import Enum
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -14,9 +15,8 @@ from dateutil.parser import ParserError, parse
 
 from commcare_export.env import CannotBind, CannotReplace, DictEnv
 from commcare_export.misc import unwrap
-from commcare_export import get_logger
 
-logger = get_logger(__file__)
+logger = logging.getLogger(__name__)
 
 SUPPORTED_RESOURCES = {
     'form',
