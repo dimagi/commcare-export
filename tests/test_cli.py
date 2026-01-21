@@ -1,4 +1,5 @@
 import csv
+import logging
 import os
 import re
 import unittest
@@ -11,6 +12,7 @@ import sqlalchemy
 from tests.utils import SqlWriterWithTearDown
 
 import pytest
+from unmagic import fixture
 from commcare_export.checkpoint import (
     Checkpoint,
     CheckpointManager,
@@ -46,6 +48,18 @@ def make_args(project='test', username='test', password='test', **kwargs):
         setattr(namespace, name, arg.default)
 
     return namespace
+
+
+@fixture
+def restore_root_logger():
+    root_logger = logging.getLogger()
+    previous_handlers = list(root_logger.handlers)
+    previous_level = root_logger.level
+    yield
+    root_logger.handlers.clear()
+    root_logger.setLevel(previous_level)
+    for handler in previous_handlers:
+        root_logger.addHandler(handler)
 
 
 def mock_hq_client(include_parent):
@@ -315,92 +329,108 @@ class TestCli(unittest.TestCase):
             + get_expected_locations_results(True)
         )
 
-    @mock.patch('logging.basicConfig')
     @mock.patch('os.getcwd', return_value='/mock/cwd')
     @mock.patch('os.makedirs')
     @mock.patch('builtins.open', new_callable=mock.mock_open)
+    @mock.patch('logging.FileHandler')
     def test_log_dir_default(
         self,
+        mock_file_handler,
         mock_open,
         mock_makedirs,
         mock_getcwd,
-        mock_basicConfig,
     ):
-        from commcare_export.cli import set_up_logging
+        from commcare_export.cli import set_up_file_logging
 
-        success, log_file, error = set_up_logging()
+        handler = mock.Mock()
+        mock_file_handler.return_value = handler
+        success, log_file, error, file_handler = set_up_file_logging()
 
         assert success is True
         assert log_file == '/mock/cwd/commcare_export.log'
         assert error is None
+        assert file_handler is handler
         mock_makedirs.assert_called_once_with('/mock/cwd', exist_ok=True)
-        mock_basicConfig.assert_called_once()
-        call_kwargs = mock_basicConfig.call_args[1]
-        assert call_kwargs['filename'] == '/mock/cwd/commcare_export.log'
-        assert call_kwargs['filemode'] == 'a'
+        mock_file_handler.assert_called_once_with(
+            '/mock/cwd/commcare_export.log',
+            mode='a'
+        )
 
-    @mock.patch('logging.basicConfig')
     @mock.patch('os.makedirs')
     @mock.patch('builtins.open', new_callable=mock.mock_open)
+    @mock.patch('logging.FileHandler')
     def test_log_dir_custom(
         self,
+        mock_file_handler,
         mock_open,
         mock_makedirs,
-        mock_basicConfig,
     ):
-        from commcare_export.cli import set_up_logging
+        from commcare_export.cli import set_up_file_logging
 
-        success, log_file, error = set_up_logging('/custom/log/path')
+        handler = mock.Mock()
+        mock_file_handler.return_value = handler
+        success, log_file, error, file_handler = set_up_file_logging(
+            '/custom/log/path'
+        )
 
         assert success is True
         assert log_file == '/custom/log/path/commcare_export.log'
         assert error is None
+        assert file_handler is handler
         mock_makedirs.assert_called_once_with('/custom/log/path', exist_ok=True)
-        mock_basicConfig.assert_called_once()
-        call_kwargs = mock_basicConfig.call_args[1]
-        assert call_kwargs['filename'] == '/custom/log/path/commcare_export.log'
+        mock_file_handler.assert_called_once_with(
+            '/custom/log/path/commcare_export.log',
+            mode='a'
+        )
 
     @mock.patch('os.makedirs', side_effect=PermissionError("Permission denied"))
     def test_log_dir_permission_error(
         self,
         mock_makedirs,
     ):
-        from commcare_export.cli import set_up_logging
+        from commcare_export.cli import set_up_file_logging
 
-        success, log_file, error = set_up_logging('/restricted/path')
+        success, log_file, error, file_handler = set_up_file_logging(
+            '/restricted/path'
+        )
 
         assert success is False
         assert log_file == '/restricted/path/commcare_export.log'
         assert error == "PermissionError: Permission denied"
+        assert file_handler is None
         mock_makedirs.assert_called_once_with('/restricted/path', exist_ok=True)
 
-    @mock.patch('logging.basicConfig')
     @mock.patch('os.getcwd', return_value='/test/dir')
     @mock.patch('os.makedirs')
     @mock.patch('builtins.open', new_callable=mock.mock_open)
+    @mock.patch('logging.FileHandler')
     def test_log_append_mode(
         self,
+        mock_file_handler,
         mock_open,
         mock_makedirs,
         mock_getcwd,
-        mock_basicConfig,
     ):
-        from commcare_export.cli import set_up_logging
+        from commcare_export.cli import set_up_file_logging
 
-        success, log_file, error = set_up_logging()
+        handler = mock.Mock()
+        mock_file_handler.return_value = handler
+        success, log_file, error, file_handler = set_up_file_logging()
 
         assert success is True
-        mock_basicConfig.assert_called_once()
-        call_kwargs = mock_basicConfig.call_args[1]
-        assert call_kwargs['filemode'] == 'a'
+        assert file_handler is handler
+        mock_file_handler.assert_called_once_with(
+            '/test/dir/commcare_export.log',
+            mode='a'
+        )
 
     @mock.patch('commcare_export.cli._get_api_client', return_value=mock_hq_client(True))
-    @mock.patch('commcare_export.cli.set_up_logging')
+    @mock.patch('commcare_export.cli.set_up_file_logging')
     @mock.patch('sys.exit')
-    def test_no_logfile_still_works(
+    def test_no_logfile(
         self,
         mock_exit,
-        mock_set_up_logging,
+        mock_set_up_file_logging,
         mock_client,
     ):
         from commcare_export.cli import main
@@ -415,7 +445,23 @@ class TestCli(unittest.TestCase):
             '--log-dir', '/some/path'  # Should be ignored
         ])
 
-        mock_set_up_logging.assert_not_called()
+        mock_set_up_file_logging.assert_not_called()
+
+    @restore_root_logger
+    def test_set_up_logging_uses_message_only_formatter(self):
+        from commcare_export.cli import set_up_logging
+
+        args = Namespace(
+            verbose=False,
+            no_logfile=True,
+            log_dir=None,
+        )
+        root_logger = logging.getLogger()
+        set_up_logging(args)
+        assert len(root_logger.handlers) == 1
+        formatter = root_logger.handlers[0].formatter
+        assert formatter is not None
+        assert formatter._style._fmt == '%(message)s'
 
 
 @pytest.fixture(scope='function')
