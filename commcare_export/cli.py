@@ -184,7 +184,7 @@ CLI_ARGS = [
 ]
 
 
-def set_up_logging(log_dir=None):
+def set_up_file_logging(log_dir=None):
     """
     Set up file-based logging.
 
@@ -209,6 +209,34 @@ def set_up_logging(log_dir=None):
         return False, log_file, f"{type(err).__name__}: {err}", None
 
 
+def set_up_logging(args):
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(logging.Formatter('%(message)s'))
+    handlers = [stream_handler]
+    if not args.no_logfile:
+        success, log_file, error, file_handler = set_up_file_logging(
+            args.log_dir
+        )
+        if success:
+            file_handler.setFormatter(
+                logging.Formatter(
+                    '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
+                )
+            )
+            handlers.append(file_handler)
+            print(f'Writing logs to {log_file}')
+        else:
+            print(f'Warning: Unable to write to log file {log_file}: {error}')
+            print('Logging to console only.')
+
+    log_level = logging.DEBUG if args.verbose else logging.WARN
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    root_logger.setLevel(log_level)
+    for handler in handlers:
+        root_logger.addHandler(handler)
+
+
 def main(argv):
     parser = argparse.ArgumentParser(
         'commcare-export', 'Output a customized export of CommCareHQ data.'
@@ -224,22 +252,7 @@ def main(argv):
         if errors:
             raise Exception(f"Could not proceed. Following issues were found: {', '.join(errors)}.")
 
-    handlers = [logging.StreamHandler()]
-    if not args.no_logfile:
-        success, log_file, error, file_handler = set_up_logging(args.log_dir)
-        if success:
-            handlers.append(file_handler)
-            print(f'Writing logs to {log_file}')
-        else:
-            print(f'Warning: Unable to write to log file {log_file}: {error}')
-            print('Logging to console only.')
-
-    log_level = logging.DEBUG if args.verbose else logging.WARN
-    logging.basicConfig(
-        level=log_level,
-        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-        handlers=handlers
-    )
+    set_up_logging(args)
 
     logging.getLogger('alembic').setLevel(logging.WARN)
     logging.getLogger('backoff').setLevel(logging.FATAL)
