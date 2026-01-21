@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict
 from typing import List as ListType
 from typing import Optional
@@ -6,9 +7,8 @@ from commcare_export.env import Env
 from commcare_export.misc import unwrap, unwrap_val
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.specs import TableSpec
-from commcare_export import get_logger
 
-logger = get_logger(__file__)
+logger = logging.getLogger(__name__)
 
 
 class MiniLinq:

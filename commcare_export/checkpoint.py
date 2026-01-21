@@ -1,4 +1,5 @@
 import datetime
+import logging
 import os
 import uuid
 from contextlib import contextmanager
@@ -12,9 +13,9 @@ from sqlalchemy.orm import sessionmaker
 from commcare_export.commcare_minilinq import PaginationMode
 from commcare_export.exceptions import DataExportException
 from commcare_export.writers import SqlMixin
-from commcare_export import get_logger, repo_root
+from commcare_export import repo_root
 
-logger = get_logger(__file__)
+logger = logging.getLogger(__name__)
 Base = declarative_base()
 
 

@@ -1,5 +1,6 @@
 import csv
 import datetime
+import logging
 from tempfile import NamedTemporaryFile
 import zipfile
 from itertools import zip_longest
@@ -12,9 +13,8 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from commcare_export.data_types import UnknownDataType, get_sqlalchemy_type
 from commcare_export.specs import TableSpec
-from commcare_export import get_logger
 
-logger = get_logger(__file__)
+logger = logging.getLogger(__name__)
 MAX_COLUMN_SIZE = 2000
 
 
