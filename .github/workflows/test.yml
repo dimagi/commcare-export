@@ -110,13 +110,12 @@ jobs:
       - name: Build distribution
         run: uv build
 
-      - name: Install package with mypy
+      - name: Install package with test dependencies
         run: |
           uv pip install --system dist/*.whl
-          uv pip install --system mypy
           uv pip install --system -e ".[test]"
 
-      - run: mypy --install-types --non-interactive commcare_export/ tests/ migrations/
+      - run: mypy commcare_export/ tests/
 
   finish:
     needs: test

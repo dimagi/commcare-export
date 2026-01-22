@@ -49,10 +49,16 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
+    "mock",
+    "mypy",
+    "psycopg2-binary",
     "pytest",
     "pytest-unmagic",
-    "psycopg2-binary",
-    "mock",
+    "types-mock",
+    "types-python-dateutil",
+    "types-pytz",
+    "types-requests",
+    "types-simplejson",
 ]
 base_sql = [
     "SQLAlchemy",
