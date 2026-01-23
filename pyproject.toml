@@ -49,13 +49,11 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "mock",
     "mypy",
     "psycopg2-binary",
     "pytest",
     "pytest-unmagic",
     "ruff",
-    "types-mock",
     "types-python-dateutil",
     "types-pytz",
     "types-requests",

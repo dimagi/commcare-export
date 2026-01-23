@@ -1,4 +1,5 @@
-import unittest
+from unittest import TestCase
+from unittest.mock import patch
 from datetime import datetime
 
 import requests
@@ -18,7 +19,6 @@ from commcare_export.commcare_minilinq import (
     SimplePaginator,
     get_paginator,
 )
-from mock import Mock, patch
 
 class FakeSession:
 
@@ -243,7 +243,7 @@ class FakeDateFormSession(FakeSession):
                 raise Exception(indexed_on)
 
 
-class TestCommCareHqClient(unittest.TestCase):
+class TestCommCareHqClient(TestCase):
 
     def _test_iterate(self, session, paginator, expected_count, expected_vals):
         client = CommCareHqClient(
@@ -367,7 +367,7 @@ class TestCommCareHqClient(unittest.TestCase):
             self.assertEqual(str(e), "404 Client Error: None for url: None")
 
 
-class TestDatePaginator(unittest.TestCase):
+class TestDatePaginator(TestCase):
 
     @classmethod
     def setup_class(cls):
