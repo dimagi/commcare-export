@@ -445,7 +445,7 @@ class TestExcelQuery:
             )
         )
 
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq, '003_DataSourceAndEmitColumns.xlsx'
         )
 
@@ -514,7 +514,7 @@ class TestExcelQuery:
             ),
         ])
 
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq, '011_AlternateSourceFields.xlsx'
         )
 
@@ -557,7 +557,7 @@ class TestExcelQuery:
                 ],
             ),
         )
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq, '012_ColumnsWithTypes.xlsx'
         )
 
@@ -626,7 +626,7 @@ class TestExcelQuery:
             )
         ])
 
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq, '008_multiple-tables.xlsx', combine_emits=True
         )
 
@@ -699,7 +699,7 @@ class TestExcelQuery:
             )
         ])
 
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq, '008_multiple-tables.xlsx', combine_emits=False
         )
 
@@ -779,7 +779,7 @@ class TestExcelQuery:
         ])
 
         column_enforcer = ColumnEnforcer()
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq,
             '008_multiple-tables.xlsx',
             combine_emits=True,
@@ -861,17 +861,17 @@ class TestExcelQuery:
             )
         ])
 
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq,
             '008_multiple-tables.xlsx',
             combine_emits=False,
             value_or_root=True
         )
 
-    def _compare_minilinq_to_compiled(self, minilinq, filename, **kwargs):
-        print(f"Parsing {filename}")
-        abs_path = os.path.join(os.path.dirname(__file__), filename)
-        compiled = get_queries_from_excel(
-            openpyxl.load_workbook(abs_path), missing_value='---', **kwargs
-        )
-        assert compiled.to_jvalue() == minilinq.to_jvalue(), filename
+
+def _compare_minilinq_to_compiled(minilinq, filename, **kwargs):
+    abs_path = os.path.join(os.path.dirname(__file__), filename)
+    compiled = get_queries_from_excel(
+        openpyxl.load_workbook(abs_path), missing_value='---', **kwargs
+    )
+    assert compiled.to_jvalue() == minilinq.to_jvalue(), filename

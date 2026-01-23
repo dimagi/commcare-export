@@ -243,36 +243,37 @@ class FakeDateFormSession(FakeSession):
                 raise Exception(indexed_on)
 
 
+def _iterate_with_paginator(session, paginator, expected_count, expected_vals):
+    client = CommCareHqClient(
+        '/fake/commcare-hq/url', 'fake-project', None, None
+    )
+    client.session = session
+
+    paginator.init()
+    checkpoint_manager = CheckpointManagerWithDetails(
+        None, None, PaginationMode.date_indexed
+    )
+    results = list(
+        client.iterate(
+            '/fake/uri', paginator, checkpoint_manager=checkpoint_manager
+        )
+    )
+    assert len(results) == expected_count
+    assert [result['foo'] for result in results] == expected_vals
+
+
 class TestCommCareHqClient:
 
-    def _test_iterate(self, session, paginator, expected_count, expected_vals):
-        client = CommCareHqClient(
-            '/fake/commcare-hq/url', 'fake-project', None, None
-        )
-        client.session = session
-
-        # Iteration should do two "gets" because the first will have
-        # something in the "next" metadata field
-        paginator.init()
-        checkpoint_manager = CheckpointManagerWithDetails(
-            None, None, PaginationMode.date_indexed
-        )
-        results = list(
-            client.iterate(
-                '/fake/uri', paginator, checkpoint_manager=checkpoint_manager
-            )
-        )
-        assert len(results) == expected_count
-        assert [result['foo'] for result in results] == expected_vals
-
     def test_iterate_simple(self):
-        self._test_iterate(FakeSession(), SimplePaginator('fake'), 2, [1, 2])
+        _iterate_with_paginator(
+            FakeSession(), SimplePaginator('fake'), 2, [1, 2]
+        )
 
     def test_iterate_date(self):
-        self._test_iterate(
+        _iterate_with_paginator(
             FakeDateFormSession(), get_paginator('form'), 3, [1, 2, 3]
         )
-        self._test_iterate(
+        _iterate_with_paginator(
             FakeDateCaseSession(), get_paginator('case'), 2, [1, 2]
         )
 
@@ -281,13 +282,13 @@ class TestCommCareHqClient:
             ResourceRepeatException,
             match="Requested resource '/fake/uri' 10 times with same parameters"
         ):
-            self._test_iterate(
+            _iterate_with_paginator(
                 FakeRepeatedDateCaseSession(), get_paginator('case', 2), 2,
                 [1, 2]
             )
 
     def test_message_log(self):
-        self._test_iterate(
+        _iterate_with_paginator(
             FakeMessageLogSession(), get_paginator('messaging-event', 2), 3,
             [1, 2, 3]
         )

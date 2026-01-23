@@ -42,6 +42,19 @@ def configured_manager(manager):
     return manager
 
 
+def _assert_checkpoint_details(
+    manager,
+    checkpoint_date,
+    pagination_mode,
+    data_source,
+):
+    manager.set_checkpoint(checkpoint_date, pagination_mode)
+
+    cmp = CheckpointManagerProvider()
+    assert pagination_mode == cmp.get_pagination_mode(data_source, manager)
+    assert checkpoint_date == cmp.get_since(manager)
+
+
 @pytest.mark.dbtest
 class TestCheckpointManager:
 
@@ -248,25 +261,21 @@ class TestCheckpointManagerProvider:
         data_source = 'form'
         manager = configured_manager.for_dataset(data_source, ['t1'])
 
-        self._test_checkpoint_details(
-            manager, datetime.datetime.utcnow(), PaginationMode.date_modified, data_source
+        _assert_checkpoint_details(
+            manager,
+            datetime.datetime.utcnow(),
+            PaginationMode.date_modified,
+            data_source,
         )
-        self._test_checkpoint_details(
-            manager, datetime.datetime.utcnow(), PaginationMode.date_indexed, data_source
+        _assert_checkpoint_details(
+            manager,
+            datetime.datetime.utcnow(),
+            PaginationMode.date_indexed,
+            data_source,
         )
-        self._test_checkpoint_details(
-            manager, datetime.datetime.utcnow(), PaginationMode.date_modified, data_source
+        _assert_checkpoint_details(
+            manager,
+            datetime.datetime.utcnow(),
+            PaginationMode.date_modified,
+            data_source,
         )
-
-    def _test_checkpoint_details(
-        self,
-        manager,
-        checkpoint_date,
-        pagination_mode,
-        data_source,
-    ):
-        manager.set_checkpoint(checkpoint_date, pagination_mode)
-
-        cmp = CheckpointManagerProvider()
-        assert pagination_mode == cmp.get_pagination_mode(data_source, manager)
-        assert checkpoint_date == cmp.get_since(manager)

@@ -53,6 +53,17 @@ def make_args(project='test', username='test', password='test', **kwargs):
     return namespace
 
 
+def _run_cli_and_assert(args, expected):
+    writer = JValueTableWriter()
+    with mock.patch(
+        'commcare_export.cli._get_writer', return_value=writer
+    ):
+        main_with_args(args)
+
+    for table in expected:
+        assert writer.tables[table['name']] == TableSpec(**table)
+
+
 @fixture
 def restore_root_logger():
     root_logger = logging.getLogger()
@@ -259,16 +270,6 @@ def get_expected_locations_results(include_parent):
 
 class TestCli:
 
-    def _test_cli(self, args, expected):
-        writer = JValueTableWriter()
-        with mock.patch(
-            'commcare_export.cli._get_writer', return_value=writer
-        ):
-            main_with_args(args)
-
-        for table in expected:
-            assert writer.tables[table['name']] == TableSpec(**table)
-
     @mock.patch(
         'commcare_export.cli._get_api_client',
         return_value=mock_hq_client(True)
@@ -277,7 +278,7 @@ class TestCli:
         args = make_args(
             query='tests/008_multiple-tables.xlsx', output_format='json'
         )
-        self._test_cli(args, EXPECTED_MULTIPLE_TABLES_RESULTS)
+        _run_cli_and_assert(args, EXPECTED_MULTIPLE_TABLES_RESULTS)
 
     @mock.patch(
         'commcare_export.cli._get_api_client',
@@ -285,7 +286,7 @@ class TestCli:
     )
     def test_cli_just_users(self, mock_client):
         args = make_args(output_format='json', users=True)
-        self._test_cli(args, EXPECTED_USERS_RESULTS)
+        _run_cli_and_assert(args, EXPECTED_USERS_RESULTS)
 
     @mock.patch(
         'commcare_export.cli._get_api_client',
@@ -297,7 +298,7 @@ class TestCli:
             output_format='json',
             users=True
         )
-        self._test_cli(
+        _run_cli_and_assert(
             args, EXPECTED_MULTIPLE_TABLES_RESULTS + EXPECTED_USERS_RESULTS
         )
 
@@ -307,7 +308,7 @@ class TestCli:
     )
     def test_cli_just_locations(self, mock_client):
         args = make_args(output_format='json', locations=True)
-        self._test_cli(args, get_expected_locations_results(True))
+        _run_cli_and_assert(args, get_expected_locations_results(True))
 
     @mock.patch(
         'commcare_export.cli._get_api_client',
@@ -315,7 +316,7 @@ class TestCli:
     )
     def test_cli_locations_without_parents(self, mock_client):
         args = make_args(output_format='json', locations=True)
-        self._test_cli(args, get_expected_locations_results(False))
+        _run_cli_and_assert(args, get_expected_locations_results(False))
 
     @mock.patch(
         'commcare_export.cli._get_api_client',
@@ -327,7 +328,7 @@ class TestCli:
             output_format='json',
             locations=True
         )
-        self._test_cli(
+        _run_cli_and_assert(
             args, EXPECTED_MULTIPLE_TABLES_RESULTS
             + get_expected_locations_results(True)
         )
@@ -544,6 +545,43 @@ def _check_data(writer, expected, table_name, columns):
         assert actual == expected, message
 
 
+def _check_table_data(writer, expected, table_name):
+    _check_data(writer, expected, table_name, ['id', 'name', 'indexed_on'])
+
+
+def _check_id_data(writer, expected, table_name):
+    _check_data(writer, expected, table_name, ['id'])
+
+
+def _check_checkpoint_state(
+    checkpoint_manager,
+    since_param,
+    doc_id,
+    pagination_mode=PaginationMode.date_indexed.name
+):
+    checkpoint = checkpoint_manager.get_last_checkpoint()
+    assert checkpoint.pagination_mode == pagination_mode
+    assert checkpoint.since_param == since_param
+    assert checkpoint.last_doc_id == doc_id
+
+
+def _check_checkpoints(caplog, expected):
+    log_messages = [
+        record[2]
+        for record in caplog.record_tuples
+        if record[0] == 'commcare_export.checkpoint'
+    ]
+    fail = False
+    message = ''
+    for i, items in enumerate(zip_longest(expected, log_messages)):
+        if not items[0] or not items[1] or items[0] not in items[1]:
+            message += f'X {i}: {items[0]} not in {items[1]}\n'
+            fail = True
+        else:
+            message += f'✓ {i}: {items[0]} in {items[1]}\n'
+    assert not fail, 'Checkpoint comparison failed:\n' + message
+
+
 @pytest.mark.dbtest
 class TestCLIIntegrationTests:
 
@@ -558,8 +596,8 @@ class TestCLIIntegrationTests:
             writer, checkpoint_manager, 'tests/009_integration.xlsx',
             '2012-01-01', '2017-08-29'
         )
-        self._check_checkpoints(caplog, ['forms', 'batch', 'final'])
-        self._check_data(writer, expected_form_data[:13], 'forms')
+        _check_checkpoints(caplog, ['forms', 'batch', 'final'])
+        _check_table_data(writer, expected_form_data[:13], 'forms')
 
         caplog.clear()
         _pull_data(
@@ -570,8 +608,8 @@ class TestCLIIntegrationTests:
             '2020-10-11',
             batch_size=8
         )
-        self._check_data(writer, expected_form_data, 'forms')
-        self._check_checkpoints(caplog, ['forms', 'batch', 'final'])
+        _check_table_data(writer, expected_form_data, 'forms')
+        _check_checkpoints(caplog, ['forms', 'batch', 'final'])
 
         runs = list(
             writer.engine.execute(
@@ -598,15 +636,15 @@ class TestCLIIntegrationTests:
             writer, checkpoint_manager, 'tests/009b_integration_multiple.xlsx',
             None, '2020-10-11'
         )
-        self._check_checkpoints(
+        _check_checkpoints(
             caplog, ['forms_1', 'batch', 'batch', 'final', 'forms_2', 'final']
         )
-        self._check_checkpoints(
+        _check_checkpoints(
             caplog,
             ['forms_1', 'forms_1', 'forms_1', 'forms_1', 'forms_2', 'forms_2']
         )
-        self._check_data(writer, expected_form_1_data, 'forms_1')
-        self._check_data(writer, expected_form_2_data, 'forms_2')
+        _check_table_data(writer, expected_form_1_data, 'forms_1')
+        _check_table_data(writer, expected_form_2_data, 'forms_2')
 
         runs = list(
             writer.engine.execute(
@@ -621,27 +659,6 @@ class TestCLIIntegrationTests:
             'forms_1': '2017-09-02T20:05:35.459547',
             'forms_2': '2020-06-01T17:43:26.107701',
         }
-
-    def _check_data(self, writer, expected, table_name):
-        _check_data(writer, expected, table_name, ['id', 'name', 'indexed_on'])
-
-    def _check_checkpoints(self, caplog, expected):
-        # Depends on the logging in the CheckpointManager._set_checkpoint
-        # method
-        log_messages = [
-            record[2]
-            for record in caplog.record_tuples
-            if record[0] == 'commcare_export.checkpoint'
-        ]
-        fail = False
-        message = ''
-        for i, items in enumerate(zip_longest(expected, log_messages)):
-            if not items[0] or not items[1] or items[0] not in items[1]:
-                message += f'X {i}: {items[0]} not in {items[1]}\n'
-                fail = True
-            else:
-                message += f'✓ {i}: {items[0]} in {items[1]}\n'
-        assert not fail, 'Checkpoint comparison failed:\n' + message
 
 
 # Conflicting types for 'count' will cause errors when inserting into
@@ -935,8 +952,8 @@ class TestCLIPaginationMode:
             writer, all_db_checkpoint_manager, get_indexed_on_client(0),
             'tests/013_ConflictingTypes.xlsx'
         )
-        self._check_data(writer, [["doc 1"], ["doc 2"]], "Case")
-        self._check_checkpoint(
+        _check_id_data(writer, [["doc 1"], ["doc 2"]], "Case")
+        _check_checkpoint_state(
             checkpoint_manager, '2012-04-24T05:13:01', 'doc 2'
         )
 
@@ -944,10 +961,10 @@ class TestCLIPaginationMode:
             writer, all_db_checkpoint_manager, get_indexed_on_client(1),
             'tests/013_ConflictingTypes.xlsx'
         )
-        self._check_data(
+        _check_id_data(
             writer, [["doc 1"], ["doc 2"], ["doc 3"], ["doc 4"]], "Case"
         )
-        self._check_checkpoint(
+        _check_checkpoint_state(
             checkpoint_manager, '2012-04-26T05:13:01', 'doc 4'
         )
 
@@ -984,8 +1001,8 @@ class TestCLIPaginationMode:
             writer, all_db_checkpoint_manager, client,
             'tests/013_ConflictingTypes.xlsx'
         )
-        self._check_data(writer, [["doc 1"], ["doc 2"]], "Case")
-        self._check_checkpoint(
+        _check_id_data(writer, [["doc 1"], ["doc 2"]], "Case")
+        _check_checkpoint_state(
             checkpoint_manager, '2012-04-26T05:13:01', 'doc 2',
             PaginationMode.date_modified.name
         )
@@ -1008,8 +1025,8 @@ class TestCLIPaginationMode:
             'tests/013_ConflictingTypes.xlsx',
             start_over=True
         )
-        self._check_data(writer, [["doc 1"], ["doc 2"]], "Case")
-        self._check_checkpoint(
+        _check_id_data(writer, [["doc 1"], ["doc 2"]], "Case")
+        _check_checkpoint_state(
             checkpoint_manager, '2012-04-24T05:13:01', 'doc 2'
         )
 
@@ -1031,75 +1048,63 @@ class TestCLIPaginationMode:
             'tests/013_ConflictingTypes.xlsx',
             since='2012-04-24T05:13:01'
         )
-        self._check_data(writer, [["doc 3"], ["doc 4"]], "Case")
-
-    def _check_data(self, writer, expected, table_name):
-        _check_data(writer, expected, table_name, ['id'])
-
-    def _check_checkpoint(
-        self,
-        checkpoint_manager,
-        since_param,
-        doc_id,
-        pagination_mode=PaginationMode.date_indexed.name
-    ):
-        checkpoint = checkpoint_manager.get_last_checkpoint()
-        assert checkpoint.pagination_mode == pagination_mode
-        assert checkpoint.since_param == since_param
-        assert checkpoint.last_doc_id == doc_id
+        _check_id_data(writer, [["doc 3"], ["doc 4"]], "Case")
 
 
-class TestValidateOutputFilename:
-    def _test_file_extension(self, output_format, expected_extension):
-        error_message = (f"For output format as {output_format}, "
-                         f"output file name should have extension {expected_extension}")
+def _assert_file_extension(output_format, expected_extension):
+    error_message = (
+        f"For output format as {output_format}, output file name should have "
+        f"extension {expected_extension}"
+    )
 
-        errors = validate_output_filename(
-            output_format=output_format,
-            output_filename=f'correct_file_extension.{expected_extension}'
-        )
-        assert len(errors) == 0
+    errors = validate_output_filename(
+        output_format=output_format,
+        output_filename=f'correct_file_extension.{expected_extension}'
+    )
+    assert len(errors) == 0
 
-        errors = validate_output_filename(
-            output_format=output_format,
-            output_filename=f'incorrect_file_extension.abc'
-        )
-        assert errors == [error_message]
+    errors = validate_output_filename(
+        output_format=output_format,
+        output_filename=f'incorrect_file_extension.abc'
+    )
+    assert errors == [error_message]
 
-        # incorrectly using sql output with non sql formats
-        errors = validate_output_filename(
-            output_format=output_format,
-            output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase'
-        )
-        assert errors == [error_message]
+    errors = validate_output_filename(
+        output_format=output_format,
+        output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase'
+    )
+    assert errors == [error_message]
 
-    def test_for_csv_output(self):
-        self._test_file_extension(output_format='csv', expected_extension='zip')
 
-    def test_for_xls_output(self):
-        self._test_file_extension(output_format='xls', expected_extension='xls')
+def test_for_csv_output():
+    _assert_file_extension(output_format='csv', expected_extension='zip')
 
-    def test_for_xlsx_output(self):
-        self._test_file_extension(output_format='xlsx', expected_extension='xlsx')
 
-    def test_for_other_non_sql_output(self):
-        error_message = "Missing extension in output file name"
+def test_for_xls_output():
+    _assert_file_extension(output_format='xls', expected_extension='xls')
 
-        errors = validate_output_filename(
-            output_format='non_sql',
-            output_filename='correct_file.abc'
-        )
-        assert len(errors) == 0
 
-        errors = validate_output_filename(
-            output_format='non_sql',
-            output_filename='filename_without_extensionxls'
-        )
-        assert errors == [error_message]
+def test_for_xlsx_output():
+    _assert_file_extension(output_format='xlsx', expected_extension='xlsx')
 
-        # incorrectly using sql output with non sql output formats
-        errors = validate_output_filename(
-            output_format='non_sql',
-            output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase'
-        )
-        assert errors == [error_message]
+
+def test_for_other_non_sql_output():
+    error_message = "Missing extension in output file name"
+
+    errors = validate_output_filename(
+        output_format='non_sql',
+        output_filename='correct_file.abc'
+    )
+    assert len(errors) == 0
+
+    errors = validate_output_filename(
+        output_format='non_sql',
+        output_filename='filename_without_extensionxls'
+    )
+    assert errors == [error_message]
+
+    errors = validate_output_filename(
+        output_format='non_sql',
+        output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase'
+    )
+    assert errors == [error_message]

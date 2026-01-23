@@ -38,6 +38,94 @@ TYPE_MAP = {
 }
 
 
+def _type_convert(connection, row):
+    def convert(type_map, value):
+        func = type_map.get(value.__class__, None)
+        return func(value) if func else value
+
+    for driver, type_map in TYPE_MAP.items():
+        if driver in connection.engine.driver:
+            return {k: convert(type_map, v) for k, v in row.items()}
+
+    return row
+
+
+def _check_excel2007_output(filename):
+    output_wb = openpyxl.load_workbook(filename)
+
+    assert output_wb.sheetnames == ['foo']
+    foo_sheet = output_wb['foo']
+    assert [
+        [cell.value for cell in row] for row in foo_sheet['A1:C3']
+    ] == [
+        ['a', 'bjørn', 'c'],
+        ['1', '2', '3'
+        ],  # Note how pyxl does some best-effort parsing to *whatever* type
+        ['4', '日本', '6'],
+    ]
+
+
+def _test_types(writer, table_name):
+    with writer:
+        writer.write_table(
+            TableSpec(
+                **{
+                    'name': table_name,
+                    'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
+                    'rows': [[
+                        'bizzle', 1, 'yo', True, datetime.date(2015, 1, 1),
+                        datetime.datetime(2014, 4, 2, 18, 56, 12)
+                    ], [
+                        'bazzle', 4, '日本', False,
+                        datetime.date(2015, 1, 2),
+                        datetime.datetime(2014, 5, 1, 11, 16, 45)
+                    ]]
+                }
+            )
+        )
+
+    with writer:
+        connection = writer.connection
+        result = dict([
+            (row['id'], row) for row in connection
+            .execute(f'SELECT id, a, b, c, d, e FROM {table_name}')
+        ])
+
+        assert len(result) == 2
+        expected = {
+            'bizzle': {
+                'id': 'bizzle',
+                'a': 1,
+                'b': 'yo',
+                'c': True,
+                'd': datetime.date(2015, 1, 1),
+                'e': datetime.datetime(2014, 4, 2, 18, 56, 12)
+            },
+            'bazzle': {
+                'id': 'bazzle',
+                'a': 4,
+                'b': '日本',
+                'c': False,
+                'd': datetime.date(2015, 1, 2),
+                'e': datetime.datetime(2014, 5, 1, 11, 16, 45)
+            }
+        }
+
+        for id, row in result.items():
+            assert id in expected
+            assert dict(row) == _type_convert(connection, expected[id])
+
+
+def _get_column_lengths(connection, table_name):
+    return {
+        row['COLUMN_NAME']: row for row in connection.execute(
+            "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH "
+            "FROM INFORMATION_SCHEMA.COLUMNS "
+            f"WHERE TABLE_NAME = '{table_name}';"
+        )
+    }
+
+
 class TestWriters:
 
     def test_JValueTableWriter(self):
@@ -99,7 +187,7 @@ class TestWriters:
                     )
                 )
 
-            self._check_Excel2007TableWriter_output(file.name)
+            _check_excel2007_output(file.name)
 
     def test_Excel2007TableWriter_write_mutli(self):
         with tempfile.NamedTemporaryFile(suffix='.xlsx') as file:
@@ -123,21 +211,7 @@ class TestWriters:
                         }
                     )
                 )
-            self._check_Excel2007TableWriter_output(file.name)
-
-    def _check_Excel2007TableWriter_output(self, filename):
-        output_wb = openpyxl.load_workbook(filename)
-
-        assert output_wb.sheetnames == ['foo']
-        foo_sheet = output_wb['foo']
-        assert [
-            [cell.value for cell in row] for row in foo_sheet['A1:C3']
-        ] == [
-            ['a', 'bjørn', 'c'],
-            ['1', '2', '3'
-            ],  # Note how pyxl does some best-effort parsing to *whatever* type
-            ['4', '日本', '6'],
-        ]
+            _check_excel2007_output(file.name)
 
     def test_CsvTableWriter(self):
         with tempfile.NamedTemporaryFile() as file:
@@ -170,17 +244,6 @@ class TestWriters:
 
 @pytest.mark.dbtest
 class TestSQLWriters:
-
-    def _type_convert(self, connection, row):
-        def convert(type_map, value):
-            func = type_map.get(value.__class__, None)
-            return func(value) if func else value
-
-        for driver, type_map in TYPE_MAP.items():
-            if driver in connection.engine.driver:
-                return {k: convert(type_map, v) for k, v in row.items()}
-
-        return row
 
     def test_insert(self, writer):
         with writer:
@@ -305,68 +368,10 @@ class TestSQLWriters:
         }
 
     def test_types(self, writer):
-        self._test_types(writer, 'foo_fancy_types')
-
-    def _test_types(self, writer, table_name):
-        with writer:
-            writer.write_table(
-                TableSpec(
-                    **{
-                        'name':
-                            table_name,
-                        'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
-                        'rows': [
-                            [
-                                'bizzle', 1, 'yo', True,
-                                datetime.date(2015, 1, 1),
-                                datetime.datetime(2014, 4, 2, 18, 56, 12)
-                            ],
-                            [
-                                'bazzle', 4, '日本', False,
-                                datetime.date(2015, 1, 2),
-                                datetime.datetime(2014, 5, 1, 11, 16, 45)
-                            ],
-                        ]
-                    }
-                )
-            )
-
-        # We can use raw SQL instead of SqlAlchemy expressions because
-        # we built the DB above
-        with writer:
-            connection = writer.connection
-            result = dict([
-                (row['id'], row) for row in connection
-                .execute(f'SELECT id, a, b, c, d, e FROM {table_name}')
-            ])
-
-            assert len(result) == 2
-            expected = {
-                'bizzle': {
-                    'id': 'bizzle',
-                    'a': 1,
-                    'b': 'yo',
-                    'c': True,
-                    'd': datetime.date(2015, 1, 1),
-                    'e': datetime.datetime(2014, 4, 2, 18, 56, 12)
-                },
-                'bazzle': {
-                    'id': 'bazzle',
-                    'a': 4,
-                    'b': '日本',
-                    'c': False,
-                    'd': datetime.date(2015, 1, 2),
-                    'e': datetime.datetime(2014, 5, 1, 11, 16, 45)
-                }
-            }
-
-            for id, row in result.items():
-                assert id in expected
-                assert dict(row
-                           ) == self._type_convert(connection, expected[id])
+        _test_types(writer, 'foo_fancy_types')
 
     def test_change_type(self, writer):
-        self._test_types(writer, 'foo_fancy_type_changes')
+        _test_types(writer, 'foo_fancy_type_changes')
 
         with writer:
             writer.write_table(
@@ -582,7 +587,7 @@ class TestSQLWriters:
 
             connection = writer.connection
 
-            result = self._get_column_lengths(
+            result = _get_column_lengths(
                 connection, 'mssql_nvarchar_length'
             )
             assert result['some_data'] == ('some_data', 'nvarchar', 900)
@@ -605,7 +610,7 @@ class TestSQLWriters:
                 )
             )
 
-            result = self._get_column_lengths(
+            result = _get_column_lengths(
                 connection, 'mssql_nvarchar_length'
             )
             assert result['some_data'] == ('some_data', 'nvarchar', -1)
@@ -654,7 +659,7 @@ class TestSQLWriters:
                     }
                 )
             )
-            result = self._get_column_lengths(
+            result = _get_column_lengths(
                 writer.connection, 'mssql_nvarchar_length_downsize'
             )
             assert result['some_data'] == ('some_data', 'nvarchar', -1)
@@ -673,12 +678,3 @@ class TestSQLWriters:
                     }
                 )
             )
-
-    def _get_column_lengths(self, connection, table_name):
-        return {
-            row['COLUMN_NAME']: row for row in connection.execute(
-                "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH "
-                "FROM INFORMATION_SCHEMA.COLUMNS "
-                f"WHERE TABLE_NAME = '{table_name}';"
-            )
-        }

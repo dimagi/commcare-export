@@ -32,13 +32,45 @@ def die(msg):
     raise LazinessException(msg)
 
 
-class TestMiniLinq:
+def _check_case(val, expected):
+    if isinstance(expected, list):
+        assert [unwrap_val(datum) for datum in val] == expected
+    else:
+        assert val == expected
 
-    def check_case(self, val, expected):
-        if isinstance(expected, list):
-            assert [unwrap_val(datum) for datum in val] == expected
-        else:
-            assert val == expected
+
+def _test_value_or_root(columns, data, expected):
+    env = BuiltInEnv() | JsonPathEnv({})
+    value_or_root = get_value_or_root_expression('bar.[*]')
+    flatmap = FlatMap(source=Literal([data]), body=value_or_root)
+    mmap = Map(source=flatmap, body=List(columns))
+    _check_case(mmap.eval(env), expected)
+
+
+def _setup_emit_test(emitter_env):
+    env = BuiltInEnv() | JsonPathEnv({
+        'foo': {
+            'baz': 3,
+            'bar': True,
+            'boo': None
+        }
+    }) | emitter_env
+    Emit(
+        table='Foo',
+        headings=[Literal('foo')],
+        source=List([
+            List([
+                Reference('foo.baz'),
+                Reference('foo.bar'),
+                Reference('foo.foo'),
+                Reference('foo.boo')
+            ])
+        ]),
+        missing_value='---'
+    ).eval(env)
+
+
+class TestMiniLinq:
 
     def test_eval_literal(self):
         env = BuiltInEnv()
@@ -55,17 +87,17 @@ class TestMiniLinq:
                             'b': 'c',
                             'c': 2
                         })) == 2
-        self.check_case(
+        _check_case(
             Reference("foo[*]").eval(JsonPathEnv({'foo': [2]})), [2]
         )
         # Should work the same w/ iterators as with lists
-        self.check_case(
+        _check_case(
             Reference("foo[*]").eval(JsonPathEnv({'foo': range(0, 1)})), [0]
         )
 
         # Should be able to get back out to the root, as the JsonPathEnv
         # actually passes the full datum around
-        self.check_case(
+        _check_case(
             Reference("foo.$.baz").eval(JsonPathEnv({
                 'foo': [2],
                 'baz': 3
@@ -75,12 +107,12 @@ class TestMiniLinq:
     def test_eval_auto_id_reference(self):
         env = BuiltInEnv()
 
-        self.check_case(
+        _check_case(
             Reference("foo.id").eval(JsonPathEnv({'foo': [2]})), ['foo']
         )
 
         # When auto id is on, this always becomes a string. Sorry!
-        self.check_case(
+        _check_case(
             Reference("foo.id").eval(JsonPathEnv({'foo': {
                 'id': 2
             }})), ['2']
@@ -119,7 +151,7 @@ class TestMiniLinq:
                 Reference('$.foo.name')
             ])
         )
-        self.check_case(
+        _check_case(
             mmap.eval(env), [["1.bar.'1.bar.[0]'", 'a1', '1', '1.bid', 'bob'],
                              ['1.bar.bazzer', 'a2', '1', '1.bid', 'bob']]
         )
@@ -140,7 +172,7 @@ class TestMiniLinq:
 
     def test_value_or_root_child_data_used(self):
         data = {"id": 1, "bar": [{'baz': 'a1'}, {'baz': 'a2'}]}
-        self._test_value_or_root([
+        _test_value_or_root([
             Reference('id'),
             Reference('baz')
         ], data, [
@@ -154,7 +186,7 @@ class TestMiniLinq:
             "foo": "I am foo",
             "bar": [],
         }
-        self._test_value_or_root([
+        _test_value_or_root([
             Reference('id'),
             Reference('baz'),
             Reference('$.foo')
@@ -168,7 +200,7 @@ class TestMiniLinq:
             "foo": "I am foo",
             "bar": {},
         }
-        self._test_value_or_root([
+        _test_value_or_root([
             Reference('id'),
             Reference('baz'),
             Reference('$.foo')
@@ -181,7 +213,7 @@ class TestMiniLinq:
             "id": 1,
             "bar": None,
         }
-        self._test_value_or_root([
+        _test_value_or_root([
             Reference('id'),
             Reference('baz')
         ], data, [
@@ -194,7 +226,7 @@ class TestMiniLinq:
             "foo": "I am foo",
             # 'bar' is missing
         }
-        self._test_value_or_root([
+        _test_value_or_root([
             Reference('id'),
             Reference('baz'),
             Reference('$.foo')
@@ -207,23 +239,16 @@ class TestMiniLinq:
             "id": 1,
             "foo": "I am foo",
         }
-        self._test_value_or_root([
+        _test_value_or_root([
             Reference('id'),
             Reference('foo')
         ], data, [
             ['1', []],
         ])
 
-    def _test_value_or_root(self, columns, data, expected):
-        env = BuiltInEnv() | JsonPathEnv({})
-        value_or_root = get_value_or_root_expression('bar.[*]')
-        flatmap = FlatMap(source=Literal([data]), body=value_or_root)
-        mmap = Map(source=flatmap, body=List(columns))
-        self.check_case(mmap.eval(env), expected)
-
     def test_eval_collapsed_list(self):
         env = BuiltInEnv()
-        self.check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': 2})), [2])
+        _check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': 2})), [2])
         assert Apply(Reference("*"), Literal(2), Literal(3)).eval(env) == 6
         assert Apply(Reference(">"), Literal(56),
                      Literal(23.5)).eval(env) == True
@@ -318,15 +343,15 @@ class TestMiniLinq:
                      Reference('a.d')).eval(env) is None
 
         env = env.replace({'a': [], 'b': [1, 2], 'c': 2})
-        self.check_case(
+        _check_case(
             Apply(Reference("or"), Reference('a.[*]'),
                   Reference('b')).eval(env), [1, 2]
         )
-        self.check_case(
+        _check_case(
             Apply(Reference("or"), Reference('b.[*]'),
                   Reference('c')).eval(env), [1, 2]
         )
-        self.check_case(
+        _check_case(
             Apply(Reference("or"), Reference('a.[*]'),
                   Reference('$')).eval(env), {
                       'a': [],
@@ -599,31 +624,9 @@ class TestMiniLinq:
         except LazinessException:
             pass
 
-    def _setup_emit_test(self, emitter_env):
-        env = BuiltInEnv() | JsonPathEnv({
-            'foo': {
-                'baz': 3,
-                'bar': True,
-                'boo': None
-            }
-        }) | emitter_env
-        Emit(
-            table='Foo',
-            headings=[Literal('foo')],
-            source=List([
-                List([
-                    Reference('foo.baz'),
-                    Reference('foo.bar'),
-                    Reference('foo.foo'),
-                    Reference('foo.boo')
-                ])
-            ]),
-            missing_value='---'
-        ).eval(env)
-
     def test_emit(self):
         writer = JValueTableWriter()
-        self._setup_emit_test(EmitterEnv(writer))
+        _setup_emit_test(EmitterEnv(writer))
         assert list(writer.tables['Foo'].rows) == [[3, True, '---', None]]
 
     def test_emit_generator(self):
@@ -634,7 +637,7 @@ class TestMiniLinq:
                 self.tables[table.name] = table
 
         writer = TestWriter()
-        self._setup_emit_test(EmitterEnv(writer))
+        _setup_emit_test(EmitterEnv(writer))
         assert isinstance(
             writer.tables['Foo'].rows, (map, filter, types.GeneratorType)
         )
@@ -647,7 +650,7 @@ class TestMiniLinq:
                 self.table = table_spec
 
         env = TestEmitterEnv(JValueTableWriter())
-        self._setup_emit_test(env)
+        _setup_emit_test(env)
         assert isinstance(env.table.rows, (map, filter, types.GeneratorType))
 
     def test_emit_multi_same_query(self):
