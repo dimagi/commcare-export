@@ -427,6 +427,7 @@ class TestCli(unittest.TestCase):
     @mock.patch('commcare_export.cli._get_api_client', return_value=mock_hq_client(True))
     @mock.patch('commcare_export.cli.set_up_file_logging')
     @mock.patch('sys.exit')
+    @restore_root_logger
     def test_no_logfile(
         self,
         mock_exit,
@@ -798,29 +799,25 @@ def _pull_mock_data(
 class TestCLIWithDatabaseErrors:
 
     def test_cli_database_error(
-        self, strict_writer, all_db_checkpoint_manager, capfd
+        self, strict_writer, all_db_checkpoint_manager, caplog
     ):
         _pull_mock_data(
             strict_writer, all_db_checkpoint_manager, CONFLICTING_TYPES_CLIENT,
             'tests/013_ConflictingTypes.xlsx'
         )
-        out, err = capfd.readouterr()
-
         expected_re = re.compile('Stopping because of database error')
-        assert re.search(expected_re, out)
+        assert re.search(expected_re, caplog.text)
 
     def test_cli_database_error_checkpoint(
-        self, strict_writer, all_db_checkpoint_manager, capfd
+        self, strict_writer, all_db_checkpoint_manager, caplog
     ):
         _pull_mock_data(
             strict_writer, all_db_checkpoint_manager,
             get_conflicting_types_checkpoint_client(),
             'tests/013_ConflictingTypes.xlsx'
         )
-        out, err = capfd.readouterr()
-
         expected_re = re.compile('Stopping because of database error')
-        assert re.search(expected_re, out), out
+        assert re.search(expected_re, caplog.text), caplog.text
 
         # expect checkpoint to have the date from the first batch and
         # not the 2nd
