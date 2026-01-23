@@ -489,6 +489,10 @@ def checkpoint_manager(pg_db_params):
 
 
 def _pull_data(writer, checkpoint_manager, query, since, until, batch_size=10):
+    if 'HQ_USERNAME' not in os.environ or 'HQ_API_KEY' not in os.environ:
+        pytest.skip(
+            'HQ_USERNAME and HQ_API_KEY are required for integration tests.'
+        )
     args = make_args(
         query=query,
         output_format='sql',
