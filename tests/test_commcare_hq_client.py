@@ -293,26 +293,21 @@ class TestCommCareHqClient:
             [1, 2, 3]
         )
 
-    @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")
-    def test_dont_raise_on_too_many_requests(self, session_mock):
+    @pytest.mark.parametrize(
+        "headers,expected",
+        [
+            ({'Retry-After': "0.0"}, False),
+            ({}, True),
+        ],
+    )
+    def test_should_raise_for_status(self, headers, expected):
         response = requests.Response()
-        response.headers = CaseInsensitiveDict({'Retry-After': "0.0"})
+        response.headers = CaseInsensitiveDict(headers)
         client = CommCareHqClient(
             '/fake/commcare-hq/url', 'fake-project', None, None
         )
 
-        assert client._should_raise_for_status(response) is False
-
-    @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")
-    def test_raise_on_too_many_requests(self, session_mock):
-        response = requests.Response()
-        response.headers = CaseInsensitiveDict({})
-
-        client = CommCareHqClient(
-            '/fake/commcare-hq/url', 'fake-project', None, None
-        )
-
-        assert client._should_raise_for_status(response) is True
+        assert client._should_raise_for_status(response) is expected
 
     @patch('commcare_export.commcare_hq_client.logger')
     @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")

@@ -128,7 +128,7 @@ def _get_column_lengths(connection, table_name):
 
 class TestWriters:
 
-    def test_JValueTableWriter(self):
+    def test_jvalue_table_writer(self):
         writer = JValueTableWriter()
         writer.write_table(
             TableSpec(
@@ -171,7 +171,7 @@ class TestWriters:
                 )
         }
 
-    def test_Excel2007TableWriter(self):
+    def test_excel2007_table_writer(self):
         with tempfile.NamedTemporaryFile(suffix='.xlsx') as file:
             with Excel2007TableWriter(file=file) as writer:
                 writer.write_table(
@@ -189,7 +189,7 @@ class TestWriters:
 
             _check_excel2007_output(file.name)
 
-    def test_Excel2007TableWriter_write_mutli(self):
+    def test_excel2007_table_writer_write_multi(self):
         with tempfile.NamedTemporaryFile(suffix='.xlsx') as file:
             with Excel2007TableWriter(file=file) as writer:
                 writer.write_table(
@@ -213,7 +213,7 @@ class TestWriters:
                 )
             _check_excel2007_output(file.name)
 
-    def test_CsvTableWriter(self):
+    def test_csv_table_writer(self):
         with tempfile.NamedTemporaryFile() as file:
             with CsvTableWriter(file=file) as writer:
                 writer.write_table(

@@ -170,81 +170,54 @@ class TestMiniLinq:
         #   Reference('$.foo.id'):
         #       '1.bid' -> 'bid'
 
-    def test_value_or_root_child_data_used(self):
-        data = {"id": 1, "bar": [{'baz': 'a1'}, {'baz': 'a2'}]}
-        _test_value_or_root([
-            Reference('id'),
-            Reference('baz')
-        ], data, [
-            ["1.bar.'1.bar.[0]'", 'a1'],
-            ["1.bar.'1.bar.[1]'", 'a2'],
-        ])
-
-    def test_value_or_root_empty_list(self):
-        data = {
-            "id": 1,
-            "foo": "I am foo",
-            "bar": [],
-        }
-        _test_value_or_root([
-            Reference('id'),
-            Reference('baz'),
-            Reference('$.foo')
-        ], data, [
-            ['1', [], "I am foo"],
-        ])
-
-    def test_value_or_root_empty_dict(self):
-        data = {
-            "id": 1,
-            "foo": "I am foo",
-            "bar": {},
-        }
-        _test_value_or_root([
-            Reference('id'),
-            Reference('baz'),
-            Reference('$.foo')
-        ], data, [
-            ['1', [], "I am foo"],
-        ])
-
-    def test_value_or_root_None(self):
-        data = {
-            "id": 1,
-            "bar": None,
-        }
-        _test_value_or_root([
-            Reference('id'),
-            Reference('baz')
-        ], data, [
-            ['1', []],
-        ])
-
-    def test_value_or_root_missing(self):
-        data = {
-            "id": 1,
-            "foo": "I am foo",
-            # 'bar' is missing
-        }
-        _test_value_or_root([
-            Reference('id'),
-            Reference('baz'),
-            Reference('$.foo')
-        ], data, [
-            ['1', [], 'I am foo'],
-        ])
-
-    def test_value_or_root_ignore_field_in_root(self):
-        data = {
-            "id": 1,
-            "foo": "I am foo",
-        }
-        _test_value_or_root([
-            Reference('id'),
-            Reference('foo')
-        ], data, [
-            ['1', []],
-        ])
+    @pytest.mark.parametrize(
+        "data,columns,expected",
+        [
+            (
+                {"id": 1, "bar": [{'baz': 'a1'}, {'baz': 'a2'}]},
+                [Reference('id'), Reference('baz')],
+                [
+                    ["1.bar.'1.bar.[0]'", 'a1'],
+                    ["1.bar.'1.bar.[1]'", 'a2'],
+                ],
+            ),
+            (
+                {"id": 1, "foo": "I am foo", "bar": []},
+                [Reference('id'), Reference('baz'), Reference('$.foo')],
+                [['1', [], "I am foo"]],
+            ),
+            (
+                {"id": 1, "foo": "I am foo", "bar": {}},
+                [Reference('id'), Reference('baz'), Reference('$.foo')],
+                [['1', [], "I am foo"]],
+            ),
+            (
+                {"id": 1, "bar": None},
+                [Reference('id'), Reference('baz')],
+                [['1', []]],
+            ),
+            (
+                {"id": 1, "foo": "I am foo"},
+                [Reference('id'), Reference('baz'), Reference('$.foo')],
+                [['1', [], 'I am foo']],
+            ),
+            (
+                {"id": 1, "foo": "I am foo"},
+                [Reference('id'), Reference('foo')],
+                [['1', []]],
+            ),
+        ],
+        ids=[
+            "child-data",
+            "empty-list",
+            "empty-dict",
+            "none",
+            "missing",
+            "root-field-ignored",
+        ],
+    )
+    def test_value_or_root(self, data, columns, expected):
+        _test_value_or_root(columns, data, expected)
 
     def test_eval_collapsed_list(self):
         env = BuiltInEnv()
@@ -694,7 +667,7 @@ class TestMiniLinq:
         assert writer.tables['FooBaz'].rows == [[3], [4]]
         assert writer.tables['FooBar'].rows == [[True], [False]]
 
-    def test_emit_mutli_different_query(self):
+    def test_emit_multi_different_query(self):
         writer = JValueTableWriter()
         env = BuiltInEnv() | JsonPathEnv() | EmitterEnv(writer)
         result = Filter(  # the filter here is to prevent accumulating a `[None]` value for each doc
