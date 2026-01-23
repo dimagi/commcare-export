@@ -1,10 +1,8 @@
-import unittest
-
 from commcare_export.map_format import parse_function_arg, parse_template
 from commcare_export.minilinq import Apply, Literal, Reference
 
 
-class TestMapFormats(unittest.TestCase):
+class TestMapFormats:
 
     def test_parse_template_no_args(self):
         expected = Apply(

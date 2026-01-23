@@ -1,12 +1,21 @@
 import types
-import unittest
 from datetime import datetime
-from itertools import *
+from itertools import islice
 
 import pytest
-from commcare_export.env import *
+from commcare_export.env import BuiltInEnv, DictEnv, EmitterEnv, JsonPathEnv
 from commcare_export.excel_query import get_value_or_root_expression
-from commcare_export.minilinq import *
+from commcare_export.minilinq import (
+    Apply,
+    Emit,
+    Filter,
+    FlatMap,
+    List,
+    Literal,
+    Map,
+    MiniLinq,
+    Reference,
+)
 from commcare_export.misc import unwrap_val
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.specs import TableSpec
@@ -23,11 +32,7 @@ def die(msg):
     raise LazinessException(msg)
 
 
-class TestMiniLinq(unittest.TestCase):
-
-    @classmethod
-    def setup_class(cls):
-        pass
+class TestMiniLinq:
 
     def check_case(self, val, expected):
         if isinstance(expected, list):
@@ -68,10 +73,6 @@ class TestMiniLinq(unittest.TestCase):
         )
 
     def test_eval_auto_id_reference(self):
-        """
-        Test that we have turned on the jsonpath_ng.jsonpath.auto_id
-        field properly
-        """
         env = BuiltInEnv()
 
         self.check_case(
@@ -137,20 +138,17 @@ class TestMiniLinq(unittest.TestCase):
         #   Reference('$.foo.id'):
         #       '1.bid' -> 'bid'
 
-    def test_value_or_root(self):
-        """
-        Test that when accessing a child object the child data is used
-        if it exists (normal case).
-        """
+    def test_value_or_root_child_data_used(self):
         data = {"id": 1, "bar": [{'baz': 'a1'}, {'baz': 'a2'}]}
-        self._test_value_or_root([Reference('id'),
-                                  Reference('baz')], data, [
-                                      ["1.bar.'1.bar.[0]'", 'a1'],
-                                      ["1.bar.'1.bar.[1]'", 'a2'],
-                                  ])
+        self._test_value_or_root([
+            Reference('id'),
+            Reference('baz')
+        ], data, [
+            ["1.bar.'1.bar.[0]'", 'a1'],
+            ["1.bar.'1.bar.[1]'", 'a2'],
+        ])
 
     def test_value_or_root_empty_list(self):
-        """Should use the root object if the child is an empty list"""
         data = {
             "id": 1,
             "foo": "I am foo",
@@ -165,7 +163,6 @@ class TestMiniLinq(unittest.TestCase):
         ])
 
     def test_value_or_root_empty_dict(self):
-        """Should use the root object if the child is an empty dict"""
         data = {
             "id": 1,
             "foo": "I am foo",
@@ -180,18 +177,18 @@ class TestMiniLinq(unittest.TestCase):
         ])
 
     def test_value_or_root_None(self):
-        """Should use the root object if the child is None"""
         data = {
             "id": 1,
             "bar": None,
         }
-        self._test_value_or_root([Reference('id'),
-                                  Reference('baz')], data, [
-                                      ['1', []],
-                                  ])
+        self._test_value_or_root([
+            Reference('id'),
+            Reference('baz')
+        ], data, [
+            ['1', []],
+        ])
 
     def test_value_or_root_missing(self):
-        """Should use the root object if the child does not exist"""
         data = {
             "id": 1,
             "foo": "I am foo",
@@ -206,22 +203,18 @@ class TestMiniLinq(unittest.TestCase):
         ])
 
     def test_value_or_root_ignore_field_in_root(self):
-        """
-        Test that a child reference is ignored if we are using the root
-        doc even if there is a field with that name. (this doesn't apply
-        to 'id')
-        """
         data = {
             "id": 1,
             "foo": "I am foo",
         }
-        self._test_value_or_root([Reference('id'),
-                                  Reference('foo')], data, [
-                                      ['1', []],
-                                  ])
+        self._test_value_or_root([
+            Reference('id'),
+            Reference('foo')
+        ], data, [
+            ['1', []],
+        ])
 
     def _test_value_or_root(self, columns, data, expected):
-        """Low level test case for 'value-or-root'"""
         env = BuiltInEnv() | JsonPathEnv({})
         value_or_root = get_value_or_root_expression('bar.[*]')
         flatmap = FlatMap(source=Literal([data]), body=value_or_root)
@@ -229,10 +222,6 @@ class TestMiniLinq(unittest.TestCase):
         self.check_case(mmap.eval(env), expected)
 
     def test_eval_collapsed_list(self):
-        """
-        Special case to handle XML -> JSON conversion where there just
-        happened to be a single value at save time
-        """
         env = BuiltInEnv()
         self.check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': 2})), [2])
         assert Apply(Reference("*"), Literal(2), Literal(3)).eval(env) == 6
@@ -662,11 +651,6 @@ class TestMiniLinq(unittest.TestCase):
         assert isinstance(env.table.rows, (map, filter, types.GeneratorType))
 
     def test_emit_multi_same_query(self):
-        """
-        Test that we can emit multiple tables from the same set of
-        source data. This is useful if you need to generate multiple
-        tables from the same datasource.
-        """
         writer = JValueTableWriter()
         env = BuiltInEnv() | JsonPathEnv() | EmitterEnv(writer)
 
@@ -708,14 +692,6 @@ class TestMiniLinq(unittest.TestCase):
         assert writer.tables['FooBar'].rows == [[True], [False]]
 
     def test_emit_mutli_different_query(self):
-        """
-        Test that we can emit multiple tables from the same set of
-        source data even if the emitted table have different 'root doc'
-        expressions.
-
-        Example use case could be emitting cases and case actions, or
-        form data and repeats.
-        """
         writer = JValueTableWriter()
         env = BuiltInEnv() | JsonPathEnv() | EmitterEnv(writer)
         result = Filter(  # the filter here is to prevent accumulating a `[None]` value for each doc

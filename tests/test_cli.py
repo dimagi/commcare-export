@@ -2,23 +2,26 @@ import csv
 import logging
 import os
 import re
-import unittest
 from argparse import Namespace
 from copy import copy
 from itertools import zip_longest
 from unittest import mock
 
-import sqlalchemy
-from tests.utils import SqlWriterWithTearDown
-
 import pytest
+import sqlalchemy
 from unmagic import fixture
+
+from tests.utils import SqlWriterWithTearDown
 from commcare_export.checkpoint import (
     Checkpoint,
     CheckpointManager,
     session_scope,
 )
-from commcare_export.cli import CLI_ARGS, main_with_args, validate_output_filename
+from commcare_export.cli import (
+    CLI_ARGS,
+    main_with_args,
+    validate_output_filename,
+)
 from commcare_export.commcare_hq_client import (
     CommCareHqClient,
     MockCommCareHqClient,
@@ -254,7 +257,7 @@ def get_expected_locations_results(include_parent):
     }]
 
 
-class TestCli(unittest.TestCase):
+class TestCli:
 
     def _test_cli(self, args, expected):
         writer = JValueTableWriter()
@@ -660,12 +663,6 @@ CONFLICTING_TYPES_CLIENT = MockCommCareHqClient({
 
 
 class MockCheckpointingClient(CommCareHqClient):
-    """
-    Mock client that uses the main client for iteration but overrides
-    the data request to return mocked data.
-
-    Note this client needs to be re-initialized after use.
-    """
 
     def __init__(self, mock_data):
         self.mock_data = {
@@ -954,12 +951,11 @@ class TestCLIPaginationMode:
             checkpoint_manager, '2012-04-26T05:13:01', 'doc 4'
         )
 
-    def test_cli_pagination_legacy(self, writer, all_db_checkpoint_manager):
-        """
-        Test that we continue with the same pagination mode as was
-        already in use
-        """
-
+    def test_cli_continues_pagination_mode(
+        self,
+        writer,
+        all_db_checkpoint_manager,
+    ):
         checkpoint_manager = all_db_checkpoint_manager.for_dataset(
             "case", ["Case"]
         )
@@ -997,10 +993,6 @@ class TestCLIPaginationMode:
     def test_cli_pagination_start_over(
         self, writer, all_db_checkpoint_manager
     ):
-        """
-        Test that we switch to the new pagination mode when using
-        'start_over'
-        """
         checkpoint_manager = all_db_checkpoint_manager.for_dataset(
             "case", ["Case"]
         )
@@ -1022,9 +1014,6 @@ class TestCLIPaginationMode:
         )
 
     def test_cli_pagination_since(self, writer, all_db_checkpoint_manager):
-        """
-        Test that we use to the new pagination mode when using 'since'
-        """
         checkpoint_manager = all_db_checkpoint_manager.for_dataset(
             "case", ["Case"]
         )
@@ -1060,7 +1049,7 @@ class TestCLIPaginationMode:
         assert checkpoint.last_doc_id == doc_id
 
 
-class TestValidateOutputFilename(unittest.TestCase):
+class TestValidateOutputFilename:
     def _test_file_extension(self, output_format, expected_extension):
         error_message = (f"For output format as {output_format}, "
                          f"output file name should have extension {expected_extension}")
@@ -1069,26 +1058,20 @@ class TestValidateOutputFilename(unittest.TestCase):
             output_format=output_format,
             output_filename=f'correct_file_extension.{expected_extension}'
         )
-        self.assertEqual(len(errors), 0)
+        assert len(errors) == 0
 
         errors = validate_output_filename(
             output_format=output_format,
             output_filename=f'incorrect_file_extension.abc'
         )
-        self.assertListEqual(
-            errors,
-            [error_message]
-        )
+        assert errors == [error_message]
 
         # incorrectly using sql output with non sql formats
         errors = validate_output_filename(
             output_format=output_format,
             output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase'
         )
-        self.assertListEqual(
-            errors,
-            [error_message]
-        )
+        assert errors == [error_message]
 
     def test_for_csv_output(self):
         self._test_file_extension(output_format='csv', expected_extension='zip')
@@ -1106,23 +1089,17 @@ class TestValidateOutputFilename(unittest.TestCase):
             output_format='non_sql',
             output_filename='correct_file.abc'
         )
-        self.assertEqual(len(errors), 0)
+        assert len(errors) == 0
 
         errors = validate_output_filename(
             output_format='non_sql',
             output_filename='filename_without_extensionxls'
         )
-        self.assertListEqual(
-            errors,
-            [error_message]
-        )
+        assert errors == [error_message]
 
         # incorrectly using sql output with non sql output formats
         errors = validate_output_filename(
             output_format='non_sql',
             output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase'
         )
-        self.assertListEqual(
-            errors,
-            [error_message]
-        )
+        assert errors == [error_message]

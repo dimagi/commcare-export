@@ -1,19 +1,19 @@
-import unittest
-from itertools import *
+from itertools import islice
+
+from jsonpath_ng import jsonpath
 
 from commcare_export.checkpoint import CheckpointManagerWithDetails
 from commcare_export.commcare_hq_client import MockCommCareHqClient
-from commcare_export.commcare_minilinq import *
-from commcare_export.env import *
-from commcare_export.minilinq import *
-from jsonpath_ng import jsonpath
+from commcare_export.commcare_minilinq import (
+    CommCareHqEnv,
+    PaginationMode,
+    get_paginator,
+)
+from commcare_export.env import BuiltInEnv, JsonPathEnv
+from commcare_export.minilinq import Apply, FlatMap, Literal, Reference
 
 
-class TestCommCareMiniLinq(unittest.TestCase):
-
-    @classmethod
-    def setup_class(cls):
-        pass
+class TestCommCareMiniLinq:
 
     def check_case(self, val, result):
         if isinstance(result, list):

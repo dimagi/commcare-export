@@ -2,16 +2,15 @@ import doctest
 import hashlib
 import struct
 import tempfile
-import unittest
 
 import pytest
+from jsonpath_ng import jsonpath
 
 from commcare_export import misc
 from commcare_export.repeatable_iterator import RepeatableIterator
-from jsonpath_ng import jsonpath
 
 
-class TestDigestFile(unittest.TestCase):
+class TestDigestFile:
 
     def check_digest(self, contents):
         with tempfile.NamedTemporaryFile(
@@ -38,11 +37,6 @@ class TestDigestFile(unittest.TestCase):
 
 
 class TestUnwrap:
-    """
-    Tests for the @unwrap decorator, which unwraps RepeatableIterators,
-    single-element lists, and jsonpath DatumInContext objects before
-    passing them to the decorated function.
-    """
 
     @pytest.mark.parametrize("arguments,expected", [
         ((RepeatableIterator(lambda: iter([42])), 2), 84),

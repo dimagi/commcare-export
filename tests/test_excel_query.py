@@ -1,6 +1,5 @@
 import os.path
 import pprint
-import unittest
 from collections import defaultdict
 
 import openpyxl
@@ -9,16 +8,30 @@ from jsonpath_ng.parser import parse as parse_jsonpath
 
 from commcare_export.builtin_queries import ColumnEnforcer
 from commcare_export.env import BuiltInEnv, JsonPathEnv
-from commcare_export.excel_query import *
-from commcare_export.excel_query import _get_safe_source_field
+from commcare_export.excel_query import (
+    _get_safe_source_field,
+    compile_mapped_field,
+    compile_mappings,
+    get_queries_from_excel,
+    parse_sheet,
+    parse_workbook,
+    SheetParts,
+)
 from commcare_export.jsonpath_utils import split_leftmost
+from commcare_export.minilinq import (
+    Apply,
+    Bind,
+    Emit,
+    Filter,
+    FlatMap,
+    List,
+    Literal,
+    Map,
+    Reference,
+)
 
 
-class TestExcelQuery(unittest.TestCase):
-
-    @classmethod
-    def setup_class(cls):
-        pass
+class TestExcelQuery:
 
     def test_split_leftmost(self):
         assert split_leftmost(

@@ -1,5 +1,3 @@
-import unittest
-
 from commcare_export.checkpoint import CheckpointManagerWithDetails
 from commcare_export.commcare_minilinq import (
     DEFAULT_UCR_PAGE_SIZE,
@@ -8,7 +6,7 @@ from commcare_export.commcare_minilinq import (
 )
 
 
-class PaginatorTest(unittest.TestCase):
+class PaginatorTest:
     def test_ucr_paginator_page_size(self):
         checkpoint_manager = CheckpointManagerWithDetails(
             None, None, PaginationMode.cursor
@@ -20,7 +18,7 @@ class PaginatorTest(unittest.TestCase):
         initial_params = paginator.next_page_params_since(
             checkpoint_manager.since_param
         )
-        self.assertEqual(initial_params["limit"], DEFAULT_UCR_PAGE_SIZE)
+        assert initial_params["limit"] == DEFAULT_UCR_PAGE_SIZE
 
         paginator = get_paginator(
             resource="ucr",
@@ -30,4 +28,4 @@ class PaginatorTest(unittest.TestCase):
         initial_params = paginator.next_page_params_since(
             checkpoint_manager.since_param
         )
-        self.assertEqual(initial_params["limit"], 1)
+        assert initial_params["limit"] == 1

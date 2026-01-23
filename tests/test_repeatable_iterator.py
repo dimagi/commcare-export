@@ -1,14 +1,11 @@
-import unittest
-from itertools import *
+from itertools import islice
+
+import pytest
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
 
-class TestRepeatableIterator(unittest.TestCase):
-
-    @classmethod
-    def setup_class(cls):
-        pass
+class TestRepeatableIterator:
 
     def test_iteration(self):
 
@@ -37,7 +34,7 @@ class TestRepeatableIterator(unittest.TestCase):
         assert list(iterator) == list(range(1, 100))
         assert bool(iterator) is True
 
-        empty_list: list[int] = []
+        empty_list = []
         iterator = RepeatableIterator(lambda: (i for i in empty_list))
         assert bool(iterator) is False
 
@@ -45,8 +42,5 @@ class TestRepeatableIterator(unittest.TestCase):
         iterator = RepeatableIterator(test2)
         assert list(islice(iterator, 5)) == list(range(1, 6))
 
-        try:
+        with pytest.raises(LazinessException):
             list(islice(iterator, 15))
-            raise Exception('Should have failed')
-        except LazinessException:
-            pass
