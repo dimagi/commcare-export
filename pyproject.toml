@@ -54,6 +54,7 @@ test = [
     "psycopg2-binary",
     "pytest",
     "pytest-unmagic",
+    "ruff",
     "types-mock",
     "types-python-dateutil",
     "types-pytz",
