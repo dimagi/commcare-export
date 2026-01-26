@@ -32,7 +32,7 @@ def test_iteration():
     assert list(iterator) == list(range(1, 100))
     assert bool(iterator) is True
 
-    empty_list = []
+    empty_list = []  # type: ignore
     iterator = RepeatableIterator(lambda: (i for i in empty_list))
     assert bool(iterator) is False
 
