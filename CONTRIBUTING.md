@@ -1,4 +1,4 @@
-# Contributing to CommCare Sync
+# Contributing to CommCare Export
 
 ## Coding style
 
