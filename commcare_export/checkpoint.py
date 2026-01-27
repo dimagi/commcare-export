@@ -1,6 +1,5 @@
 import datetime
 import logging
-import os
 import uuid
 from importlib import resources
 from contextlib import contextmanager
@@ -203,7 +202,7 @@ class CheckpointManager(SqlMixin):
         from alembic import command, config
 
         with resources.as_file(self.migrations_repository) as migrations_path:
-            cfg = config.Config(os.path.join(migrations_path, 'alembic.ini'))
+            cfg = config.Config(str(migrations_path / 'alembic.ini'))
             cfg.set_main_option('script_location', str(migrations_path))
             with self.engine.begin() as connection:
                 cfg.attributes['connection'] = connection
