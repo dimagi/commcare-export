@@ -1,2 +1,2 @@
-recursive-include migrations *.py *.ini
+recursive-include commcare_export/migrations *.py *.ini *.mako
 include commcare_export/VERSION

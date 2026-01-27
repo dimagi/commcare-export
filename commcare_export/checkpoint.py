@@ -1,6 +1,7 @@
 import datetime
-import os
+import logging
 import uuid
+from importlib import resources
 from contextlib import contextmanager
 from operator import attrgetter
 
@@ -12,9 +13,8 @@ from sqlalchemy.orm import sessionmaker
 from commcare_export.commcare_minilinq import PaginationMode
 from commcare_export.exceptions import DataExportException
 from commcare_export.writers import SqlMixin
-from commcare_export import get_logger, repo_root
 
-logger = get_logger(__file__)
+logger = logging.getLogger(__name__)
 Base = declarative_base()
 
 
@@ -85,7 +85,7 @@ def session_scope(Session):
 
 class CheckpointManager(SqlMixin):
     table_name = 'commcare_export_runs'
-    migrations_repository = os.path.join(repo_root, 'migrations')
+    migrations_repository = resources.files("commcare_export") / "migrations"
 
     def __init__(
         self,
@@ -200,13 +200,13 @@ class CheckpointManager(SqlMixin):
 
     def create_checkpoint_table(self, revision='head'):
         from alembic import command, config
-        cfg = config.Config(
-            os.path.join(self.migrations_repository, 'alembic.ini')
-        )
-        cfg.set_main_option('script_location', self.migrations_repository)
-        with self.engine.begin() as connection:
-            cfg.attributes['connection'] = connection
-            command.upgrade(cfg, revision)
+
+        with resources.as_file(self.migrations_repository) as migrations_path:
+            cfg = config.Config(str(migrations_path / 'alembic.ini'))
+            cfg.set_main_option('script_location', str(migrations_path))
+            with self.engine.begin() as connection:
+                cfg.attributes['connection'] = connection
+                command.upgrade(cfg, revision)
 
     def _cleanup(self):
         self._validate_tables()

@@ -4,7 +4,6 @@ import io
 import json
 import os
 import sys
-import logging
 import dateutil.parser
 import requests
 import sqlalchemy
@@ -28,11 +27,11 @@ from commcare_export.misc import default_to_json
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.utils import get_checkpoint_manager
 from commcare_export.version import __version__
-from commcare_export import get_logger, get_error_logger
+import logging
 
 EXIT_STATUS_SUCCESS = 0
 EXIT_STATUS_ERROR = 1
-logger = get_logger(__file__)
+logger = logging.getLogger(__name__)
 
 commcare_hq_aliases = {
     'local': 'http://localhost:8000',
@@ -184,13 +183,13 @@ CLI_ARGS = [
 ]
 
 
-def set_up_logging(log_dir=None):
+def set_up_file_logging(log_dir=None):
     """
     Set up file-based logging.
 
     :param log_dir: Directory where the log file will be written. If
         None, uses the current working directory.
-    :returns tuple: (success, log_file_path, error_msg)
+    :returns tuple: (success, log_file_path, error_msg, file_handler)
     """
     if log_dir is None:
         log_dir = os.getcwd()
@@ -203,15 +202,38 @@ def set_up_logging(log_dir=None):
         with open(log_file, 'a'):  # Test write permissions
             pass
 
-        logging.basicConfig(
-            filename=log_file,
-            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-            filemode='a',
-        )
-        sys.stderr = get_error_logger()
-        return True, log_file, None
+        file_handler = logging.FileHandler(log_file, mode='a')
+        return True, log_file, None, file_handler
     except (OSError, IOError, PermissionError) as err:
-        return False, log_file, f"{type(err).__name__}: {err}"
+        return False, log_file, f"{type(err).__name__}: {err}", None
+
+
+def set_up_logging(args):
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(logging.Formatter('%(message)s'))
+    handlers = [stream_handler]
+    if not args.no_logfile:
+        success, log_file, error, file_handler = set_up_file_logging(
+            args.log_dir
+        )
+        if success:
+            file_handler.setFormatter(
+                logging.Formatter(
+                    '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
+                )
+            )
+            handlers.append(file_handler)
+            print(f'Writing logs to {log_file}')
+        else:
+            print(f'Warning: Unable to write to log file {log_file}: {error}')
+            print('Logging to console only.')
+
+    log_level = logging.DEBUG if args.verbose else logging.WARN
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    root_logger.setLevel(log_level)
+    for handler in handlers:
+        root_logger.addHandler(handler)
 
 
 def main(argv):
@@ -229,24 +251,7 @@ def main(argv):
         if errors:
             raise Exception(f"Could not proceed. Following issues were found: {', '.join(errors)}.")
 
-    if not args.no_logfile:
-        success, log_file, error = set_up_logging(args.log_dir)
-        if success:
-            print(f'Writing logs to {log_file}')
-        else:
-            print(f'Warning: Unable to write to log file {log_file}: {error}')
-            print('Logging to console only.')
-
-    if args.verbose:
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
-        )
-    else:
-        logging.basicConfig(
-            level=logging.WARN,
-            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
-        )
+    set_up_logging(args)
 
     logging.getLogger('alembic').setLevel(logging.WARN)
     logging.getLogger('backoff').setLevel(logging.FATAL)
@@ -258,13 +263,7 @@ def main(argv):
 
     if not args.project:
         error_msg = "commcare-export: error: argument --project is required"
-        # output to log file through sys.stderr
-        print(
-            error_msg,
-            file=sys.stderr
-        )
-        # Output to console for debugging
-        print(error_msg)
+        logger.error(error_msg)
         sys.exit(1)
 
     print("Running export...")
@@ -364,11 +363,9 @@ def _get_writer(output_format, output, strict_types):
     elif output_format == 'csv':
         if not output.endswith(".zip"):
             print(
-                "WARNING: csv output is a zip file, but "
-                f"will be written to {output}"
-            )
-            print(
-                "Consider appending .zip to the file name to avoid confusion."
+                'WARNING: CSV output is a zip file, but will be written to '
+                f"'{output}'.\n"
+                "Consider appending '.zip' to the file name to avoid confusion."
             )
         return writers.CsvTableWriter(output)
     elif output_format == 'json':
@@ -383,8 +380,9 @@ def _get_writer(output_format, output, strict_types):
             charset_split = output.split('charset=')
             if len(charset_split) > 1 and charset_split[1] != 'utf8mb4':
                 raise Exception(
-                    f"The charset '{charset_split[1]}' might cause problems with the export. "
-                    f"It is recommended that you use 'utf8mb4' instead."
+                    f"The charset '{charset_split[1]}' might cause problems "
+                    "with the export. It is recommended that you use "
+                    "'utf8mb4' instead."
                 )
 
         return writers.SqlTableWriter(output, strict_types)
@@ -414,8 +412,7 @@ def _get_checkpoint_manager(args):
         args.query
     ):
         logger.warning(
-            "Checkpointing disabled for non builtin, "
-            "non file-based query"
+            "Checkpointing disabled for non builtin, non file-based query"
         )
     elif args.since or args.until:
         logger.warning(
@@ -442,29 +439,30 @@ def evaluate_query(env, query):
             lazy_result = query.eval(env)
             force_lazy_result(lazy_result)
             return 0
-        except requests.exceptions.RequestException as e:
-            if e.response and e.response.status_code == 401:
-                print(
-                    "\nAuthentication failed. Please check your credentials.",
-                    file=sys.stderr
+        except requests.exceptions.RequestException as err:
+            if err.response and err.response.status_code == 401:
+                logger.error(
+                    "Authentication failed. Please check your credentials."
                 )
                 return EXIT_STATUS_ERROR
             else:
                 raise
-        except ResourceRepeatException as e:
-            print('Stopping because the export is stuck')
-            print(e.message)
-            print('Try increasing --batch-size to overcome the error')
+        except ResourceRepeatException as err:
+            logger.error(
+                'Stopping because the export is stuck.\n'
+                f'{err.message}\n'
+                f'Try increasing --batch-size to overcome the error'
+            )
             return EXIT_STATUS_ERROR
         except (
             sqlalchemy.exc.DataError,
             sqlalchemy.exc.InternalError,
             sqlalchemy.exc.ProgrammingError
-        ) as e:
-            print('Stopping because of database error:\n', e)
+        ) as err:
+            logger.error(f'Stopping because of database error:\n{err}')
             return EXIT_STATUS_ERROR
         except KeyboardInterrupt:
-            print('\nExport aborted', file=sys.stderr)
+            logger.error("Export aborted")
             return EXIT_STATUS_ERROR
 
 
@@ -473,10 +471,9 @@ def main_with_args(args):
     writer = _get_writer(args.output_format, args.output, args.strict_types)
 
     if args.query is None and args.users is False and args.locations is False:
-        print(
-            'At least one the following arguments is required: '
-            '--query, --users, --locations',
-            file=sys.stderr
+        logger.error(
+            "At least one the following arguments is required: "
+            "--query, --users, --locations"
         )
         return EXIT_STATUS_ERROR
 
@@ -500,8 +497,8 @@ def main_with_args(args):
     lp = LocationInfoProvider(api_client, page_size=args.batch_size)
     try:
         query = get_queries(args, writer, lp, column_enforcer)
-    except DataExportException as e:
-        print(e.message, file=sys.stderr)
+    except DataExportException as err:
+        logger.error(err.message)
         return EXIT_STATUS_ERROR
 
     if args.dump_query:
