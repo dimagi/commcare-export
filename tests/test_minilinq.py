@@ -40,6 +40,7 @@ def _check_case(val, expected):
 
 
 def _test_value_or_root(columns, data, expected):
+    """Low level test case for 'value-or-root'"""
     env = BuiltInEnv() | JsonPathEnv({})
     value_or_root = get_value_or_root_expression('bar.[*]')
     flatmap = FlatMap(source=Literal([data]), body=value_or_root)
@@ -173,6 +174,8 @@ class TestMiniLinq:
     @pytest.mark.parametrize(
         "data,columns,expected",
         [
+            # Test that when accessing a child object the child data is
+            # used if it exists (normal case).
             (
                 {"id": 1, "bar": [{'baz': 'a1'}, {'baz': 'a2'}]},
                 [Reference('id'), Reference('baz')],
@@ -181,26 +184,38 @@ class TestMiniLinq:
                     ["1.bar.'1.bar.[1]'", 'a2'],
                 ],
             ),
+
+            # Should use the root object if the child is an empty list
             (
                 {"id": 1, "foo": "I am foo", "bar": []},
                 [Reference('id'), Reference('baz'), Reference('$.foo')],
                 [['1', [], "I am foo"]],
             ),
+
+            # Should use the root object if the child is an empty dict
             (
                 {"id": 1, "foo": "I am foo", "bar": {}},
                 [Reference('id'), Reference('baz'), Reference('$.foo')],
                 [['1', [], "I am foo"]],
             ),
+
+            # Should use the root object if the child is None
             (
                 {"id": 1, "bar": None},
                 [Reference('id'), Reference('baz')],
                 [['1', []]],
             ),
+
+            # Should use the root object if the child does not exist
             (
-                {"id": 1, "foo": "I am foo"},
+                {"id": 1, "foo": "I am foo"},  # 'bar' is missing
                 [Reference('id'), Reference('baz'), Reference('$.foo')],
                 [['1', [], 'I am foo']],
             ),
+
+            # Test that a child reference is ignored if we are using the
+            # root doc even if there is a field with that name. (This
+            # doesn't apply to 'id'.)
             (
                 {"id": 1, "foo": "I am foo"},
                 [Reference('id'), Reference('foo')],
@@ -220,6 +235,10 @@ class TestMiniLinq:
         _test_value_or_root(columns, data, expected)
 
     def test_eval_collapsed_list(self):
+        """
+        Special case to handle XML -> JSON conversion where there just
+        happened to be a single value at save time
+        """
         env = BuiltInEnv()
         _check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': 2})), [2])
         assert Apply(Reference("*"), Literal(2), Literal(3)).eval(env) == 6
@@ -627,6 +646,11 @@ class TestMiniLinq:
         assert isinstance(env.table.rows, (map, filter, types.GeneratorType))
 
     def test_emit_multi_same_query(self):
+        """
+        Test that we can emit multiple tables from the same set of
+        source data. This is useful if you need to generate multiple
+        tables from the same datasource.
+        """
         writer = JValueTableWriter()
         env = BuiltInEnv() | JsonPathEnv() | EmitterEnv(writer)
 
@@ -668,6 +692,14 @@ class TestMiniLinq:
         assert writer.tables['FooBar'].rows == [[True], [False]]
 
     def test_emit_multi_different_query(self):
+        """
+        Test that we can emit multiple tables from the same set of
+        source data even if the emitted table have different 'root doc'
+        expressions.
+
+        Example use case could be emitting cases and case actions, or
+        form data and repeats.
+        """
         writer = JValueTableWriter()
         env = BuiltInEnv() | JsonPathEnv() | EmitterEnv(writer)
         result = Filter(  # the filter here is to prevent accumulating a `[None]` value for each doc

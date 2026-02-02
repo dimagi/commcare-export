@@ -38,6 +38,11 @@ def test_digest_file_binary():
 
 
 class TestUnwrap:
+    """
+    Tests for the @unwrap decorator, which unwraps RepeatableIterators,
+    single-element lists, and jsonpath DatumInContext objects before
+    passing them to the decorated function.
+    """
 
     @pytest.mark.parametrize("arguments,expected", [
         ((RepeatableIterator(lambda: iter([42])), 2), 84),

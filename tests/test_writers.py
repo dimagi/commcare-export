@@ -39,6 +39,10 @@ TYPE_MAP = {
 
 
 def _type_convert(connection, row):
+    """
+    Different databases store and return values differently so
+    convert the values in the expected row to match the DB.
+    """
     def convert(type_map, value):
         func = type_map.get(value.__class__, None)
         return func(value) if func else value

@@ -680,6 +680,12 @@ CONFLICTING_TYPES_CLIENT = MockCommCareHqClient({
 
 
 class MockCheckpointingClient(CommCareHqClient):
+    """
+    Mock client that uses the main client for iteration but overrides
+    the data request to return mocked data.
+
+    Note this client needs to be re-initialized after use.
+    """
 
     def __init__(self, mock_data):
         self.mock_data = {
@@ -973,6 +979,10 @@ class TestCLIPaginationMode:
         writer,
         all_db_checkpoint_manager,
     ):
+        """
+        Test that we continue with the same pagination mode as was
+        already in use
+        """
         checkpoint_manager = all_db_checkpoint_manager.for_dataset(
             "case", ["Case"]
         )
@@ -1008,8 +1018,14 @@ class TestCLIPaginationMode:
         )
 
     def test_cli_pagination_start_over(
-        self, writer, all_db_checkpoint_manager
+        self,
+        writer,
+        all_db_checkpoint_manager,
     ):
+        """
+        Test that we switch to the new pagination mode when using
+        'start_over'
+        """
         checkpoint_manager = all_db_checkpoint_manager.for_dataset(
             "case", ["Case"]
         )
@@ -1031,6 +1047,9 @@ class TestCLIPaginationMode:
         )
 
     def test_cli_pagination_since(self, writer, all_db_checkpoint_manager):
+        """
+        Test that we use to the new pagination mode when using 'since'
+        """
         checkpoint_manager = all_db_checkpoint_manager.for_dataset(
             "case", ["Case"]
         )
