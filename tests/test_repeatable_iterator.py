@@ -1,52 +1,44 @@
-import unittest
-from itertools import *
+from itertools import islice
+
+import pytest
 
 from commcare_export.repeatable_iterator import RepeatableIterator
 
 
-class TestRepeatableIterator(unittest.TestCase):
+def test_iteration():
 
-    @classmethod
-    def setup_class(cls):
+    class LazinessException(Exception):
         pass
 
-    def test_iteration(self):
+    def test1():
+        for i in range(1, 100):
+            yield i
 
-        class LazinessException(Exception):
-            pass
+    def test2():
+        for i in range(1, 100):
+            if i > 10:
+                raise LazinessException('Not lazy enough')
+            yield i
 
-        def test1():
-            for i in range(1, 100):
-                yield i
+    # First make sure that we've properly set up a situation that
+    # fails without RepeatableIterator
+    iterator = test1()
+    assert list(iterator) == list(range(1, 100))
+    assert list(iterator) == []
 
-        def test2():
-            for i in range(1, 100):
-                if i > 10:
-                    raise LazinessException('Not lazy enough')
-                yield i
+    # Now test that the RepeatableIterator restores functionality
+    iterator = RepeatableIterator(test1)
+    assert list(iterator) == list(range(1, 100))
+    assert list(iterator) == list(range(1, 100))
+    assert bool(iterator) is True
 
-        # First make sure that we've properly set up a situation that
-        # fails without RepeatableIterator
-        iterator = test1()
-        assert list(iterator) == list(range(1, 100))
-        assert list(iterator) == []
+    empty_list = []  # type: ignore
+    iterator = RepeatableIterator(lambda: (i for i in empty_list))
+    assert bool(iterator) is False
 
-        # Now test that the RepeatableIterator restores functionality
-        iterator = RepeatableIterator(test1)
-        assert list(iterator) == list(range(1, 100))
-        assert list(iterator) == list(range(1, 100))
-        assert bool(iterator) is True
+    # Ensure that laziness is maintained
+    iterator = RepeatableIterator(test2)
+    assert list(islice(iterator, 5)) == list(range(1, 6))
 
-        empty_list: list[int] = []
-        iterator = RepeatableIterator(lambda: (i for i in empty_list))
-        assert bool(iterator) is False
-
-        # Ensure that laziness is maintained
-        iterator = RepeatableIterator(test2)
-        assert list(islice(iterator, 5)) == list(range(1, 6))
-
-        try:
-            list(islice(iterator, 15))
-            raise Exception('Should have failed')
-        except LazinessException:
-            pass
+    with pytest.raises(LazinessException):
+        list(islice(iterator, 15))

@@ -1,6 +1,5 @@
 import os.path
 import pprint
-import unittest
 from collections import defaultdict
 
 import openpyxl
@@ -9,16 +8,30 @@ from jsonpath_ng.parser import parse as parse_jsonpath
 
 from commcare_export.builtin_queries import ColumnEnforcer
 from commcare_export.env import BuiltInEnv, JsonPathEnv
-from commcare_export.excel_query import *
-from commcare_export.excel_query import _get_safe_source_field
+from commcare_export.excel_query import (
+    _get_safe_source_field,
+    compile_mapped_field,
+    compile_mappings,
+    get_queries_from_excel,
+    parse_sheet,
+    parse_workbook,
+    SheetParts,
+)
 from commcare_export.jsonpath_utils import split_leftmost
+from commcare_export.minilinq import (
+    Apply,
+    Bind,
+    Emit,
+    Filter,
+    FlatMap,
+    List,
+    Literal,
+    Map,
+    Reference,
+)
 
 
-class TestExcelQuery(unittest.TestCase):
-
-    @classmethod
-    def setup_class(cls):
-        pass
+class TestExcelQuery:
 
     def test_split_leftmost(self):
         assert split_leftmost(
@@ -432,7 +445,7 @@ class TestExcelQuery(unittest.TestCase):
             )
         )
 
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq, '003_DataSourceAndEmitColumns.xlsx'
         )
 
@@ -501,7 +514,7 @@ class TestExcelQuery(unittest.TestCase):
             ),
         ])
 
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq, '011_AlternateSourceFields.xlsx'
         )
 
@@ -544,7 +557,7 @@ class TestExcelQuery(unittest.TestCase):
                 ],
             ),
         )
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq, '012_ColumnsWithTypes.xlsx'
         )
 
@@ -613,7 +626,7 @@ class TestExcelQuery(unittest.TestCase):
             )
         ])
 
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq, '008_multiple-tables.xlsx', combine_emits=True
         )
 
@@ -686,7 +699,7 @@ class TestExcelQuery(unittest.TestCase):
             )
         ])
 
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq, '008_multiple-tables.xlsx', combine_emits=False
         )
 
@@ -766,7 +779,7 @@ class TestExcelQuery(unittest.TestCase):
         ])
 
         column_enforcer = ColumnEnforcer()
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq,
             '008_multiple-tables.xlsx',
             combine_emits=True,
@@ -848,17 +861,17 @@ class TestExcelQuery(unittest.TestCase):
             )
         ])
 
-        self._compare_minilinq_to_compiled(
+        _compare_minilinq_to_compiled(
             minilinq,
             '008_multiple-tables.xlsx',
             combine_emits=False,
             value_or_root=True
         )
 
-    def _compare_minilinq_to_compiled(self, minilinq, filename, **kwargs):
-        print(f"Parsing {filename}")
-        abs_path = os.path.join(os.path.dirname(__file__), filename)
-        compiled = get_queries_from_excel(
-            openpyxl.load_workbook(abs_path), missing_value='---', **kwargs
-        )
-        assert compiled.to_jvalue() == minilinq.to_jvalue(), filename
+
+def _compare_minilinq_to_compiled(minilinq, filename, **kwargs):
+    abs_path = os.path.join(os.path.dirname(__file__), filename)
+    compiled = get_queries_from_excel(
+        openpyxl.load_workbook(abs_path), missing_value='---', **kwargs
+    )
+    assert compiled.to_jvalue() == minilinq.to_jvalue(), filename

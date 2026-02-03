@@ -2,39 +2,39 @@ import doctest
 import hashlib
 import struct
 import tempfile
-import unittest
 
 import pytest
+from jsonpath_ng import jsonpath
 
 from commcare_export import misc
 from commcare_export.repeatable_iterator import RepeatableIterator
-from jsonpath_ng import jsonpath
 
 
-class TestDigestFile(unittest.TestCase):
+def _assert_digest(contents):
+    with tempfile.NamedTemporaryFile(
+        prefix='commcare-export-test-', mode='wb'
+    ) as file:
+        file.write(contents)
+        file.flush()
+        file_digest = misc.digest_file(file.name)
 
-    def check_digest(self, contents):
-        with tempfile.NamedTemporaryFile(
-            prefix='commcare-export-test-', mode='wb'
-        ) as file:
-            file.write(contents)
-            file.flush()
-            file_digest = misc.digest_file(file.name)
+    assert file_digest == hashlib.md5(contents).hexdigest()
 
-        # Make sure the chunking does not mess with stuff
-        assert file_digest == hashlib.md5(contents).hexdigest()
 
-    def test_digest_file_ascii(self):
-        self.check_digest('Hello'.encode('utf-8'))
+def test_digest_file_ascii():
+    _assert_digest('Hello'.encode('utf-8'))
 
-    def test_digest_file_long(self):
-        self.check_digest(('Hello' * 100000).encode('utf-8'))
 
-    def test_digest_file_utf8(self):
-        self.check_digest('Miércoles'.encode('utf-8'))
+def test_digest_file_long():
+    _assert_digest(('Hello' * 100000).encode('utf-8'))
 
-    def test_digest_file_binary(self):
-        self.check_digest(struct.pack('III'.encode('ascii'), 1, 2, 3))
+
+def test_digest_file_utf8():
+    _assert_digest('Miércoles'.encode('utf-8'))
+
+
+def test_digest_file_binary():
+    _assert_digest(struct.pack('III'.encode('ascii'), 1, 2, 3))
 
 
 class TestUnwrap:

@@ -38,8 +38,8 @@ would clarify the type or purpose of a variable.
 
 ### Tests
 
-Don't use docstrings for test functions. The function's name should
-explain what it is testing — If it doesn't, rename it.
+The function's name should explain what it is testing — If it doesn't,
+rename it.
 
 Take advantage of pytest features where possible. e.g. Combine
 repetitive tests using pytest parametrized tests.

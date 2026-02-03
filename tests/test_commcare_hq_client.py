@@ -1,5 +1,5 @@
-import unittest
 from datetime import datetime
+from unittest.mock import patch
 
 import requests
 import simplejson
@@ -18,7 +18,7 @@ from commcare_export.commcare_minilinq import (
     SimplePaginator,
     get_paginator,
 )
-from mock import Mock, patch
+
 
 class FakeSession:
 
@@ -243,36 +243,37 @@ class FakeDateFormSession(FakeSession):
                 raise Exception(indexed_on)
 
 
-class TestCommCareHqClient(unittest.TestCase):
+def _iterate_with_paginator(session, paginator, expected_count, expected_vals):
+    client = CommCareHqClient(
+        '/fake/commcare-hq/url', 'fake-project', None, None
+    )
+    client.session = session
 
-    def _test_iterate(self, session, paginator, expected_count, expected_vals):
-        client = CommCareHqClient(
-            '/fake/commcare-hq/url', 'fake-project', None, None
+    paginator.init()
+    checkpoint_manager = CheckpointManagerWithDetails(
+        None, None, PaginationMode.date_indexed
+    )
+    results = list(
+        client.iterate(
+            '/fake/uri', paginator, checkpoint_manager=checkpoint_manager
         )
-        client.session = session
+    )
+    assert len(results) == expected_count
+    assert [result['foo'] for result in results] == expected_vals
 
-        # Iteration should do two "gets" because the first will have
-        # something in the "next" metadata field
-        paginator.init()
-        checkpoint_manager = CheckpointManagerWithDetails(
-            None, None, PaginationMode.date_indexed
-        )
-        results = list(
-            client.iterate(
-                '/fake/uri', paginator, checkpoint_manager=checkpoint_manager
-            )
-        )
-        self.assertEqual(len(results), expected_count)
-        self.assertEqual([result['foo'] for result in results], expected_vals)
+
+class TestCommCareHqClient:
 
     def test_iterate_simple(self):
-        self._test_iterate(FakeSession(), SimplePaginator('fake'), 2, [1, 2])
+        _iterate_with_paginator(
+            FakeSession(), SimplePaginator('fake'), 2, [1, 2]
+        )
 
     def test_iterate_date(self):
-        self._test_iterate(
+        _iterate_with_paginator(
             FakeDateFormSession(), get_paginator('form'), 3, [1, 2, 3]
         )
-        self._test_iterate(
+        _iterate_with_paginator(
             FakeDateCaseSession(), get_paginator('case'), 2, [1, 2]
         )
 
@@ -281,37 +282,32 @@ class TestCommCareHqClient(unittest.TestCase):
             ResourceRepeatException,
             match="Requested resource '/fake/uri' 10 times with same parameters"
         ):
-            self._test_iterate(
+            _iterate_with_paginator(
                 FakeRepeatedDateCaseSession(), get_paginator('case', 2), 2,
                 [1, 2]
             )
 
     def test_message_log(self):
-        self._test_iterate(
+        _iterate_with_paginator(
             FakeMessageLogSession(), get_paginator('messaging-event', 2), 3,
             [1, 2, 3]
         )
 
-    @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")
-    def test_dont_raise_on_too_many_requests(self, session_mock):
+    @pytest.mark.parametrize(
+        "headers,expected",
+        [
+            ({'Retry-After': "0.0"}, False),
+            ({}, True),
+        ],
+    )
+    def test_should_raise_for_status(self, headers, expected):
         response = requests.Response()
-        response.headers = CaseInsensitiveDict({'Retry-After': "0.0"})
+        response.headers = CaseInsensitiveDict(headers)
         client = CommCareHqClient(
             '/fake/commcare-hq/url', 'fake-project', None, None
         )
 
-        self.assertFalse(client._should_raise_for_status(response))
-
-    @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")
-    def test_raise_on_too_many_requests(self, session_mock):
-        response = requests.Response()
-        response.headers = CaseInsensitiveDict({})
-
-        client = CommCareHqClient(
-            '/fake/commcare-hq/url', 'fake-project', None, None
-        )
-
-        self.assertTrue(client._should_raise_for_status(response))
+        assert client._should_raise_for_status(response) is expected
 
     @patch('commcare_export.commcare_hq_client.logger')
     @patch("commcare_export.commcare_hq_client.CommCareHqClient.session")
@@ -322,7 +318,7 @@ class TestCommCareHqClient(unittest.TestCase):
 
         logger_mock.isEnabledFor.return_value = False
 
-        with self.assertRaises(SystemExit):
+        with pytest.raises(SystemExit):
             CommCareHqClient(
                 '/fake/commcare-hq/url', 'fake-project', None, None
             ).get("location")
@@ -342,7 +338,7 @@ class TestCommCareHqClient(unittest.TestCase):
 
         logger_mock.isEnabledFor.return_value = False
 
-        with self.assertRaises(SystemExit):
+        with pytest.raises(SystemExit):
             CommCareHqClient(
                 '/fake/commcare-hq/url', 'fake-project', None, None
             ).get("location")
@@ -359,56 +355,45 @@ class TestCommCareHqClient(unittest.TestCase):
 
         logger_mock.isEnabledFor.return_value = True
 
-        try:
+        with pytest.raises(
+            Exception, match="404 Client Error: None for url: None"
+        ):
             CommCareHqClient(
                 '/fake/commcare-hq/url', 'fake-project', None, None
             ).get("location")
-        except Exception as e:
-            self.assertEqual(str(e), "404 Client Error: None for url: None")
 
 
-class TestDatePaginator(unittest.TestCase):
-
-    @classmethod
-    def setup_class(cls):
-        pass
-
+class TestDatePaginator:
     def test_empty_batch(self):
-        self.assertIsNone(
+        assert (
             DatePaginator('since', params=SimplePaginator()
                          ).next_page_params_from_batch({'objects': []})
-        )
+        ) is None
 
     def test_bad_date(self):
-        self.assertIsNone(
+        assert (
             DatePaginator('since', params=SimplePaginator()
                          ).next_page_params_from_batch({
                              'objects': [{
                                  'since': 'not a date'
                              }]
                          })
-        )
+        ) is None
 
     def test_multi_field_sort(self):
         d1 = '2017-01-01T15:36:22Z'
         d2 = '2017-01-01T18:36:22Z'
         paginator = DatePaginator(['s1', 's2'], params=SimplePaginator())
-        self.assertEqual(
-            paginator.get_since_date({'objects': [{
-                's1': d1,
-                's2': d2
-            }]}), datetime.strptime(d1, '%Y-%m-%dT%H:%M:%SZ')
-        )
+        assert paginator.get_since_date({'objects': [{
+            's1': d1,
+            's2': d2
+        }]}) == datetime.strptime(d1, '%Y-%m-%dT%H:%M:%SZ')
 
-        self.assertEqual(
-            paginator.get_since_date({'objects': [{
-                's2': d2
-            }]}), datetime.strptime(d2, '%Y-%m-%dT%H:%M:%SZ')
-        )
+        assert paginator.get_since_date({'objects': [{
+            's2': d2
+        }]}) == datetime.strptime(d2, '%Y-%m-%dT%H:%M:%SZ')
 
-        self.assertEqual(
-            paginator.get_since_date({'objects': [{
-                's1': None,
-                's2': d2
-            }]}), datetime.strptime(d2, '%Y-%m-%dT%H:%M:%SZ')
-        )
+        assert paginator.get_since_date({'objects': [{
+            's1': None,
+            's2': d2
+        }]}) == datetime.strptime(d2, '%Y-%m-%dT%H:%M:%SZ')

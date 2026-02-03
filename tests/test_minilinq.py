@@ -1,12 +1,21 @@
 import types
-import unittest
 from datetime import datetime
-from itertools import *
+from itertools import islice
 
 import pytest
-from commcare_export.env import *
+from commcare_export.env import BuiltInEnv, DictEnv, EmitterEnv, JsonPathEnv
 from commcare_export.excel_query import get_value_or_root_expression
-from commcare_export.minilinq import *
+from commcare_export.minilinq import (
+    Apply,
+    Emit,
+    Filter,
+    FlatMap,
+    List,
+    Literal,
+    Map,
+    MiniLinq,
+    Reference,
+)
 from commcare_export.misc import unwrap_val
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.specs import TableSpec
@@ -23,17 +32,46 @@ def die(msg):
     raise LazinessException(msg)
 
 
-class TestMiniLinq(unittest.TestCase):
+def _check_case(val, expected):
+    if isinstance(expected, list):
+        assert [unwrap_val(datum) for datum in val] == expected
+    else:
+        assert val == expected
 
-    @classmethod
-    def setup_class(cls):
-        pass
 
-    def check_case(self, val, expected):
-        if isinstance(expected, list):
-            assert [unwrap_val(datum) for datum in val] == expected
-        else:
-            assert val == expected
+def _test_value_or_root(columns, data, expected):
+    """Low level test case for 'value-or-root'"""
+    env = BuiltInEnv() | JsonPathEnv({})
+    value_or_root = get_value_or_root_expression('bar.[*]')
+    flatmap = FlatMap(source=Literal([data]), body=value_or_root)
+    mmap = Map(source=flatmap, body=List(columns))
+    _check_case(mmap.eval(env), expected)
+
+
+def _setup_emit_test(emitter_env):
+    env = BuiltInEnv() | JsonPathEnv({
+        'foo': {
+            'baz': 3,
+            'bar': True,
+            'boo': None
+        }
+    }) | emitter_env
+    Emit(
+        table='Foo',
+        headings=[Literal('foo')],
+        source=List([
+            List([
+                Reference('foo.baz'),
+                Reference('foo.bar'),
+                Reference('foo.foo'),
+                Reference('foo.boo')
+            ])
+        ]),
+        missing_value='---'
+    ).eval(env)
+
+
+class TestMiniLinq:
 
     def test_eval_literal(self):
         env = BuiltInEnv()
@@ -50,17 +88,17 @@ class TestMiniLinq(unittest.TestCase):
                             'b': 'c',
                             'c': 2
                         })) == 2
-        self.check_case(
+        _check_case(
             Reference("foo[*]").eval(JsonPathEnv({'foo': [2]})), [2]
         )
         # Should work the same w/ iterators as with lists
-        self.check_case(
+        _check_case(
             Reference("foo[*]").eval(JsonPathEnv({'foo': range(0, 1)})), [0]
         )
 
         # Should be able to get back out to the root, as the JsonPathEnv
         # actually passes the full datum around
-        self.check_case(
+        _check_case(
             Reference("foo.$.baz").eval(JsonPathEnv({
                 'foo': [2],
                 'baz': 3
@@ -68,18 +106,14 @@ class TestMiniLinq(unittest.TestCase):
         )
 
     def test_eval_auto_id_reference(self):
-        """
-        Test that we have turned on the jsonpath_ng.jsonpath.auto_id
-        field properly
-        """
         env = BuiltInEnv()
 
-        self.check_case(
+        _check_case(
             Reference("foo.id").eval(JsonPathEnv({'foo': [2]})), ['foo']
         )
 
         # When auto id is on, this always becomes a string. Sorry!
-        self.check_case(
+        _check_case(
             Reference("foo.id").eval(JsonPathEnv({'foo': {
                 'id': 2
             }})), ['2']
@@ -118,7 +152,7 @@ class TestMiniLinq(unittest.TestCase):
                 Reference('$.foo.name')
             ])
         )
-        self.check_case(
+        _check_case(
             mmap.eval(env), [["1.bar.'1.bar.[0]'", 'a1', '1', '1.bid', 'bob'],
                              ['1.bar.bazzer', 'a2', '1', '1.bid', 'bob']]
         )
@@ -137,96 +171,68 @@ class TestMiniLinq(unittest.TestCase):
         #   Reference('$.foo.id'):
         #       '1.bid' -> 'bid'
 
-    def test_value_or_root(self):
-        """
-        Test that when accessing a child object the child data is used
-        if it exists (normal case).
-        """
-        data = {"id": 1, "bar": [{'baz': 'a1'}, {'baz': 'a2'}]}
-        self._test_value_or_root([Reference('id'),
-                                  Reference('baz')], data, [
-                                      ["1.bar.'1.bar.[0]'", 'a1'],
-                                      ["1.bar.'1.bar.[1]'", 'a2'],
-                                  ])
+    @pytest.mark.parametrize(
+        "data,columns,expected",
+        [
+            # Test that when accessing a child object the child data is
+            # used if it exists (normal case).
+            (
+                {"id": 1, "bar": [{'baz': 'a1'}, {'baz': 'a2'}]},
+                [Reference('id'), Reference('baz')],
+                [
+                    ["1.bar.'1.bar.[0]'", 'a1'],
+                    ["1.bar.'1.bar.[1]'", 'a2'],
+                ],
+            ),
 
-    def test_value_or_root_empty_list(self):
-        """Should use the root object if the child is an empty list"""
-        data = {
-            "id": 1,
-            "foo": "I am foo",
-            "bar": [],
-        }
-        self._test_value_or_root([
-            Reference('id'),
-            Reference('baz'),
-            Reference('$.foo')
-        ], data, [
-            ['1', [], "I am foo"],
-        ])
+            # Should use the root object if the child is an empty list
+            (
+                {"id": 1, "foo": "I am foo", "bar": []},
+                [Reference('id'), Reference('baz'), Reference('$.foo')],
+                [['1', [], "I am foo"]],
+            ),
 
-    def test_value_or_root_empty_dict(self):
-        """Should use the root object if the child is an empty dict"""
-        data = {
-            "id": 1,
-            "foo": "I am foo",
-            "bar": {},
-        }
-        self._test_value_or_root([
-            Reference('id'),
-            Reference('baz'),
-            Reference('$.foo')
-        ], data, [
-            ['1', [], "I am foo"],
-        ])
+            # Should use the root object if the child is an empty dict
+            (
+                {"id": 1, "foo": "I am foo", "bar": {}},
+                [Reference('id'), Reference('baz'), Reference('$.foo')],
+                [['1', [], "I am foo"]],
+            ),
 
-    def test_value_or_root_None(self):
-        """Should use the root object if the child is None"""
-        data = {
-            "id": 1,
-            "bar": None,
-        }
-        self._test_value_or_root([Reference('id'),
-                                  Reference('baz')], data, [
-                                      ['1', []],
-                                  ])
+            # Should use the root object if the child is None
+            (
+                {"id": 1, "bar": None},
+                [Reference('id'), Reference('baz')],
+                [['1', []]],
+            ),
 
-    def test_value_or_root_missing(self):
-        """Should use the root object if the child does not exist"""
-        data = {
-            "id": 1,
-            "foo": "I am foo",
-            # 'bar' is missing
-        }
-        self._test_value_or_root([
-            Reference('id'),
-            Reference('baz'),
-            Reference('$.foo')
-        ], data, [
-            ['1', [], 'I am foo'],
-        ])
+            # Should use the root object if the child does not exist
+            (
+                {"id": 1, "foo": "I am foo"},  # 'bar' is missing
+                [Reference('id'), Reference('baz'), Reference('$.foo')],
+                [['1', [], 'I am foo']],
+            ),
 
-    def test_value_or_root_ignore_field_in_root(self):
-        """
-        Test that a child reference is ignored if we are using the root
-        doc even if there is a field with that name. (this doesn't apply
-        to 'id')
-        """
-        data = {
-            "id": 1,
-            "foo": "I am foo",
-        }
-        self._test_value_or_root([Reference('id'),
-                                  Reference('foo')], data, [
-                                      ['1', []],
-                                  ])
-
-    def _test_value_or_root(self, columns, data, expected):
-        """Low level test case for 'value-or-root'"""
-        env = BuiltInEnv() | JsonPathEnv({})
-        value_or_root = get_value_or_root_expression('bar.[*]')
-        flatmap = FlatMap(source=Literal([data]), body=value_or_root)
-        mmap = Map(source=flatmap, body=List(columns))
-        self.check_case(mmap.eval(env), expected)
+            # Test that a child reference is ignored if we are using the
+            # root doc even if there is a field with that name. (This
+            # doesn't apply to 'id'.)
+            (
+                {"id": 1, "foo": "I am foo"},
+                [Reference('id'), Reference('foo')],
+                [['1', []]],
+            ),
+        ],
+        ids=[
+            "child-data",
+            "empty-list",
+            "empty-dict",
+            "none",
+            "missing",
+            "root-field-ignored",
+        ],
+    )
+    def test_value_or_root(self, data, columns, expected):
+        _test_value_or_root(columns, data, expected)
 
     def test_eval_collapsed_list(self):
         """
@@ -234,7 +240,7 @@ class TestMiniLinq(unittest.TestCase):
         happened to be a single value at save time
         """
         env = BuiltInEnv()
-        self.check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': 2})), [2])
+        _check_case(Reference("foo[*]").eval(JsonPathEnv({'foo': 2})), [2])
         assert Apply(Reference("*"), Literal(2), Literal(3)).eval(env) == 6
         assert Apply(Reference(">"), Literal(56),
                      Literal(23.5)).eval(env) == True
@@ -329,15 +335,15 @@ class TestMiniLinq(unittest.TestCase):
                      Reference('a.d')).eval(env) is None
 
         env = env.replace({'a': [], 'b': [1, 2], 'c': 2})
-        self.check_case(
+        _check_case(
             Apply(Reference("or"), Reference('a.[*]'),
                   Reference('b')).eval(env), [1, 2]
         )
-        self.check_case(
+        _check_case(
             Apply(Reference("or"), Reference('b.[*]'),
                   Reference('c')).eval(env), [1, 2]
         )
-        self.check_case(
+        _check_case(
             Apply(Reference("or"), Reference('a.[*]'),
                   Reference('$')).eval(env), {
                       'a': [],
@@ -610,31 +616,9 @@ class TestMiniLinq(unittest.TestCase):
         except LazinessException:
             pass
 
-    def _setup_emit_test(self, emitter_env):
-        env = BuiltInEnv() | JsonPathEnv({
-            'foo': {
-                'baz': 3,
-                'bar': True,
-                'boo': None
-            }
-        }) | emitter_env
-        Emit(
-            table='Foo',
-            headings=[Literal('foo')],
-            source=List([
-                List([
-                    Reference('foo.baz'),
-                    Reference('foo.bar'),
-                    Reference('foo.foo'),
-                    Reference('foo.boo')
-                ])
-            ]),
-            missing_value='---'
-        ).eval(env)
-
     def test_emit(self):
         writer = JValueTableWriter()
-        self._setup_emit_test(EmitterEnv(writer))
+        _setup_emit_test(EmitterEnv(writer))
         assert list(writer.tables['Foo'].rows) == [[3, True, '---', None]]
 
     def test_emit_generator(self):
@@ -645,7 +629,7 @@ class TestMiniLinq(unittest.TestCase):
                 self.tables[table.name] = table
 
         writer = TestWriter()
-        self._setup_emit_test(EmitterEnv(writer))
+        _setup_emit_test(EmitterEnv(writer))
         assert isinstance(
             writer.tables['Foo'].rows, (map, filter, types.GeneratorType)
         )
@@ -658,7 +642,7 @@ class TestMiniLinq(unittest.TestCase):
                 self.table = table_spec
 
         env = TestEmitterEnv(JValueTableWriter())
-        self._setup_emit_test(env)
+        _setup_emit_test(env)
         assert isinstance(env.table.rows, (map, filter, types.GeneratorType))
 
     def test_emit_multi_same_query(self):
@@ -707,7 +691,7 @@ class TestMiniLinq(unittest.TestCase):
         assert writer.tables['FooBaz'].rows == [[3], [4]]
         assert writer.tables['FooBar'].rows == [[True], [False]]
 
-    def test_emit_mutli_different_query(self):
+    def test_emit_multi_different_query(self):
         """
         Test that we can emit multiple tables from the same set of
         source data even if the emitted table have different 'root doc'
