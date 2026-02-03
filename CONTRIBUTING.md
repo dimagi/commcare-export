@@ -38,8 +38,7 @@ would clarify the type or purpose of a variable.
 
 ### Tests
 
-The function's name should explain what it is testing — If it doesn't,
-rename it.
+The name of a test function/method should explain what it is testing.
 
 Take advantage of pytest features where possible. e.g. Combine
 repetitive tests using pytest parametrized tests.
