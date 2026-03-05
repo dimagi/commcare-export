@@ -1,42 +1,52 @@
-Scheduling the DET
-------------------
-Scheduling the DET to run at regular intervals is a useful tactic to keep your
+Scheduling DET Runs
+===================
+
+Scheduling the Data Export Tool to run at regular intervals keeps your
 database up to date with CommCare HQ.
 
-A common approach to scheduling DET runs is making use of the operating systems' scheduling
-libraries to invoke a script to execute the `commcare-export` command. Sample scripts can be
-found in the `examples/` directory for both Windows and Linux.
-
-### Windows
-On Windows systems you can make use of the [task scheduler](https://sqlbackupandftp.com/blog/how-to-schedule-a-script-via-windows-task-scheduler/)
-to run scheduled scripts for you.
-
-The `examples/` directory contains a sample script file, `scheduled_run_windows.bat`, which can be used by the
-task scheduler to invoke the `commcare-export` command.
-
-To set up the scheduled task you can follow the steps below.
-1. Copy the file `scheduled_run_windows.bat` to any desired location on your system (e.g. `Documents`)
-2. Edit the copied `.bat` file and populate your own details
-3. Follow the steps outlined [here](https://sqlbackupandftp.com/blog/how-to-schedule-a-script-via-windows-task-scheduler/),
-using the .bat file when prompted for the `Program/script`.
+For detailed scheduling instructions (including Windows Task Scheduler
+setup), see the
+[User Documentation](https://dimagi.atlassian.net/wiki/spaces/commcarepublic/pages/2143955952/CommCare+Data+Export+Tool+DET#Configuring-DET-to-Run-as-a-Scheduled-Task-on-Windows).
 
 
-### Linux
-On a Linux system you can make use of the [crontab](https://www.techtarget.com/searchdatacenter/definition/crontab)
-command to create scheduled actions (cron jobs) in the system.
+Quick Reference
+---------------
 
-The `examples/` directory contains a sample script file, `scheduled_run_linux.sh`, which can be used by the cron job.
-To set up the cron job you can follow the steps below.
-1. Copy the example file to the home directory
-> cp ./examples/scheduled_run_linux.sh ~/scheduled_run_linux.sh
-2. Edit the file to populate your own details
-> nano ~/scheduled_run_linux.sh
-3. Create a cron job by appending to the crontab file
-> crontab -e
+Sample scripts are provided in the `examples/` directory:
 
-Make an entry below any existing cron jobs. The example below executes the script file at the top of
-every 12th hour of every day
-> 0 12 * * * bash ~/scheduled_run_linux.sh
+- **Windows**: `examples/scheduled_run_windows.bat` -- use with
+  [Task Scheduler](https://sqlbackupandftp.com/blog/how-to-schedule-a-script-via-windows-task-scheduler/)
+- **Linux/Mac**: `examples/scheduled_run_linux.sh` -- use with
+  [cron](https://www.techtarget.com/searchdatacenter/definition/crontab)
 
-You can consult the [crontab.guru](https://crontab.guru/) tool which is very useful to generate and interpret
-any custom cron schedules.
+### Linux/Mac Setup
+
+1. Copy the example script:
+   ```shell
+   cp ./examples/scheduled_run_linux.sh ~/scheduled_run_linux.sh
+   ```
+
+2. Edit with your project details:
+   ```shell
+   nano ~/scheduled_run_linux.sh
+   ```
+
+3. Add a cron job (runs every 12 hours in this example):
+   ```shell
+   crontab -e
+   ```
+   ```
+   0 */12 * * * bash ~/scheduled_run_linux.sh
+   ```
+
+Use [crontab.guru](https://crontab.guru/) to generate custom cron
+schedules.
+
+
+Best Practices
+--------------
+
+- Use API keys instead of passwords in scheduled scripts
+- Use SQL output format to leverage automatic checkpoints
+- Use `--log-dir` to specify a log directory for troubleshooting
+- Test manually before scheduling
