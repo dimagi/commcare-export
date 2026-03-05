@@ -1,12 +1,16 @@
 Python Library Usage
---------------------
+====================
 
-As a library, the various `commcare_export` modules make it easy to
+As a library, the various `commcare_export` modules make it easy to:
 
- - Interact with the CommCare HQ REST API
- - Execute "Minilinq" queries against the API (a very simple query language, described below)
- - Load and save JSON representations of Minilinq queries
- - Compile Excel configurations to Minilinq queries
+- Interact with the CommCare HQ REST API
+- Execute [MiniLinq](minilinq-reference.md) queries against the API
+- Load and save JSON representations of MiniLinq queries
+- Compile Excel configurations to MiniLinq queries
+
+
+CommCare HQ API Client
+----------------------
 
 To directly access the CommCare HQ REST API:
 
@@ -32,7 +36,16 @@ for case in cases:
 
 ```
 
-To issue a `minilinq` query against it, and then print out that query in a JSON serialization:
+The `CommCareHqClient` supports two authentication modes:
+
+- `AUTH_MODE_PASSWORD` - Username and password authentication
+- `AUTH_MODE_APIKEY` - API key authentication (recommended)
+
+
+Executing MiniLinq Queries
+--------------------------
+
+To issue a MiniLinq query against the API, and print the query as JSON:
 
 ```python
 import json
@@ -82,56 +95,25 @@ if len(list(env.emitted_tables())) > 0:
             writer.write_table(table)
 ```
 
-Which will output JSON equivalent to this:
+### Environment Composition
 
-```json
-{
-    "Emit": {
-        "headings": [
-            {
-                "Lit": "Received On"
-            },
-            {
-                "Lit": "Gender"
-            }
-        ],
-        "source": {
-            "Map": {
-                "body": {
-                    "List": [
-                        {
-                            "Ref": "received_on"
-                        },
-                        {
-                            "Ref": "form.gender"
-                        }
-                    ]
-                },
-                "name": null,
-                "source": {
-                    "Apply": {
-                        "args": [
-                            {
-                                "Lit": "form"
-                            },
-                            {
-                                "Lit": {
-                                    "filter": {
-                                        "term": {
-                                            "app_id": "whatever"
-                                        }
-                                    }
-                                }
-                            }
-                        ],
-                        "fn": {
-                            "Ref": "api_data"
-                        }
-                    }
-                }
-            }
-        },
-        "table": "demo-table"
-    }
-}
+MiniLinq query evaluation relies on composing multiple environments:
+
+- `BuiltInEnv()` - Built-in functions (math, string operations, etc.)
+- `CommCareHqEnv(api_client)` - The `api_data` function for fetching
+  from CommCare HQ
+- `JsonPathEnv()` - JSON path navigation (e.g., `form.gender`)
+
+These are composed using the `|` operator:
+
+```python
+env = BuiltInEnv() | CommCareHqEnv(api_client) | JsonPathEnv()
 ```
+
+
+See Also
+--------
+
+- [MiniLinq Reference](minilinq-reference.md)
+- [Query Formats](query-formats.md)
+- [Output Formats](output-formats.md)
