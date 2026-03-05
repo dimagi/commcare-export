@@ -1,46 +1,54 @@
 Output Formats
+==============
+
+For end-user documentation on exporting data (including database
+connection strings, checkpoints, and detailed usage), see the
+[User Documentation](https://dimagi.atlassian.net/wiki/spaces/commcarepublic/pages/2143955952/CommCare+Data+Export+Tool+DET#Exporting-Data).
+
+
+Format Summary
 --------------
 
-Your MiniLinq may define multiple tables with headings in addition to their body rows by using `Emit`
-expressions, or may simply return the results of a single query.
-
-If your MiniLinq does not contain any `Emit` expressions, then the results of the expression will be
+If your query does not contain any `Emit` expressions, results are
 printed to standard output as pretty-printed JSON.
 
-If your MiniLinq _does_ contain `Emit` expressions, then there are many formats available, selected
-via the `--output-format <format>` option, and it can be directed to a file with the `--output <file>` command-line option.
+If your query _does_ contain `Emit` expressions, the format is selected
+via `--output-format <format>` and the destination via `--output <file>`:
 
- - `csv`: Each table will be a CSV file within a Zip archive.
- - `xls`: Each table will be a sheet in an old-format Excel spreadsheet.
- - `xlsx`: Each table will be a sheet in a new-format Excel spreadsheet.
- - `json`: The tables will each be a member of a JSON dictionary, printed to standard output
- - `markdown`: The tables will be streamed to standard output in Markdown format (very handy for debugging your queries)
- - `sql`: All data will be idempotently "upserted" into the SQL database you specify, including creating the needed tables and columns.
+| Format     | Description                                                      |
+|------------|------------------------------------------------------------------|
+| `csv`      | Each table as a CSV file within a Zip archive                    |
+| `xls`      | Each table as a sheet in an old-format Excel spreadsheet         |
+| `xlsx`     | Each table as a sheet in a new-format Excel spreadsheet          |
+| `json`     | Tables as members of a JSON dictionary, printed to stdout        |
+| `markdown` | Tables streamed to stdout in Markdown format (handy for debugging) |
+| `sql`      | Idempotent "upsert" into a SQL database, creating tables and columns as needed |
 
 
-Dependencies
-------------
+Optional Dependencies
+---------------------
 
-Required dependencies will be automatically installed. Optional dependencies
-for specific export formats can be installed as extras:
+Required dependencies are installed automatically. Install extras for
+specific output formats:
 
 ```shell
-# To export "xlsx"
-$ uv pip install "commcare-export[xlsx]"
+# Excel formats
+uv pip install "commcare-export[xlsx]"
+uv pip install "commcare-export[xls]"
 
-# To export "xls"
-$ uv pip install "commcare-export[xls]"
-
-# To sync with a Postgres database
-$ uv pip install "commcare-export[postgres]"
-
-# To sync with a mysql database
-$ uv pip install "commcare-export[mysql]"
-
-# To sync with a database which uses odbc (e.g. mssql)
-$ uv pip install "commcare-export[odbc]"
-
-# To sync with another SQL database supported by SQLAlchemy
-$ uv pip install "commcare-export[base_sql]"
-# Then install the Python package for your database
+# Database backends
+uv pip install "commcare-export[postgres]"
+uv pip install "commcare-export[mysql]"
+uv pip install "commcare-export[odbc]"       # MS SQL Server
+uv pip install "commcare-export[base_sql]"   # Other SQLAlchemy databases
 ```
+
+For database connection string formats, see the
+[User Documentation](https://dimagi.atlassian.net/wiki/spaces/commcarepublic/pages/2143955952/CommCare+Data+Export+Tool+DET#Generating-Database-Connection-Strings).
+
+
+See Also
+--------
+
+- [Query Formats](query-formats.md) - Creating queries
+- [MiniLinq Reference](minilinq-reference.md) - The `Emit` expression
