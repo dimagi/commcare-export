@@ -1,33 +1,41 @@
-Testing and Test Databases
+Testing Guide
+=============
+
+Running Tests
+-------------
+
+Run the full test suite:
+
+```shell
+pytest
+```
+
+Run individual test classes or methods:
+
+```shell
+pytest -k "TestExcelQuery"
+pytest -k "test_get_queries_from_excel"
+```
+
+Exclude database tests:
+
+```shell
+pytest -m "not dbtest"
+```
+
+Run tests against specific databases:
+
+```shell
+pytest -m postgres
+pytest -m mysql
+pytest -m mssql
+```
+
+
+Database Setup with Docker
 --------------------------
 
-The following command will run the entire test suite (requires DB environment variables to be set as per below):
-
-```shell
-$ py.test
-```
-
-To run an individual test class or method you can run, e.g.:
-
-```shell
-$ py.test -k "TestExcelQuery"
-$ py.test -k "test_get_queries_from_excel"
-```
-
-To exclude the database tests you can run:
-
-```shell
-$ py.test -m "not dbtest"
-```
-
-When running database tests, supported databases are PostgreSQL, MySQL, MSSQL.
-
-To run tests against selected databases can be done using test marks as follows:
-```shell
-$ py.test -m [postgres,mysql,mssql]
-```
-
-Use Docker and docker-compose to start database services for tests:
+Use Docker Compose to start database services for tests:
 
 1. Start the services:
    ```shell
@@ -51,6 +59,7 @@ Use Docker and docker-compose to start database services for tests:
    export MYSQL_URL='mysql+pymysql://root@localhost/'
    export MSSQL_URL='mssql+pyodbc://SA:Password-123@localhost/'
    ```
+
 4. Stop the services when done:
    ```shell
    docker-compose down
@@ -60,14 +69,17 @@ Use Docker and docker-compose to start database services for tests:
    docker-compose down -v
    ```
 
-> [!NOTE]
-> For MS SQL Server tests, you'll need the ODBC Driver for SQL Server
-> installed on your host system for the `pyodbc` connection to work.
+
+ODBC Driver Installation
+-------------------------
+
+For MS SQL Server tests, you need the ODBC Driver for SQL Server
+installed on your host system.
 
 From [learn.microsoft.com](https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server)
 ([source](https://github.com/MicrosoftDocs/sql-docs/blob/live/docs/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server.md))
 
-#### Debian/Ubuntu
+### Debian/Ubuntu
 
 ```shell
 # Download the package to configure the Microsoft repo
@@ -83,7 +95,7 @@ sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
 odbcinst -q -d
 ```
 
-#### Mac OS
+### macOS
 
 ```shell
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
@@ -95,16 +107,17 @@ HOMEBREW_ACCEPT_EULA=Y brew install msodbcsql18
 
 Integration Tests
 -----------------
+
 Running the integration tests requires API credentials from CommCare HQ
 that have access to the `corpora` domain. This user should only have
 access to the corpora domain.
 
-These need to be set as environment variables as follows:
+Set the credentials as environment variables:
 
 ```shell
-$ export HQ_USERNAME=<username>
-$ export HQ_API_KEY=<apikey>
+export HQ_USERNAME=<username>
+export HQ_API_KEY=<apikey>
 ```
 
-For Travis builds these are included as encrypted vars in the travis
-config.
+These are included as encrypted variables in the GitHub Actions
+configuration.
