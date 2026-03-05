@@ -1,166 +1,87 @@
-CommCare Export
-===============
+CommCare Data Export Tool
+========================
 
-https://github.com/dimagi/commcare-export 
+https://github.com/dimagi/commcare-export
 
 [![Build Status](https://github.com/dimagi/commcare-export/actions/workflows/test.yml/badge.svg)](https://github.com/dimagi/commcare-export/actions)
 [![Test coverage](https://coveralls.io/repos/dimagi/commcare-export/badge.png?branch=master)](https://coveralls.io/r/dimagi/commcare-export)
 [![PyPI version](https://badge.fury.io/py/commcare-export.svg)](https://badge.fury.io/py/commcare-export)
 
-A command-line tool (and Python library) to generate customized exports from the [CommCare HQ](https://www.commcarehq.org) [REST API](https://wiki.commcarehq.org/display/commcarepublic/Data+APIs).
+A command-line tool (and Python library) to generate customized exports
+from the [CommCare HQ](https://www.commcarehq.org)
+[REST API](https://wiki.commcarehq.org/display/commcarepublic/Data+APIs).
 
-* [User documentation](https://wiki.commcarehq.org/display/commcarepublic/CommCare+Data+Export+Tool)
-* [Changelog](https://github.com/dimagi/commcare-export/releases)
 
-Installation & Quick Start
---------------------------
+Quick Start
+-----------
 
-Following commands are to be run on a terminal or a command line.
-
-Once on a terminal window or command line, for simplicity, run commands from the home directory.
-
-### Python
-
-Check which Python version is installed.
-
-This tool is tested with Python versions from 3.9 to 3.13.
+### Installation
 
 ```shell
-$ python3 --version
+uv pip install commcare-export
 ```
-If Python is installed, its version will be shown.
 
-If Python isn't installed, [download and install](https://www.python.org/downloads/)
-a version of Python from 3.9 to 3.13.
-
-## Virtualenv (Optional)
-
-It is recommended to set up a virtual environment for CommCare Export
-to avoid conflicts with other Python applications.
-
-More about virtualenvs on https://docs.python.org/3/tutorial/venv.html
-
-Setup a virtual environment using:
+### Basic Usage
 
 ```shell
-$ python3 -m venv venv
+# Export forms to Markdown (useful for testing)
+commcare-export \
+    --query examples/demo-registration.xlsx \
+    --project YOUR_PROJECT \
+    --output-format markdown
+
+# Export to a SQL database with incremental updates
+commcare-export \
+    --query examples/demo-registration.xlsx \
+    --project YOUR_PROJECT \
+    --output-format sql \
+    --output postgresql://user:pass@localhost/dbname
 ```
 
-Activate virtual environment by running:
+Example query files are provided in the [examples/](examples/) directory
+for both Excel and JSON formats.
 
-```shell
-$ source venv/bin/activate
-```
 
-**Note**: virtualenv needs to be activated each time you start a new terminal session or command line prompt.
-
-For convenience, to avoid doing that, you can create an alias to activate virtual environments in
-"venv" directory by adding the following to your
-`.bashrc` or `.zshrc` file:
-
-```shell
-$ alias venv='if [[ -d venv ]] ; then source venv/bin/activate ; fi'
-```
-
-Then you can activate virtual environments with simply typing
-```shell
-$ venv
-```
-
-## Install CommCare Export
-
-[uv](https://docs.astral.sh/uv/) is a fast Python package installer and resolver.
-
-```shell
-$ uv pip install commcare-export
-```
-
-## CommCare HQ
-
-1. Sign up for [CommCare HQ](https://www.commcarehq.org/) if you have not already.
-
-2. Create a project space and application.
-
-3. Visit the Release Manager, make a build, click the star to release it.
-
-4. Use Web Apps and fill out some forms.
-
-5. Modify one of example queries in the `examples/` directory, modifying the "Filter Value" column
-    to match your form XMLNS / case type. 
-    See [this page](https://confluence.dimagi.com/display/commcarepublic/Finding+a+Form%27s+XMLNS) to 
-    determine the XMLNS for your form.
-
-Now you can run the following examples:
-
-```shell
-$ commcare-export \
-     --query examples/demo-registration.xlsx \
-     --project YOUR_PROJECT \
-     --output-format markdown
-
-$ commcare-export \
-     --query examples/demo-registration.json \
-     --project YOUR_PROJECT \
-     --output-format markdown
-
-$ commcare-export \
-     --query examples/demo-deliveries.xlsx \
-     --project YOUR_PROJECT \
-     --output-format markdown
-
-$ commcare-export \
-     --query examples/demo-deliveries.json \
-     --project YOUR_PROJECT \
-     --output-format markdown
-```
-
-You'll see the tables printed out. Change to `--output-format sql --output URL_TO_YOUR_DB --since DATE` to
-sync all forms submitted since that date.
-
-Example query files are provided in both Excel and JSON format.  It is recommended
-to use the Excel format as the JSON format may change upon future library releases.
-
-Command-line Usage
-------------------
-
-See [docs/cli-usage.md](docs/cli-usage.md).
-
-Query Formats
+Documentation
 -------------
 
-See [docs/query-formats.md](docs/query-formats.md).
+### For Users
 
-User and Location Data
-----------------------
+See the [User Documentation](https://dimagi.atlassian.net/wiki/spaces/commcarepublic/pages/2143955952/CommCare+Data+Export+Tool+DET)
+for installation, creating queries, command-line usage, scheduling, and
+common use cases.
 
-See [docs/user-location-data.md](docs/user-location-data.md).
+### For Developers
 
-Scheduling the DET
-------------------
+See the [Technical Documentation](docs/index.md) for:
 
-See [docs/scheduling.md](docs/scheduling.md).
+- [Python Library Usage](docs/library-usage.md) - Using `commcare-export` as a Python library
+- [MiniLinq Reference](docs/minilinq-reference.md) - Query language documentation
+- [Query Formats](docs/query-formats.md) - Excel and JSON query specifications
+- [Output Formats](docs/output-formats.md) - Available output formats and dependencies
+- [User and Location Data](docs/user-location-data.md) - Exporting organization data
+- [Command-line Usage](docs/cli-usage.md) - CLI reference
+- [Scheduling](docs/scheduling.md) - Running DET on a schedule
 
-Python Library Usage
---------------------
-
-See [docs/library-usage.md](docs/library-usage.md).
-
-MiniLinq Reference
-------------------
-
-See [docs/minilinq-reference.md](docs/minilinq-reference.md).
-
-Output Formats and Dependencies
--------------------------------
-
-See [docs/output-formats.md](docs/output-formats.md).
 
 Contributing
 ------------
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for
+how to set up your development environment, coding style guidelines,
+testing, and the release process.
 
-Testing
+- [Testing Guide](docs/testing.md)
+- [Changelog](https://github.com/dimagi/commcare-export/releases)
+
+
+Python Versions
+---------------
+
+Tested with Python 3.9, 3.10, 3.11, 3.12, and 3.13.
+
+
+License
 -------
 
-See [docs/testing.md](docs/testing.md).
+MIT License - see [LICENSE](LICENSE) for details.
