@@ -3,7 +3,7 @@ CommCare Export
 
 https://github.com/dimagi/commcare-export 
 
-[![Build Status](https://app.travis-ci.com/dimagi/commcare-export.svg?branch=master)](https://app.travis-ci.com/dimagi/commcare-export)
+[![Build Status](https://github.com/dimagi/commcare-export/actions/workflows/test.yml/badge.svg)](https://github.com/dimagi/commcare-export/actions)
 [![Test coverage](https://coveralls.io/repos/dimagi/commcare-export/badge.png?branch=master)](https://coveralls.io/r/dimagi/commcare-export)
 [![PyPI version](https://badge.fury.io/py/commcare-export.svg)](https://badge.fury.io/py/commcare-export)
 
