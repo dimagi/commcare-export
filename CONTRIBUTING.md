@@ -1,100 +1,54 @@
-# Contributing to CommCare Export
+Contributing to the CommCare Data Export Tool
+=============================================
+
+Thank you for your interest in contributing! This document covers the
+contribution process, coding standards, and release procedures.
 
 
 Getting Started
 ---------------
 
-0\. Sign up for GitHub, if you have not already, at https://github.com.
-
-1\. Fork the repository at https://github.com/dimagi/commcare-export.
-
-2\. Clone your fork, install into a virtualenv, and start a feature branch
-
-```shell
-$ git clone git@github.com:your-username/commcare-export.git
-$ cd commcare-export
-$ uv venv
-$ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-$ uv pip install -e ".[test]"
-$ git checkout -b my-super-duper-feature
-```
-
-3\. Make your edits.
-
-4\. Make sure the tests pass. The best way to test for all versions is to sign up for https://travis-ci.org and turn on automatic continuous testing for your fork.
+1. Sign up for [GitHub](https://github.com) if you haven't already
+2. Fork the repository at https://github.com/dimagi/commcare-export
+3. Clone your fork, install into a virtualenv, and start a feature
+   branch:
 
 ```shell
-$ py.test
-=============== test session starts ===============
-platform darwin -- Python 2.7.3 -- pytest-2.3.4
-collected 17 items
-
-tests/test_commcare_minilinq.py .
-tests/test_excel_query.py ....
-tests/test_minilinq.py ........
-tests/test_repeatable_iterator.py .
-tests/test_writers.py ...
-
-============ 17 passed in 2.09 seconds ============
+git clone git@github.com:your-username/commcare-export.git
+cd commcare-export
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -e ".[test]"
+git checkout -b my-feature-branch
 ```
 
-5\. Type hints are used in the `env` and `minilinq` modules. Check that any changes in those modules adhere to those types:
 
-```shell
-$ mypy --install-types @mypy_typed_modules.txt
-```
+Making Changes
+--------------
 
-6\. Push the feature branch up
+1. Create a feature branch from `master`
+2. Make your changes following the coding style below
+3. Make sure the tests pass:
+   ```shell
+   pytest
+   ```
+4. Check type hints (if modifying typed modules):
+   ```shell
+   mypy --install-types commcare_export/ tests/ migrations/
+   ```
+5. Push and submit a pull request:
+   ```shell
+   git push -u origin my-feature-branch
+   ```
+6. Visit https://github.com/dimagi/commcare-export and submit a pull
+   request.
 
-```shell
-$ git push -u origin my-super-duper-feature
-```
-
-7\. Visit https://github.com/dimagi/commcare-export and submit a pull request.
-
-8\. Accept our gratitude for contributing: Thanks!
-
-
-Release process
----------------
-
-1\. Create a tag for the release
-
-```shell
-$ git tag -a "X.YY.0" -m "Release X.YY.0"
-$ git push --tags
-```
-
-2\. Create the distribution
-
-```shell
-$ uv build
-```
-
-Ensure that the archives in `dist/` have the correct version number (matching the tag name).
-
-3\. Upload to pypi
-
-```shell
-$ uv publish
-```
-
-4\. Verify upload
-
-https://pypi.python.org/pypi/commcare-export
-
-5\. Create a release on github
-
-https://github.com/dimagi/commcare-export/releases
-
-Once the release is published a GitHub workflow is kicked off that compiles executables of the DET compatible with
-Linux and Windows machines, adding it to the release as assets.
-
-[For Linux-based users] If you decide to download and use the executable file, please make sure the file has the executable permission enabled,
-after which it can be invoked like any other executable though the command line.
+For detailed testing instructions, including database setup and
+troubleshooting, see the [Testing Guide](docs/testing.md).
 
 
-## Coding style
+Coding Style
+------------
 
 > Perfection is achieved, not when there is nothing more to add, but
 > when there is nothing left to take away.
@@ -169,4 +123,44 @@ import some.module as module
 def test_doctests():
     results = doctest.testmod(module, optionflags=doctest.ELLIPSIS)
     assert results.failed == 0
+```
+
+
+Release Process
+---------------
+
+For maintainers only.
+
+1. **Create a tag** for the release:
+   ```shell
+   git tag -a "X.YY.0" -m "Release X.YY.0"
+   git push --tags
+   ```
+
+2. **Create the distribution**:
+   ```shell
+   uv build
+   ```
+   Ensure that the archives in `dist/` have the correct version number
+   (matching the tag name).
+
+3. **Upload to PyPI**:
+   ```shell
+   uv publish
+   ```
+
+4. **Verify the upload** at https://pypi.python.org/pypi/commcare-export
+
+5. **Create a release on GitHub** at
+   https://github.com/dimagi/commcare-export/releases
+
+   Once the release is published, a GitHub workflow compiles executables
+   of the DET for Linux and Windows, adding them to the release as
+   assets.
+
+For Linux-based users: If you download and use the executable file, make
+sure the file has the executable permission enabled:
+
+```shell
+chmod +x commcare-export
 ```
