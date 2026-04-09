@@ -21,7 +21,7 @@ from commcare_export.commcare_minilinq import get_paginator, PaginationMode
 
 username = 'some@username.com'
 domain = 'your-awesome-domain'
-hq_host = 'https://commcarehq.org'
+hq_host = 'https://www.commcarehq.org'
 API_KEY= 'your_secret_api_key'
 
 api_client = CommCareHqClient(hq_host, domain, username, API_KEY, AUTH_MODE_APIKEY)
