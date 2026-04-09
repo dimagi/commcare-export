@@ -40,8 +40,7 @@ Examples
 --------
 
 Example query files in both formats are provided in the
-[examples/](../examples/) directory. They work with the CommCare Demo
-App available on the CommCare HQ Exchange.
+[examples/](../examples/) directory.
 
 
 See Also
