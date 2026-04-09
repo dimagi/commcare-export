@@ -31,7 +31,7 @@ jobs:
           - 5432:5432
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
     steps:
       - uses: actions/checkout@v4
         with:
@@ -63,11 +63,8 @@ jobs:
       - name: Install package with extras
         run: |
           uv pip install --system dist/*.whl
-          uv pip install --system pymysql psycopg2 pyodbc
+          uv pip install --system -e ".[postgres,mysql,odbc,test]"
           uv pip install --system coverage coveralls
-          uv pip install --system mypy
-          uv pip install --system pytest
-          uv pip install --system -e ".[test]"
 
       # Run tests and save test coverage
       - run: coverage run -m pytest
@@ -126,5 +123,5 @@ jobs:
         uses: coverallsapp/github-action@v2
         with:
           parallel-finished: true
-          carryforward: "run-3.10,run-3.11,run-3.12,run-3.13"
+          carryforward: "run-3.10,run-3.11,run-3.12,run-3.13,run-3.14"
           github-token: ${{ secrets.GITHUB_TOKEN }}
