@@ -109,8 +109,8 @@ Integration Tests
 -----------------
 
 Running the integration tests requires API credentials from CommCare HQ
-that have access to the `corpora` domain. This user should only have
-access to the corpora domain.
+that have access to the `corpora` domain. The API key should only have
+access to the `corpora` domain.
 
 Set the credentials as environment variables:
 
