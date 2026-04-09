@@ -78,7 +78,7 @@ testing, and the release process.
 Python Versions
 ---------------
 
-Tested with Python 3.9, 3.10, 3.11, 3.12, and 3.13.
+Tested with Python 3.10, 3.11, 3.12, and 3.13.
 
 
 License
