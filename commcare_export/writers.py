@@ -641,6 +641,24 @@ class SqlTableWriter(SqlMixin, TableWriter):
             for row_dict in batch:
                 self.upsert(table, row_dict)
 
+    def _flush_batch(self, table, batch, data_type_dict):
+        try:
+            self.bulk_upsert(table, batch)
+        except (
+            sqlalchemy.exc.CompileError,
+            sqlalchemy.exc.OperationalError,
+            sqlalchemy.exc.ProgrammingError,
+        ):
+            # Likely a schema mismatch; fix schema and retry once
+            for row_dict in batch:
+                table = self.make_table_compatible(
+                    table,
+                    row_dict,
+                    data_type_dict,
+                )
+            self.bulk_upsert(table, batch)
+        self._commit()
+
     def write_table(self, table_spec: TableSpec) -> None:
         table_name = table_spec.name
         headings = table_spec.headings

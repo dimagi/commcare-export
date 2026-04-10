@@ -3,6 +3,7 @@ import datetime
 import io
 import tempfile
 import zipfile
+from itertools import zip_longest
 
 import openpyxl
 import sqlalchemy
@@ -744,6 +745,41 @@ class TestSQLWriters:
         assert result['row1'] == {'id': 'row1', 'a': 'updated1', 'b': 'ux'}
         assert result['row2'] == {'id': 'row2', 'a': 'val2', 'b': 'y'}
         assert result['row3'] == {'id': 'row3', 'a': 'val3', 'b': 'z'}
+
+    def test_flush_batch_retry_on_new_column(self, writer):
+        # Create table with columns [id, a]
+        with writer:
+            writer.write_table(
+                TableSpec(
+                    name='foo_flush_retry',
+                    headings=['id', 'a'],
+                    rows=[['row1', 'val1']],
+                )
+            )
+
+        # _flush_batch with a batch containing new column 'b'
+        with writer:
+            table = writer.get_table('foo_flush_retry')
+            headings = ['id', 'a', 'b']
+            data_type_dict = dict(zip_longest(headings, []))
+            batch = [
+                {'id': 'row2', 'a': 'val2', 'b': 'new_col_val'},
+            ]
+            writer._flush_batch(table, batch, data_type_dict)
+
+        with writer:
+            result = {
+                row['id']: dict(row)
+                for row in writer.connection.execute(
+                    'SELECT id, a, b FROM foo_flush_retry'
+                )
+            }
+        assert len(result) == 2
+        assert result['row2'] == {
+            'id': 'row2',
+            'a': 'val2',
+            'b': 'new_col_val',
+        }
 
     def test_emoji(self, writer):
         with writer:
