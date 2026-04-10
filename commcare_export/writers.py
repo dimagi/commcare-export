@@ -615,6 +615,20 @@ class SqlTableWriter(SqlMixin, TableWriter):
     def bulk_upsert(self, table, batch):
         if not batch:
             return
+        # SQLAlchemy requires all dicts in `batch` to have the same keys
+        # for `insert(table).values(batch)`. We need to drop the columns
+        # whose values are always `None` to reproduce the behavior of
+        # `SqlTableWriter.insert()`. `batch_keys` are the columns where
+        # _any_ row has a value set.
+        batch_keys = {
+            k for row_dict in batch
+            for k, v in row_dict.items()
+            if v is not None
+        }
+        batch = [
+            {k: row_dict[k] for k in batch_keys}
+            for row_dict in batch
+        ]
         if self.is_postgres:
             from sqlalchemy.dialects.postgresql import insert
 
