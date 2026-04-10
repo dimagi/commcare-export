@@ -127,3 +127,9 @@ local_scheme = "no-local-version"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = ["-vv", "--tb=short"]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.format]
+quote-style = "single"
