@@ -615,6 +615,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
     def bulk_upsert(self, table, batch):
         if not batch:
             return
+        batch = [
+            {k: v for k, v in row_dict.items() if v is not None}
+            for row_dict in batch
+        ]
         if self.is_postgres:
             from sqlalchemy.dialects.postgresql import insert
 
