@@ -25,16 +25,12 @@ def writer(db_params):
 @pytest.fixture()
 def strict_writer(db_params):
     return SqlTableWriter(
-        db_params['url'],
-        poolclass=sqlalchemy.pool.NullPool,
-        strict_types=True
+        db_params['url'], poolclass=sqlalchemy.pool.NullPool, strict_types=True
     )
 
 
 TYPE_MAP = {
-    'mysql': {
-        bool: lambda x: int(x)
-    },
+    'mysql': {bool: lambda x: int(x)},
 }
 
 
@@ -43,6 +39,7 @@ def _type_convert(connection, row):
     Different databases store and return values differently so
     convert the values in the expected row to match the DB.
     """
+
     def convert(type_map, value):
         func = type_map.get(value.__class__, None)
         return func(value) if func else value
@@ -59,11 +56,12 @@ def _check_excel2007_output(filename):
 
     assert output_wb.sheetnames == ['foo']
     foo_sheet = output_wb['foo']
-    assert [
-        [cell.value for cell in row] for row in foo_sheet['A1:C3']
-    ] == [
+    assert [[cell.value for cell in row] for row in foo_sheet['A1:C3']] == [
         ['a', 'bjørn', 'c'],
-        ['1', '2', '3'
+        [
+            '1',
+            '2',
+            '3',
         ],  # Note how pyxl does some best-effort parsing to *whatever* type
         ['4', '日本', '6'],
     ]
@@ -76,24 +74,38 @@ def _test_types(writer, table_name):
                 **{
                     'name': table_name,
                     'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
-                    'rows': [[
-                        'bizzle', 1, 'yo', True, datetime.date(2015, 1, 1),
-                        datetime.datetime(2014, 4, 2, 18, 56, 12)
-                    ], [
-                        'bazzle', 4, '日本', False,
-                        datetime.date(2015, 1, 2),
-                        datetime.datetime(2014, 5, 1, 11, 16, 45)
-                    ]]
+                    'rows': [
+                        [
+                            'bizzle',
+                            1,
+                            'yo',
+                            True,
+                            datetime.date(2015, 1, 1),
+                            datetime.datetime(2014, 4, 2, 18, 56, 12),
+                        ],
+                        [
+                            'bazzle',
+                            4,
+                            '日本',
+                            False,
+                            datetime.date(2015, 1, 2),
+                            datetime.datetime(2014, 5, 1, 11, 16, 45),
+                        ],
+                    ],
                 }
             )
         )
 
     with writer:
         connection = writer.connection
-        result = dict([
-            (row['id'], row) for row in connection
-            .execute(f'SELECT id, a, b, c, d, e FROM {table_name}')
-        ])
+        result = dict(
+            [
+                (row['id'], row)
+                for row in connection.execute(
+                    f'SELECT id, a, b, c, d, e FROM {table_name}'
+                )
+            ]
+        )
 
         assert len(result) == 2
         expected = {
@@ -103,7 +115,7 @@ def _test_types(writer, table_name):
                 'b': 'yo',
                 'c': True,
                 'd': datetime.date(2015, 1, 1),
-                'e': datetime.datetime(2014, 4, 2, 18, 56, 12)
+                'e': datetime.datetime(2014, 4, 2, 18, 56, 12),
             },
             'bazzle': {
                 'id': 'bazzle',
@@ -111,8 +123,8 @@ def _test_types(writer, table_name):
                 'b': '日本',
                 'c': False,
                 'd': datetime.date(2015, 1, 2),
-                'e': datetime.datetime(2014, 5, 1, 11, 16, 45)
-            }
+                'e': datetime.datetime(2014, 5, 1, 11, 16, 45),
+            },
         }
 
         for id, row in result.items():
@@ -122,28 +134,27 @@ def _test_types(writer, table_name):
 
 def _get_column_lengths(connection, table_name):
     return {
-        row['COLUMN_NAME']: row for row in connection.execute(
-            "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH "
-            "FROM INFORMATION_SCHEMA.COLUMNS "
+        row['COLUMN_NAME']: row
+        for row in connection.execute(
+            'SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH '
+            'FROM INFORMATION_SCHEMA.COLUMNS '
             f"WHERE TABLE_NAME = '{table_name}';"
         )
     }
 
 
 class TestWriters:
-
     def test_jvalue_table_writer(self):
         writer = JValueTableWriter()
         writer.write_table(
             TableSpec(
                 **{
-                    'name':
-                        'foo',
+                    'name': 'foo',
                     'headings': ['a', 'bjørn', 'c', 'd'],
                     'rows': [
                         [1, '2', 3, datetime.date(2015, 1, 1)],
                         [4, '日本', 6, datetime.date(2015, 1, 2)],
-                    ]
+                    ],
                 }
             )
         )
@@ -153,26 +164,25 @@ class TestWriters:
                 **{
                     'name': 'foo',
                     'headings': ['a', 'bjørn', 'c', 'd'],
-                    'rows': [[5, 'bob', 9,
-                              datetime.date(2018, 1, 2)],]
+                    'rows': [
+                        [5, 'bob', 9, datetime.date(2018, 1, 2)],
+                    ],
                 }
             )
         )
 
         assert writer.tables == {
-            'foo':
-                TableSpec(
-                    **{
-                        'name':
-                            'foo',
-                        'headings': ['a', 'bjørn', 'c', 'd'],
-                        'rows': [
-                            [1, '2', 3, '2015-01-01'],
-                            [4, '日本', 6, '2015-01-02'],
-                            [5, 'bob', 9, '2018-01-02'],
-                        ],
-                    }
-                )
+            'foo': TableSpec(
+                **{
+                    'name': 'foo',
+                    'headings': ['a', 'bjørn', 'c', 'd'],
+                    'rows': [
+                        [1, '2', 3, '2015-01-01'],
+                        [4, '日本', 6, '2015-01-02'],
+                        [5, 'bob', 9, '2018-01-02'],
+                    ],
+                }
+            )
         }
 
     def test_excel2007_table_writer(self):
@@ -186,7 +196,7 @@ class TestWriters:
                             'rows': [
                                 [1, '2', 3],
                                 [4, '日本', 6],
-                            ]
+                            ],
                         }
                     )
                 )
@@ -201,7 +211,9 @@ class TestWriters:
                         **{
                             'name': 'foo',
                             'headings': ['a', 'bjørn', 'c'],
-                            'rows': [[1, '2', 3],]
+                            'rows': [
+                                [1, '2', 3],
+                            ],
                         }
                     )
                 )
@@ -211,7 +223,9 @@ class TestWriters:
                         **{
                             'name': 'foo',
                             'headings': ['a', 'bjørn', 'c'],
-                            'rows': [[4, '日本', 6],]
+                            'rows': [
+                                [4, '日本', 6],
+                            ],
                         }
                     )
                 )
@@ -228,7 +242,7 @@ class TestWriters:
                             'rows': [
                                 [1, '2', 3],
                                 [4, '日本', 6],
-                            ]
+                            ],
                         }
                     )
                 )
@@ -248,7 +262,6 @@ class TestWriters:
 
 @pytest.mark.dbtest
 class TestSQLWriters:
-
     def test_insert(self, writer):
         with writer:
             writer.write_table(
@@ -259,7 +272,7 @@ class TestSQLWriters:
                         'rows': [
                             ['bizzle', 1, 2, 3],
                             ['bazzle', 4, 5, 6],
-                        ]
+                        ],
                     }
                 )
             )
@@ -267,21 +280,27 @@ class TestSQLWriters:
         # We can use raw SQL instead of SqlAlchemy expressions because
         # we built the DB above
         with writer:
-            result = dict([(row['id'], row) for row in writer.connection
-                           .execute('SELECT id, a, b, c FROM foo_insert')])
+            result = dict(
+                [
+                    (row['id'], row)
+                    for row in writer.connection.execute(
+                        'SELECT id, a, b, c FROM foo_insert'
+                    )
+                ]
+            )
 
         assert len(result) == 2
         assert dict(result['bizzle']) == {
             'id': 'bizzle',
             'a': 1,
             'b': 2,
-            'c': 3
+            'c': 3,
         }
         assert dict(result['bazzle']) == {
             'id': 'bazzle',
             'a': 4,
             'b': 5,
-            'c': 6
+            'c': 6,
         }
 
     def test_upsert(self, writer):
@@ -291,17 +310,21 @@ class TestSQLWriters:
                     **{
                         'name': 'foo_upsert',
                         'headings': ['id', 'a', 'b', 'c'],
-                        'rows': [['zing', 3, None, 5]]
+                        'rows': [['zing', 3, None, 5]],
                     }
                 )
             )
 
         # don't select column 'b' since it hasn't been created yet
         with writer:
-            result = dict([
-                (row['id'], row) for row in
-                writer.connection.execute('SELECT id, a, c FROM foo_upsert')
-            ])
+            result = dict(
+                [
+                    (row['id'], row)
+                    for row in writer.connection.execute(
+                        'SELECT id, a, c FROM foo_upsert'
+                    )
+                ]
+            )
         assert len(result) == 1
         assert dict(result['zing']) == {'id': 'zing', 'a': 3, 'c': 5}
 
@@ -309,13 +332,12 @@ class TestSQLWriters:
             writer.write_table(
                 TableSpec(
                     **{
-                        'name':
-                            'foo_upsert',
+                        'name': 'foo_upsert',
                         'headings': ['id', 'a', 'b', 'c'],
                         'rows': [
                             ['bizzle', 1, 'yo', 3],
                             ['bazzle', 4, '日本', 6],
-                        ]
+                        ],
                     }
                 )
             )
@@ -323,21 +345,27 @@ class TestSQLWriters:
         # We can use raw SQL instead of SqlAlchemy expressions because
         # we built the DB above
         with writer:
-            result = dict([(row['id'], row) for row in writer.connection
-                           .execute('SELECT id, a, b, c FROM foo_upsert')])
+            result = dict(
+                [
+                    (row['id'], row)
+                    for row in writer.connection.execute(
+                        'SELECT id, a, b, c FROM foo_upsert'
+                    )
+                ]
+            )
 
         assert len(result) == 3
         assert dict(result['bizzle']) == {
             'id': 'bizzle',
             'a': 1,
             'b': 'yo',
-            'c': 3
+            'c': 3,
         }
         assert dict(result['bazzle']) == {
             'id': 'bazzle',
             'a': 4,
             'b': '日本',
-            'c': 6
+            'c': 6,
         }
 
         with writer:
@@ -346,7 +374,9 @@ class TestSQLWriters:
                     **{
                         'name': 'foo_upsert',
                         'headings': ['id', 'a', 'b', 'c'],
-                        'rows': [['bizzle', 7, '本', 9],]
+                        'rows': [
+                            ['bizzle', 7, '本', 9],
+                        ],
                     }
                 )
             )
@@ -354,21 +384,27 @@ class TestSQLWriters:
         # We can use raw SQL instead of SqlAlchemy expressions because
         # we built the DB above
         with writer:
-            result = dict([(row['id'], row) for row in writer.connection
-                           .execute('SELECT id, a, b, c FROM foo_upsert')])
+            result = dict(
+                [
+                    (row['id'], row)
+                    for row in writer.connection.execute(
+                        'SELECT id, a, b, c FROM foo_upsert'
+                    )
+                ]
+            )
 
         assert len(result) == 3
         assert dict(result['bizzle']) == {
             'id': 'bizzle',
             'a': 7,
             'b': '本',
-            'c': 9
+            'c': 9,
         }
         assert dict(result['bazzle']) == {
             'id': 'bazzle',
             'a': 4,
             'b': '日本',
-            'c': 6
+            'c': 6,
         }
 
     def test_types(self, writer):
@@ -381,14 +417,18 @@ class TestSQLWriters:
             writer.write_table(
                 TableSpec(
                     **{
-                        'name':
-                            'foo_fancy_type_changes',
+                        'name': 'foo_fancy_type_changes',
                         'headings': ['id', 'a', 'b', 'c', 'd', 'e'],
-                        'rows': [[
-                            'bizzle', 'yo dude', '本', 'true',
-                            datetime.datetime(2015, 2, 13),
-                            '2014-08-01T11:23:45:00.0000Z'
-                        ],]
+                        'rows': [
+                            [
+                                'bizzle',
+                                'yo dude',
+                                '本',
+                                'true',
+                                datetime.datetime(2015, 2, 13),
+                                '2014-08-01T11:23:45:00.0000Z',
+                            ],
+                        ],
                     }
                 )
             )
@@ -396,11 +436,14 @@ class TestSQLWriters:
         # We can use raw SQL instead of SqlAlchemy expressions because
         # we built the DB above
         with writer:
-            result = dict([
-                (row['id'], row) for row in writer.connection.execute(
-                    'SELECT id, a, b, c, d, e FROM foo_fancy_type_changes'
-                )
-            ])
+            result = dict(
+                [
+                    (row['id'], row)
+                    for row in writer.connection.execute(
+                        'SELECT id, a, b, c, d, e FROM foo_fancy_type_changes'
+                    )
+                ]
+            )
 
         assert len(result) == 2
         expected = {
@@ -410,7 +453,7 @@ class TestSQLWriters:
                 'b': '本',
                 'c': 'true',
                 'd': datetime.date(2015, 2, 13),
-                'e': '2014-08-01T11:23:45:00.0000Z'
+                'e': '2014-08-01T11:23:45:00.0000Z',
             },
             'bazzle': {
                 'id': 'bazzle',
@@ -418,8 +461,8 @@ class TestSQLWriters:
                 'b': '日本',
                 'c': 'false',
                 'd': datetime.date(2015, 1, 2),
-                'e': '2014-05-01 11:16:45'
-            }
+                'e': '2014-05-01 11:16:45',
+            },
         }
 
         if 'mysql' in writer.connection.engine.driver:
@@ -473,19 +516,14 @@ class TestSQLWriters:
                         'name': 'foo_with_json',
                         'headings': ['id', 'json_col'],
                         'rows': [
-                            ['simple', {
-                                'k1': 'v1',
-                                'k2': 'v2'
-                            }],
-                            ['with_lists', {
-                                'l1': ['i1', 'i2']
-                            }],
+                            ['simple', {'k1': 'v1', 'k2': 'v2'}],
+                            ['with_lists', {'l1': ['i1', 'i2']}],
                             ['complex', complex_object],
                         ],
                         'data_types': [
                             'text',
                             'json',
-                        ]
+                        ],
                     }
                 )
             )
@@ -493,26 +531,27 @@ class TestSQLWriters:
         # We can use raw SQL instead of SqlAlchemy expressions because
         # we built the DB above
         with writer:
-            result = dict([(row['id'], row) for row in writer.connection
-                           .execute('SELECT id, json_col FROM foo_with_json')])
+            result = dict(
+                [
+                    (row['id'], row)
+                    for row in writer.connection.execute(
+                        'SELECT id, json_col FROM foo_with_json'
+                    )
+                ]
+            )
 
         assert len(result) == 3
         assert dict(result['simple']) == {
             'id': 'simple',
-            'json_col': {
-                'k1': 'v1',
-                'k2': 'v2'
-            }
+            'json_col': {'k1': 'v1', 'k2': 'v2'},
         }
         assert dict(result['with_lists']) == {
             'id': 'with_lists',
-            'json_col': {
-                'l1': ['i1', 'i2']
-            }
+            'json_col': {'l1': ['i1', 'i2']},
         }
         assert dict(result['complex']) == {
             'id': 'complex',
-            'json_col': complex_object
+            'json_col': complex_object,
         }
 
     def test_explicit_types(self, strict_writer):
@@ -531,7 +570,7 @@ class TestSQLWriters:
                             'integer',
                             'text',
                             None,
-                        ]
+                        ],
                     }
                 )
             )
@@ -539,10 +578,14 @@ class TestSQLWriters:
         # We can use raw SQL instead of SqlAlchemy expressions because
         # we built the DB above
         with strict_writer:
-            result = dict([
-                (row['id'], row) for row in strict_writer.connection
-                .execute('SELECT id, a, b, c, d FROM foo_explicit_types')
-            ])
+            result = dict(
+                [
+                    (row['id'], row)
+                    for row in strict_writer.connection.execute(
+                        'SELECT id, a, b, c, d FROM foo_explicit_types'
+                    )
+                ]
+            )
 
         assert len(result) == 2
         # a casts strings to ints, b casts ints to text, c default falls back to ints, d default falls back to text
@@ -551,14 +594,14 @@ class TestSQLWriters:
             'a': 1,
             'b': '2',
             'c': 3,
-            'd': '7'
+            'd': '7',
         }
         assert dict(result['bazzle']) == {
             'id': 'bazzle',
             'a': 4,
             'b': '5',
             'c': 6,
-            'd': '8'
+            'd': '8',
         }
 
     def test_mssql_nvarchar_length_upsize(self, writer):
@@ -572,28 +615,27 @@ class TestSQLWriters:
             writer.write_table(
                 TableSpec(
                     **{
-                        'name':
-                            'mssql_nvarchar_length',
+                        'name': 'mssql_nvarchar_length',
                         'headings': ['id', 'some_data', 'big_data'],
                         'rows': [
                             [
-                                'bizzle', (b'\0' * 800).decode('utf-8'),
-                                (b'\0' * 901).decode('utf-8')
+                                'bizzle',
+                                (b'\0' * 800).decode('utf-8'),
+                                (b'\0' * 901).decode('utf-8'),
                             ],
                             [
-                                'bazzle', (b'\0' * 500).decode('utf-8'),
-                                (b'\0' * 800).decode('utf-8')
+                                'bazzle',
+                                (b'\0' * 500).decode('utf-8'),
+                                (b'\0' * 800).decode('utf-8'),
                             ],
-                        ]
+                        ],
                     }
                 )
             )
 
             connection = writer.connection
 
-            result = _get_column_lengths(
-                connection, 'mssql_nvarchar_length'
-            )
+            result = _get_column_lengths(connection, 'mssql_nvarchar_length')
             assert result['some_data'] == ('some_data', 'nvarchar', 900)
             # nvarchar(max) is listed as -1
             assert result['big_data'] == ('big_data', 'nvarchar', -1)
@@ -603,20 +645,20 @@ class TestSQLWriters:
             writer.write_table(
                 TableSpec(
                     **{
-                        'name':
-                            'mssql_nvarchar_length',
+                        'name': 'mssql_nvarchar_length',
                         'headings': ['id', 'some_data', 'big_data'],
-                        'rows': [[
-                            'sizzle', (b'\0' * 901).decode('utf-8'),
-                            (b'\0' * 901).decode('utf-8')
-                        ],]
+                        'rows': [
+                            [
+                                'sizzle',
+                                (b'\0' * 901).decode('utf-8'),
+                                (b'\0' * 901).decode('utf-8'),
+                            ],
+                        ],
                     }
                 )
             )
 
-            result = _get_column_lengths(
-                connection, 'mssql_nvarchar_length'
-            )
+            result = _get_column_lengths(connection, 'mssql_nvarchar_length')
             assert result['some_data'] == ('some_data', 'nvarchar', -1)
             assert result['big_data'] == ('big_data', 'nvarchar', -1)
 
@@ -633,9 +675,7 @@ class TestSQLWriters:
                     'mssql_nvarchar_length_downsize',
                     metadata,
                     sqlalchemy.Column(
-                        'id',
-                        sqlalchemy.NVARCHAR(length=100),
-                        primary_key=True
+                        'id', sqlalchemy.NVARCHAR(length=100), primary_key=True
                     ),
                     sqlalchemy.Column(
                         'some_data', sqlalchemy.NVARCHAR(length=None)
@@ -647,19 +687,20 @@ class TestSQLWriters:
             writer.write_table(
                 TableSpec(
                     **{
-                        'name':
-                            'mssql_nvarchar_length',
+                        'name': 'mssql_nvarchar_length',
                         'headings': ['id', 'some_data'],
                         'rows': [
                             [
-                                'bizzle', (b'\0' * 800).decode('utf-8'),
-                                (b'\0' * 800).decode('utf-8')
+                                'bizzle',
+                                (b'\0' * 800).decode('utf-8'),
+                                (b'\0' * 800).decode('utf-8'),
                             ],
                             [
-                                'bazzle', (b'\0' * 500).decode('utf-8'),
-                                (b'\0' * 800).decode('utf-8')
+                                'bazzle',
+                                (b'\0' * 500).decode('utf-8'),
+                                (b'\0' * 800).decode('utf-8'),
                             ],
-                        ]
+                        ],
                     }
                 )
             )

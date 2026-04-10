@@ -54,6 +54,7 @@ class TableWriter:
     If the implementing class does not need any setup, no-op defaults
     have been provided.
     """
+
     support_checkpoints = False
 
     # set to False if writer does not support writing to the same table
@@ -121,8 +122,8 @@ class Excel2007TableWriter(TableWriter):
         except ImportError:
             raise Exception(
                 "It doesn't look like this machine is configured for "
-                "Excel export. To export to Excel you have to run the "
-                "command:  pip install openpyxl"
+                'Excel export. To export to Excel you have to run the '
+                'command:  pip install openpyxl'
             )
 
         self.file = file
@@ -141,7 +142,7 @@ class Excel2007TableWriter(TableWriter):
         name = table.name
         if name not in self.sheets:
             sheet = self.book.create_sheet()
-            sheet.title = name[:self.max_table_name_size]
+            sheet.title = name[: self.max_table_name_size]
             sheet.append([ensure_text(v) for v in table.headings])
             self.sheets[name] = sheet
 
@@ -160,8 +161,8 @@ class Excel2003TableWriter(TableWriter):
         except ImportError:
             raise Exception(
                 "It doesn't look like this machine is configured for "
-                "excel export. To export to excel you have to run the "
-                "command:  pip install xlwt"
+                'excel export. To export to excel you have to run the '
+                'command:  pip install xlwt'
             )
 
         self.file = file
@@ -183,8 +184,8 @@ class Excel2003TableWriter(TableWriter):
     def get_sheet(self, table):
         name = table.name
         if name not in self.sheets:
-            sheet = self.book.add_sheet(name[:self.max_table_name_size])
-            sheet.title = name[:self.max_table_name_size]
+            sheet = self.book.add_sheet(name[: self.max_table_name_size])
+            sheet.title = name[: self.max_table_name_size]
 
             for colnum, val in enumerate(table.headings):
                 sheet.write(0, colnum, ensure_text(val))
@@ -215,9 +216,9 @@ class JValueTableWriter(TableWriter):
         else:
             assert self.tables[table.name].headings == list(table.headings)
 
-        self.tables[table.name].rows = list(
-            self.tables[table.name].rows
-        ) + [[to_jvalue(v) for v in row] for row in table.rows]
+        self.tables[table.name].rows = list(self.tables[table.name].rows) + [
+            [to_jvalue(v) for v in row] for row in table.rows
+        ]
 
 
 class StreamingMarkdownTableWriter(TableWriter):
@@ -225,6 +226,7 @@ class StreamingMarkdownTableWriter(TableWriter):
     Writes markdown to an output stream, where each table just comes one
     after the other
     """
+
     supports_multi_table_write = False
 
     def __init__(self, output_stream, compute_widths=False):
@@ -235,9 +237,9 @@ class StreamingMarkdownTableWriter(TableWriter):
         col_widths = None
         if self.compute_widths:
             col_widths = self._get_column_widths(table)
-            row_template = ' | '.join([
-                f'{{:<{width}}}' for width in col_widths
-            ])
+            row_template = ' | '.join(
+                [f'{{:<{width}}}' for width in col_widths]
+            )
         else:
             row_template = ' | '.join(['{}'] * len(table.headings))
 
@@ -254,9 +256,7 @@ class StreamingMarkdownTableWriter(TableWriter):
 
         for row in table.rows:
             text_row = (ensure_text(val, convert_none=True) for val in row)
-            self.output_stream.write(
-                f'| {row_template.format(*text_row)} |\n'
-            )
+            self.output_stream.write(f'| {row_template.format(*text_row)} |\n')
 
     def _get_column_widths(self, table):
         all_rows = [table.headings] + list(table.rows)
@@ -320,7 +320,7 @@ class SqlMixin:
             return 128
         if self.is_oracle:
             return 128
-        raise Exception(f"Unknown database dialect: {self.db_url}")
+        raise Exception(f'Unknown database dialect: {self.db_url}')
 
     @property
     def metadata(self):
@@ -357,6 +357,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
     Write tables to a database specified by URL
     (TODO) with "upsert" based on primary key.
     """
+
     support_checkpoints = True
     required_columns = ['id']
 
@@ -374,9 +375,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             return get_sqlalchemy_type(data_type)
         except UnknownDataType:
             if data_type:
-                logger.warning(
-                    f"Found unknown data type '{data_type}'"
-                )
+                logger.warning(f"Found unknown data type '{data_type}'")
             return self.best_type_for('')  # todo: more explicit fallback
 
     def best_type_for(self, val):
@@ -404,7 +403,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 if len(val) < self.MAX_VARCHAR_LEN:
                     return sqlalchemy.Unicode(
                         max(len(val), self.MIN_VARCHAR_LEN),
-                        collation=self.collation
+                        collation=self.collation,
                     )
                 else:
                     return sqlalchemy.UnicodeText(collation=self.collation)
@@ -424,7 +423,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             elif self.is_oracle:
                 return sqlalchemy.Unicode(4000, collation=self.collation)
             else:
-                raise Exception(f"Unknown database dialect: {self.db_url}")
+                raise Exception(f'Unknown database dialect: {self.db_url}')
         else:
             # We do not have a name for "bottom" in SQL aka the type
             # whose least upper bound with any other type is the other
@@ -453,22 +452,30 @@ class SqlTableWriter(SqlMixin, TableWriter):
         compatibility = {
             sqlalchemy.String: (sqlalchemy.Text,),
             sqlalchemy.Integer: (sqlalchemy.String, sqlalchemy.Text),
-            sqlalchemy.Boolean:
-                (sqlalchemy.String, sqlalchemy.Text, sqlalchemy.Integer),
-            sqlalchemy.DateTime:
-                (sqlalchemy.String, sqlalchemy.Text, sqlalchemy.Date),
+            sqlalchemy.Boolean: (
+                sqlalchemy.String,
+                sqlalchemy.Text,
+                sqlalchemy.Integer,
+            ),
+            sqlalchemy.DateTime: (
+                sqlalchemy.String,
+                sqlalchemy.Text,
+                sqlalchemy.Date,
+            ),
             sqlalchemy.Date: (sqlalchemy.String, sqlalchemy.Text),
         }
 
         # add dialect specific types
         try:
-            compatibility[sqlalchemy.JSON
-                         ] = (sqlalchemy.dialects.postgresql.json.JSON,)
+            compatibility[sqlalchemy.JSON] = (
+                sqlalchemy.dialects.postgresql.json.JSON,
+            )
         except AttributeError:
             pass
         try:
-            compatibility[sqlalchemy.Boolean
-                         ] += (sqlalchemy.dialects.mssql.base.BIT,)
+            compatibility[sqlalchemy.Boolean] += (
+                sqlalchemy.dialects.mssql.base.BIT,
+            )
         except AttributeError:
             pass
 
@@ -517,7 +524,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 )
                 op.add_column(
                     table.name,
-                    sqlalchemy.Column(column, val_type, nullable=True)
+                    sqlalchemy.Column(column, val_type, nullable=True),
                 )
                 self.metadata.clear()
                 table = self.get_table(table.name)
@@ -551,26 +558,26 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 sqlalchemy.Table(
                     table_name,
                     sqlalchemy.MetaData(),
-                    *self._get_columns_for_data(row_dict, data_type_dict)
+                    *self._get_columns_for_data(row_dict, data_type_dict),
                 )
             ).compile(self.connection.engine)
             logger.warning(
                 f"Table '{table_name}' does not exist. Creating table "
-                f"with:\n{create_sql}"
+                f'with:\n{create_sql}'
             )
             empty_cols = [
-                name for (name, val) in row_dict.items()
+                name
+                for (name, val) in row_dict.items()
                 if val is None and name not in data_type_dict
             ]
             if empty_cols:
                 logger.warning(
-                    "This schema does not include the following columns "
-                    "since we are unable to determine the column type at "
-                    f"this stage: {empty_cols}"
+                    'This schema does not include the following columns '
+                    'since we are unable to determine the column type at '
+                    f'this stage: {empty_cols}'
                 )
         op.create_table(
-            table_name,
-            *self._get_columns_for_data(row_dict, data_type_dict)
+            table_name, *self._get_columns_for_data(row_dict, data_type_dict)
         )
         self.metadata.clear()
         return self.get_table(table_name)
@@ -591,9 +598,11 @@ class SqlTableWriter(SqlMixin, TableWriter):
             insert = table.insert().values(**row_dict)
             self.connection.execute(insert)
         except sqlalchemy.exc.IntegrityError:
-            update = (table.update()
-                      .where(table.c.id == row_dict['id'])
-                      .values(**row_dict))
+            update = (
+                table.update()
+                .where(table.c.id == row_dict['id'])
+                .values(**row_dict)
+            )
             self.connection.execute(update)
 
     def write_table(self, table_spec: TableSpec) -> None:
@@ -621,9 +630,11 @@ class SqlTableWriter(SqlMixin, TableWriter):
             sqlalchemy.Column(
                 column_name,
                 self.get_data_type(data_type_dict[column_name], val),
-                nullable=True
+                nullable=True,
             )
             for (column_name, val) in row_dict.items()
-            if ((val is not None or data_type_dict[column_name])
-                and column_name != 'id')
+            if (
+                (val is not None or data_type_dict[column_name])
+                and column_name != 'id'
+            )
         ]
