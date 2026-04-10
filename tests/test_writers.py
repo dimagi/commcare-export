@@ -709,6 +709,42 @@ class TestSQLWriters:
             )
             assert result['some_data'] == ('some_data', 'nvarchar', -1)
 
+    def test_bulk_upsert(self, writer):
+        # Create table via normal write_table path
+        with writer:
+            writer.write_table(
+                TableSpec(
+                    name='foo_bulk_upsert',
+                    headings=['id', 'a', 'b'],
+                    rows=[
+                        ['row1', 'val1', 'x'],
+                        ['row2', 'val2', 'y'],
+                    ],
+                )
+            )
+
+        # bulk_upsert: update row1, insert row3
+        with writer:
+            table = writer.get_table('foo_bulk_upsert')
+            batch = [
+                {'id': 'row1', 'a': 'updated1', 'b': 'ux'},
+                {'id': 'row3', 'a': 'val3', 'b': 'z'},
+            ]
+            writer.bulk_upsert(table, batch)
+            writer._commit()
+
+        with writer:
+            result = {
+                row['id']: dict(row)
+                for row in writer.connection.execute(
+                    'SELECT id, a, b FROM foo_bulk_upsert'
+                )
+            }
+        assert len(result) == 3
+        assert result['row1'] == {'id': 'row1', 'a': 'updated1', 'b': 'ux'}
+        assert result['row2'] == {'id': 'row2', 'a': 'val2', 'b': 'y'}
+        assert result['row3'] == {'id': 'row3', 'a': 'val3', 'b': 'z'}
+
     def test_emoji(self, writer):
         with writer:
             writer.write_table(

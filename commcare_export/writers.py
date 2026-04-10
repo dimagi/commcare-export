@@ -612,6 +612,35 @@ class SqlTableWriter(SqlMixin, TableWriter):
         # transactions when upgrading to SQLAlchemy 2.0
         self.connection.execute(sqlalchemy.text('COMMIT'))
 
+    def bulk_upsert(self, table, batch):
+        if not batch:
+            return
+        if self.is_postgres:
+            from sqlalchemy.dialects.postgresql import insert
+
+            stmt = insert(table).values(batch)
+            update_cols = {c.name: c for c in stmt.excluded if c.name != 'id'}
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['id'],
+                set_=update_cols,
+            )
+            self.connection.execute(stmt)
+        elif self.is_mysql:
+            from sqlalchemy.dialects.mysql import insert
+
+            stmt = insert(table).values(batch)
+            update_cols = {
+                c.name: stmt.inserted[c.name]
+                for c in table.columns
+                if c.name != 'id'
+            }
+            stmt = stmt.on_duplicate_key_update(**update_cols)
+            self.connection.execute(stmt)
+        else:
+            # MSSQL and others: fall back to row-by-row
+            for row_dict in batch:
+                self.upsert(table, row_dict)
+
     def write_table(self, table_spec: TableSpec) -> None:
         table_name = table_spec.name
         headings = table_spec.headings
