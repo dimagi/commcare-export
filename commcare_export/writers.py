@@ -16,6 +16,8 @@ from commcare_export.specs import TableSpec
 
 logger = logging.getLogger(__name__)
 MAX_COLUMN_SIZE = 2000
+SCHEMA_CHECK_ROWS = 10
+BATCH_SIZE = 1000
 
 
 def ensure_text(v, convert_none=False):
@@ -604,6 +606,11 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 .values(**row_dict)
             )
             self.connection.execute(update)
+
+    def _commit(self):
+        # Explicit commit works for all DB types. Replace with explicit
+        # transactions when upgrading to SQLAlchemy 2.0
+        self.connection.execute(sqlalchemy.text('COMMIT'))
 
     def write_table(self, table_spec: TableSpec) -> None:
         table_name = table_spec.name
