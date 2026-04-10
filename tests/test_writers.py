@@ -11,6 +11,7 @@ import sqlalchemy
 import pytest
 from commcare_export.specs import TableSpec
 from commcare_export.writers import (
+    SCHEMA_CHECK_ROWS,
     CsvTableWriter,
     Excel2007TableWriter,
     JValueTableWriter,
@@ -795,3 +796,97 @@ class TestSQLWriters:
                     }
                 )
             )
+
+    def test_batched_write(self, writer):
+        num_rows = SCHEMA_CHECK_ROWS + 15
+        rows = [[f'id_{i}', f'a_{i}', i] for i in range(num_rows)]
+        with writer:
+            writer.write_table(
+                TableSpec(
+                    name='foo_batched_write',
+                    headings=['id', 'a', 'b'],
+                    rows=rows,
+                )
+            )
+
+        with writer:
+            result = list(
+                writer.connection.execute(
+                    'SELECT id, a, b FROM foo_batched_write'
+                )
+            )
+        assert len(result) == num_rows
+        result_dict = {row['id']: dict(row) for row in result}
+        for i in range(num_rows):
+            assert result_dict[f'id_{i}'] == {
+                'id': f'id_{i}',
+                'a': f'a_{i}',
+                'b': i,
+            }
+
+    def test_batched_upsert(self, writer):
+        num_rows = SCHEMA_CHECK_ROWS + 5
+        rows = [[f'id_{i}', f'a_{i}', i] for i in range(num_rows)]
+        with writer:
+            writer.write_table(
+                TableSpec(
+                    name='foo_batched_upsert',
+                    headings=['id', 'a', 'b'],
+                    rows=rows,
+                )
+            )
+
+        # Second write: update all existing + add 5 new
+        rows2 = [
+            [f'id_{i}', f'updated_{i}', i + 100] for i in range(num_rows + 5)
+        ]
+        with writer:
+            writer.write_table(
+                TableSpec(
+                    name='foo_batched_upsert',
+                    headings=['id', 'a', 'b'],
+                    rows=rows2,
+                )
+            )
+
+        with writer:
+            result = list(
+                writer.connection.execute(
+                    'SELECT id, a, b FROM foo_batched_upsert'
+                )
+            )
+        assert len(result) == num_rows + 5
+        result_dict = {row['id']: dict(row) for row in result}
+        for i in range(num_rows + 5):
+            assert result_dict[f'id_{i}'] == {
+                'id': f'id_{i}',
+                'a': f'updated_{i}',
+                'b': i + 100,
+            }
+
+    def test_late_schema_change_via_write_table(self, writer):
+        rows = []
+        for i in range(SCHEMA_CHECK_ROWS):
+            rows.append([f'id_{i}', f'a_{i}', None])
+        for i in range(SCHEMA_CHECK_ROWS, SCHEMA_CHECK_ROWS + 5):
+            rows.append([f'id_{i}', f'a_{i}', f'b_{i}'])
+
+        with writer:
+            writer.write_table(
+                TableSpec(
+                    name='foo_late_schema',
+                    headings=['id', 'a', 'b'],
+                    rows=rows,
+                )
+            )
+
+        with writer:
+            result = list(
+                writer.connection.execute(
+                    'SELECT id, a, b FROM foo_late_schema'
+                )
+            )
+        assert len(result) == SCHEMA_CHECK_ROWS + 5
+        result_dict = {row['id']: dict(row) for row in result}
+        for i in range(SCHEMA_CHECK_ROWS, SCHEMA_CHECK_ROWS + 5):
+            assert result_dict[f'id_{i}']['b'] == f'b_{i}'

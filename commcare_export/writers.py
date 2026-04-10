@@ -663,8 +663,14 @@ class SqlTableWriter(SqlMixin, TableWriter):
         table_name = table_spec.name
         headings = table_spec.headings
         data_type_dict = dict(zip_longest(headings, table_spec.data_types))
+
+        table = None
+        batch = []
+        schema_check_complete = False
+
         for i, row in enumerate(table_spec.rows):
             row_dict = dict(zip(headings, row))
+
             if i == 0:
                 table = self.get_table(table_name)
                 if table is None:
@@ -673,11 +679,46 @@ class SqlTableWriter(SqlMixin, TableWriter):
                         row_dict,
                         data_type_dict,
                     )
-            # Checks the data type for every cell in every row. Maybe we
-            # can use a future version of the data dictionary to avoid
-            # this?
-            table = self.make_table_compatible(table, row_dict, data_type_dict)
-            self.upsert(table, row_dict)
+
+            if i < SCHEMA_CHECK_ROWS:
+                # Schema-check phase: row-by-row with full compatibility
+                # checks
+                table = self.make_table_compatible(
+                    table,
+                    row_dict,
+                    data_type_dict,
+                )
+                self.upsert(table, row_dict)
+            else:
+                assert table is not None  # So that mypy knows it's a Table
+                if not schema_check_complete:
+                    schema_check_complete = True
+                    self._commit()
+                    logger.debug(
+                        "Schema check complete for table '%s'. Final columns: %s",
+                        table_name,
+                        [c.name for c in table.columns],
+                    )
+                batch.append(row_dict)
+                if len(batch) >= BATCH_SIZE:
+                    self._flush_batch(table, batch, data_type_dict)
+                    batch = []
+
+        if table is None:
+            return
+
+        if batch:
+            self._flush_batch(table, batch, data_type_dict)
+        else:
+            # All rows in schema-check phase; commit them
+            self._commit()
+
+        if not schema_check_complete:
+            logger.debug(
+                "Schema check complete for table '%s'. Final columns: %s",
+                table_name,
+                [c.name for c in table.columns],
+            )
 
     def _get_columns_for_data(self, row_dict, data_type_dict):
         return [self.get_id_column()] + [
