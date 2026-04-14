@@ -452,7 +452,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     dest_type.length >= source_type.length
                 )
 
-        compatibility = {
+        compatibility: dict[type, tuple[type, ...]] = {
             sqlalchemy.String: (sqlalchemy.Text,),
             sqlalchemy.Integer: (sqlalchemy.String, sqlalchemy.Text),
             sqlalchemy.Boolean: (
@@ -629,26 +629,28 @@ class SqlTableWriter(SqlMixin, TableWriter):
         }
         batch = [{k: row_dict[k] for k in batch_keys} for row_dict in batch]
         if self.is_postgres:
-            from sqlalchemy.dialects.postgresql import insert
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-            stmt = insert(table).values(batch)
-            update_cols = {c.name: c for c in stmt.excluded if c.name != 'id'}
-            stmt = stmt.on_conflict_do_update(
+            pg_stmt = pg_insert(table).values(batch)
+            update_cols = {
+                c.name: c for c in pg_stmt.excluded if c.name != 'id'
+            }
+            pg_stmt = pg_stmt.on_conflict_do_update(
                 index_elements=['id'],
                 set_=update_cols,
             )
-            self.connection.execute(stmt)
+            self.connection.execute(pg_stmt)
         elif self.is_mysql:
-            from sqlalchemy.dialects.mysql import insert
+            from sqlalchemy.dialects.mysql import insert as mysql_insert
 
-            stmt = insert(table).values(batch)
+            mysql_stmt = mysql_insert(table).values(batch)
             update_cols = {
-                c.name: stmt.inserted[c.name]
+                c.name: mysql_stmt.inserted[c.name]
                 for c in table.columns
                 if c.name != 'id'
             }
-            stmt = stmt.on_duplicate_key_update(**update_cols)
-            self.connection.execute(stmt)
+            mysql_stmt = mysql_stmt.on_duplicate_key_update(**update_cols)
+            self.connection.execute(mysql_stmt)
         else:
             # MSSQL and others: fall back to row-by-row
             for row_dict in batch:
