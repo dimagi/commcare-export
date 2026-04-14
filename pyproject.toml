@@ -44,7 +44,6 @@ dependencies = [
     "requests",
     "simplejson",
     "sqlalchemy~=1.4",
-    "sqlalchemy-migrate",
 ]
 
 [project.optional-dependencies]
