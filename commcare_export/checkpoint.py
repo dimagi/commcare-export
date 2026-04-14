@@ -20,7 +20,7 @@ class Base(DeclarativeBase):
     pass
 
 
-class Checkpoint(Base):  # type: ignore[misc, valid-type]
+class Checkpoint(Base):
     __tablename__ = 'commcare_export_runs'
 
     id = Column(String, primary_key=True)
@@ -47,7 +47,7 @@ class Checkpoint(Base):  # type: ignore[misc, valid-type]
         if not self.pagination_mode:
             return PaginationMode.date_modified
 
-        return PaginationMode[self.pagination_mode]
+        return PaginationMode[str(self.pagination_mode)]
 
     def __repr__(self):
         return (
