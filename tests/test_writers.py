@@ -738,7 +738,7 @@ class TestSQLWriters:
                 {'id': 'row3', 'a': 'val3', 'b': 'z'},
             ]
             writer.bulk_upsert(table, batch)
-            writer._commit()
+            writer._flush()
 
         with writer:
             result = {
@@ -776,14 +776,13 @@ class TestSQLWriters:
                 {'id': 'row3', 'a': 'val3', 'b': 'z', 'c': None},
             ]
             writer.bulk_upsert(table, batch)
-            writer._commit()
 
         with writer:
             result = {
                 row['id']: dict(row)
                 for row in writer.connection.execute(
-                    'SELECT id, a, b, c FROM foo_bulk_upsert_none'
-                )
+                    text('SELECT id, a, b, c FROM foo_bulk_upsert_none')
+                ).mappings()
             }
         assert len(result) == 3
         assert result['row1'] == {

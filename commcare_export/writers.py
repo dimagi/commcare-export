@@ -289,10 +289,19 @@ class SqlMixin:
 
     def __enter__(self):
         self.connection = self.engine.connect()
-        return self  # TODO: fork the writer so this can be called many times
+        self.transaction = self.connection.begin()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.connection.close()
+        try:
+            if not self.transaction.is_active:
+                pass
+            elif exc_type is None:
+                self.transaction.commit()
+            else:
+                self.transaction.rollback()
+        finally:
+            self.connection.close()
 
     @property
     def is_postgres(self):
@@ -601,10 +610,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
             )
             self.connection.execute(update)
 
-    def _commit(self):
-        # Explicit commit works for all DB types. Replace with explicit
-        # transactions when upgrading to SQLAlchemy 2.0
-        self.connection.execute(sqlalchemy.text('COMMIT'))
+    def _flush(self):
+        self.transaction.commit()
+        self.transaction = self.connection.begin()
 
     def bulk_upsert(self, table, batch):
         if not batch:
@@ -666,7 +674,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
             sqlalchemy.exc.ProgrammingError,
             sqlalchemy.exc.DataError,
         ):
-            # Likely a schema mismatch; fix schema and retry once
+            # Likely a schema mismatch; roll back failed transaction,
+            # fix schema, and retry once
+            self.transaction.rollback()
+            self.transaction = self.connection.begin()
             for row_dict in batch:
                 table = self.make_table_compatible(
                     table,
@@ -674,7 +685,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     data_type_dict,
                 )
             self.bulk_upsert(table, batch)
-        self._commit()
+        self._flush()
 
     def write_table(self, table_spec: TableSpec) -> None:
         table_name = table_spec.name
@@ -694,7 +705,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
         for row_dict in itertools.islice(row_stream, SCHEMA_CHECK_ROWS):
             table = self.make_table_compatible(table, row_dict, data_type_dict)
             self.upsert(table, row_dict)
-        self._commit()
+        self._flush()
 
         logger.debug(
             "Schema check complete for %s rows in table '%s'. "
