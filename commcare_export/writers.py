@@ -589,8 +589,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
             col: val for col, val in row_dict.items() if val is not None
         }
         try:
-            insert = table.insert().values(**row_dict)
-            self.connection.execute(insert)
+            with self.connection.begin_nested():
+                insert = table.insert().values(**row_dict)
+                self.connection.execute(insert)
         except sqlalchemy.exc.IntegrityError:
             update = (
                 table.update()
