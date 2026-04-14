@@ -643,9 +643,17 @@ class TestSQLWriters:
             connection = writer.connection
 
             result = _get_column_lengths(connection, 'mssql_nvarchar_length')
-            assert result['some_data'] == ('some_data', 'nvarchar', 900)
+            assert result['some_data'] == {
+                'COLUMN_NAME': 'some_data',
+                'DATA_TYPE': 'nvarchar',
+                'CHARACTER_MAXIMUM_LENGTH': 900,
+            }
             # nvarchar(max) is listed as -1
-            assert result['big_data'] == ('big_data', 'nvarchar', -1)
+            assert result['big_data'] == {
+                'COLUMN_NAME': 'big_data',
+                'DATA_TYPE': 'nvarchar',
+                'CHARACTER_MAXIMUM_LENGTH': -1,
+            }
 
             # put bigger data into "some_column" to ensure it is resized
             # properly
@@ -666,8 +674,16 @@ class TestSQLWriters:
             )
 
             result = _get_column_lengths(connection, 'mssql_nvarchar_length')
-            assert result['some_data'] == ('some_data', 'nvarchar', -1)
-            assert result['big_data'] == ('big_data', 'nvarchar', -1)
+            assert result['some_data'] == {
+                'COLUMN_NAME': 'some_data',
+                'DATA_TYPE': 'nvarchar',
+                'CHARACTER_MAXIMUM_LENGTH': -1,
+            }
+            assert result['big_data'] == {
+                'COLUMN_NAME': 'big_data',
+                'DATA_TYPE': 'nvarchar',
+                'CHARACTER_MAXIMUM_LENGTH': -1,
+            }
 
     def test_mssql_nvarchar_length_downsize(self, writer):
         with writer:
@@ -714,7 +730,11 @@ class TestSQLWriters:
             result = _get_column_lengths(
                 writer.connection, 'mssql_nvarchar_length_downsize'
             )
-            assert result['some_data'] == ('some_data', 'nvarchar', -1)
+            assert result['some_data'] == {
+                'COLUMN_NAME': 'some_data',
+                'DATA_TYPE': 'nvarchar',
+                'CHARACTER_MAXIMUM_LENGTH': -1,
+            }
 
     def test_bulk_upsert(self, writer):
         # Create table via normal write_table path
