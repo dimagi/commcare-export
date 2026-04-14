@@ -43,7 +43,7 @@ dependencies = [
     "pytz",
     "requests",
     "simplejson",
-    "sqlalchemy~=1.4",
+    "sqlalchemy~=2.0",
 ]
 
 [project.optional-dependencies]

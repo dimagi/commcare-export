@@ -7,15 +7,17 @@ from operator import attrgetter
 
 import dateutil.parser
 from sqlalchemy import Boolean, Column, String, and_, func
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from commcare_export.commcare_minilinq import PaginationMode
 from commcare_export.exceptions import DataExportException
 from commcare_export.writers import SqlMixin
 
 logger = logging.getLogger(__name__)
-Base = declarative_base()
+
+
+class Base(DeclarativeBase):
+    pass
 
 
 class Checkpoint(Base):  # type: ignore[misc, valid-type]

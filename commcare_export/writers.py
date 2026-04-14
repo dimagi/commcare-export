@@ -1,17 +1,17 @@
 import csv
 import datetime
 import logging
-from tempfile import NamedTemporaryFile
 import zipfile
 import itertools
 from itertools import zip_longest
+from tempfile import NamedTemporaryFile
 from typing import Optional
 
 import sqlalchemy
-from sqlalchemy.exc import NoSuchTableError
-
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from sqlalchemy.exc import NoSuchTableError
+
 from commcare_export.data_types import UnknownDataType, get_sqlalchemy_type
 from commcare_export.specs import TableSpec
 
@@ -327,16 +327,8 @@ class SqlMixin:
 
     @property
     def metadata(self):
-        if (
-            self._metadata is None
-            or self._metadata.bind.closed
-            or self._metadata.bind.invalidated
-        ):
-            if self.connection.closed:
-                raise Exception('Tried to bind to a closed connection')
-            if self.connection.invalidated:
-                raise Exception('Tried to bind to an invalidated connection')
-            self._metadata = sqlalchemy.MetaData(bind=self.connection)
+        if self._metadata is None:
+            self._metadata = sqlalchemy.MetaData()
         return self._metadata
 
     def get_table(self, table_name):
