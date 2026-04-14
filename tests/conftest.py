@@ -35,7 +35,9 @@ def _db_params(request, db_name):
             if 'postgres' in db_url:
                 conn.execute(text('rollback'))
             if 'mssql' in db_url:
-                conn.connection.dbapi_connection.autocommit = True
+                dbapi_conn = conn.connection.dbapi_connection
+                assert dbapi_conn is not None
+                dbapi_conn.autocommit = True
             conn.execute(text(f'drop database if exists {db_name}'))
             conn.commit()
 
@@ -51,7 +53,9 @@ def _db_params(request, db_name):
             if 'postgres' in db_url:
                 conn.execute(text('rollback'))
             if 'mssql' in db_url:
-                conn.connection.dbapi_connection.autocommit = True
+                dbapi_conn = conn.connection.dbapi_connection
+                assert dbapi_conn is not None
+                dbapi_conn.autocommit = True
             conn.execute(text(f'create database {db_name}'))
             conn.commit()
     else:

@@ -453,7 +453,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     dest_type.length >= source_type.length
                 )
 
-        compatibility = {
+        compatibility: dict[type, tuple[type, ...]] = {
             sqlalchemy.String: (sqlalchemy.Text,),
             sqlalchemy.Integer: (sqlalchemy.String, sqlalchemy.Text),
             sqlalchemy.Boolean: (
@@ -628,22 +628,6 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 if value is not None:
                     batch_keys.add(key)
         batch = [{k: row_dict[k] for k in batch_keys} for row_dict in batch]
-        if self.is_postgres:
-            from sqlalchemy.dialects.postgresql import insert
-
-            stmt = insert(table).values(batch)
-            new_row = stmt.excluded
-        elif self.is_mysql:
-            from sqlalchemy.dialects.mysql import insert
-
-            stmt = insert(table).values(batch)
-            new_row = stmt.inserted
-        else:
-            # MSSQL and others: fall back to row-by-row
-            for row_dict in batch:
-                self.upsert(table, row_dict)
-            return
-
         # Use COALESCE so that a None in the inserted row preserves the
         # existing column value, matching the per-row upsert() which
         # strips Nones before building the UPDATE.
@@ -651,19 +635,39 @@ class SqlTableWriter(SqlMixin, TableWriter):
         # columns in batch_keys would raise KeyError here; the INSERT
         # itself will then fail and _flush_batch retries after fixing
         # the schema.
-        update_cols = {
-            c.name: sqlalchemy.func.coalesce(new_row[c.name], c)
-            for c in table.columns
-            if c.name != 'id' and c.name in batch_keys
-        }
         if self.is_postgres:
-            stmt = stmt.on_conflict_do_update(
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+            pg_stmt = pg_insert(table).values(batch)
+            pg_update_cols = {
+                c.name: sqlalchemy.func.coalesce(pg_stmt.excluded[c.name], c)
+                for c in table.columns
+                if c.name != 'id' and c.name in batch_keys
+            }
+            pg_stmt = pg_stmt.on_conflict_do_update(
                 index_elements=['id'],
-                set_=update_cols,
+                set_=pg_update_cols,
             )
+            self.connection.execute(pg_stmt)
+        elif self.is_mysql:
+            from sqlalchemy.dialects.mysql import insert as mysql_insert
+
+            mysql_stmt = mysql_insert(table).values(batch)
+            mysql_update_cols = {
+                c.name: sqlalchemy.func.coalesce(
+                    mysql_stmt.inserted[c.name], c
+                )
+                for c in table.columns
+                if c.name != 'id' and c.name in batch_keys
+            }
+            mysql_stmt = mysql_stmt.on_duplicate_key_update(
+                **mysql_update_cols
+            )
+            self.connection.execute(mysql_stmt)
         else:
-            stmt = stmt.on_duplicate_key_update(**update_cols)
-        self.connection.execute(stmt)
+            # MSSQL and others: fall back to row-by-row
+            for row_dict in batch:
+                self.upsert(table, row_dict)
 
     def _flush_batch(self, table, batch, data_type_dict):
         try:
