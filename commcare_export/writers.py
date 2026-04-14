@@ -288,10 +288,19 @@ class SqlMixin:
 
     def __enter__(self):
         self.connection = self.engine.connect()
-        return self  # TODO: fork the writer so this can be called many times
+        self.transaction = self.connection.begin()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.connection.close()
+        try:
+            if not self.transaction.is_active:
+                pass
+            elif exc_type is None:
+                self.transaction.commit()
+            else:
+                self.transaction.rollback()
+        finally:
+            self.connection.close()
 
     @property
     def is_postgres(self):
@@ -600,10 +609,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
             )
             self.connection.execute(update)
 
-    def _commit(self):
-        # Explicit commit works for all DB types. Replace with explicit
-        # transactions when upgrading to SQLAlchemy 2.0
-        self.connection.execute(sqlalchemy.text('COMMIT'))
+    def _flush(self):
+        self.transaction.commit()
+        self.transaction = self.connection.begin()
 
     def bulk_upsert(self, table, batch):
         if not batch:
@@ -654,7 +662,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
             sqlalchemy.exc.OperationalError,
             sqlalchemy.exc.ProgrammingError,
         ):
-            # Likely a schema mismatch; fix schema and retry once
+            # Likely a schema mismatch; roll back failed transaction,
+            # fix schema, and retry once
+            self.transaction.rollback()
+            self.transaction = self.connection.begin()
             for row_dict in batch:
                 table = self.make_table_compatible(
                     table,
@@ -662,7 +673,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     data_type_dict,
                 )
             self.bulk_upsert(table, batch)
-        self._commit()
+        self._flush()
 
     def write_table(self, table_spec: TableSpec) -> None:
         table_name = table_spec.name
@@ -698,7 +709,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 assert table is not None  # So that mypy knows it's a Table
                 if not schema_check_complete:
                     schema_check_complete = True
-                    self._commit()
+                    self._flush()
                     logger.debug(
                         "Schema check complete for table '%s'. Final columns: %s",
                         table_name,
@@ -716,7 +727,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             self._flush_batch(table, batch, data_type_dict)
         else:
             # All rows in schema-check phase; commit them
-            self._commit()
+            self._flush()
 
         if not schema_check_complete:
             logger.debug(
