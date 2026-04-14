@@ -738,7 +738,7 @@ class TestSQLWriters:
                 {'id': 'row3', 'a': 'val3', 'b': 'z'},
             ]
             writer.bulk_upsert(table, batch)
-            writer._commit()
+            writer._flush()
 
         with writer:
             result = {
