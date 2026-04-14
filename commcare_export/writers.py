@@ -1,16 +1,16 @@
 import csv
 import datetime
 import logging
-from tempfile import NamedTemporaryFile
 import zipfile
 from itertools import zip_longest
+from tempfile import NamedTemporaryFile
 from typing import Optional
 
 import sqlalchemy
-from sqlalchemy.exc import NoSuchTableError
-
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from sqlalchemy.exc import NoSuchTableError
+
 from commcare_export.data_types import UnknownDataType, get_sqlalchemy_type
 from commcare_export.specs import TableSpec
 
@@ -326,16 +326,8 @@ class SqlMixin:
 
     @property
     def metadata(self):
-        if (
-            self._metadata is None
-            or self._metadata.bind.closed
-            or self._metadata.bind.invalidated
-        ):
-            if self.connection.closed:
-                raise Exception('Tried to bind to a closed connection')
-            if self.connection.invalidated:
-                raise Exception('Tried to bind to an invalidated connection')
-            self._metadata = sqlalchemy.MetaData(bind=self.connection)
+        if self._metadata is None:
+            self._metadata = sqlalchemy.MetaData()
         return self._metadata
 
     def get_table(self, table_name):
@@ -621,14 +613,12 @@ class SqlTableWriter(SqlMixin, TableWriter):
         # `SqlTableWriter.insert()`. `batch_keys` are the columns where
         # _any_ row has a value set.
         batch_keys = {
-            k for row_dict in batch
+            k
+            for row_dict in batch
             for k, v in row_dict.items()
             if v is not None
         }
-        batch = [
-            {k: row_dict[k] for k in batch_keys}
-            for row_dict in batch
-        ]
+        batch = [{k: row_dict[k] for k in batch_keys} for row_dict in batch]
         if self.is_postgres:
             from sqlalchemy.dialects.postgresql import insert
 
