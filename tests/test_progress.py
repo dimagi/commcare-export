@@ -487,6 +487,34 @@ def test_progress_aware_handler_skips_clear_when_no_driver():
     assert stream.getvalue() == 'world\n'
 
 
+def test_progress_aware_handler_holds_reporter_lock_during_emit():
+    stream = io.StringIO()
+    reporter = _make_reporter()
+    reporter.resource_started('form')
+
+    acquisitions = []
+    real_lock = reporter._lock
+
+    class _CountingLock:
+        def __enter__(self):
+            acquisitions.append('enter')
+            real_lock.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            real_lock.__exit__(*args)
+            acquisitions.append('exit')
+
+    reporter._lock = _CountingLock()
+    handler = ProgressAwareStreamHandler(stream=stream, reporter=reporter)
+    handler.setFormatter(logging.Formatter('%(message)s'))
+    record = logging.LogRecord(
+        'x', logging.INFO, '', 0, 'hello', None, None
+    )
+    handler.emit(record)
+    assert acquisitions == ['enter', 'exit']
+
+
 class _ScriptedSession:
     def __init__(self):
         self._calls = 0

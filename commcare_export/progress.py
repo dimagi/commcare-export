@@ -400,8 +400,11 @@ class ProgressAwareStreamHandler(logging.StreamHandler[TextIO]):
 
     def emit(self, record):
         if isinstance(self._reporter, ProgressReporter):
-            self.stream.write(_CLEAR_LINE)
-        super().emit(record)
+            with self._reporter._lock:
+                self.stream.write(_CLEAR_LINE)
+                super().emit(record)
+        else:
+            super().emit(record)
 
 
 def render_log_line(snapshot):
