@@ -10,6 +10,7 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass
+from typing import TextIO
 
 
 class NullProgressReporter:
@@ -51,7 +52,7 @@ class SlidingRate:
 
     def __init__(self, window_seconds):
         self.window_seconds = window_seconds
-        self._samples = deque()
+        self._samples: deque[tuple[float, int]] = deque()
 
     def add(self, count, now):
         if (
@@ -386,7 +387,7 @@ class RenderDriver:
             self._stream.flush()
 
 
-class ProgressAwareStreamHandler(logging.StreamHandler):
+class ProgressAwareStreamHandler(logging.StreamHandler[TextIO]):
     """
     A StreamHandler that clears any in-flight progress line on its
     reporter's stream before emitting a log record, so log output and

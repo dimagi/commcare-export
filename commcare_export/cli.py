@@ -233,6 +233,7 @@ def _progress_mode_from_args(args):
 
 
 def set_up_logging(args, reporter=None):
+    stream_handler: logging.Handler
     if reporter is not None:
         stream_handler = ProgressAwareStreamHandler(
             stream=sys.stderr, reporter=reporter
