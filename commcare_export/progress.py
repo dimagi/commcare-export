@@ -69,8 +69,38 @@ class SlidingRate:
 
     def _evict(self, now):
         cutoff = now - self.window_seconds
-        while (
-            len(self._samples) > 1
-            and self._samples[0][0] < cutoff
-        ):
+        while len(self._samples) > 1 and self._samples[0][0] < cutoff:
             self._samples.popleft()
+
+
+def format_duration(seconds):
+    seconds = int(seconds)
+    if seconds < 60:
+        return f'{seconds}s'
+    minutes = seconds // 60
+    if minutes < 60:
+        return f'{minutes}m'
+    hours = minutes // 60
+    return f'{hours}h{minutes % 60}m'
+
+
+def format_count(n):
+    return f'{int(n):,}'
+
+
+def format_rate(rate):
+    return f'{format_count(round(rate))} rec/s'
+
+
+def format_eta(rate, remaining):
+    if rate <= 0 or remaining is None or remaining < 0:
+        return '--'
+    return format_duration(remaining / rate)
+
+
+def format_bar(fraction, width, unicode):
+    fraction = max(0.0, min(1.0, fraction))
+    filled_char = '█' if unicode else '#'
+    empty_char = '░' if unicode else '-'
+    filled = int(round(fraction * width))
+    return f'[{filled_char * filled}{empty_char * (width - filled)}]'
