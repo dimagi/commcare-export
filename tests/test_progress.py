@@ -1,8 +1,16 @@
 import io
+import logging
 import time
 
+from commcare_export.checkpoint import CheckpointManagerWithDetails
+from commcare_export.commcare_hq_client import CommCareHqClient
+from commcare_export.commcare_minilinq import (
+    PaginationMode,
+    SimplePaginator,
+)
 from commcare_export.progress import (
     NullProgressReporter,
+    ProgressAwareStreamHandler,
     ProgressReporter,
     ProgressSnapshot,
     RenderDriver,
@@ -378,9 +386,7 @@ def test_render_driver_writes_newline_terminated_line_off_tty():
     reporter.batch_received(fetched=100, total=1000)
 
     stream = io.StringIO()
-    driver = RenderDriver(
-        reporter, stream=stream, is_tty=False, interval=10.0
-    )
+    driver = RenderDriver(reporter, stream=stream, is_tty=False, interval=10.0)
     driver.render_once()
     output = stream.getvalue()
     assert output.endswith('\n')
@@ -407,9 +413,7 @@ def test_render_driver_prints_summary_line_after_resource_finished():
 def test_render_driver_thread_starts_and_stops_cleanly():
     reporter = _make_reporter()
     stream = io.StringIO()
-    driver = RenderDriver(
-        reporter, stream=stream, is_tty=True, interval=0.01
-    )
+    driver = RenderDriver(reporter, stream=stream, is_tty=True, interval=0.01)
     driver.start()
     assert driver._thread.is_alive()
     driver.stop()
@@ -424,9 +428,7 @@ def test_build_reporter_off_returns_null():
 
 def test_build_reporter_on_tty_returns_live(monkeypatch):
     stream = io.StringIO()
-    reporter = build_reporter(
-        mode='on', stream=stream, is_tty=True
-    )
+    reporter = build_reporter(mode='on', stream=stream, is_tty=True)
     assert isinstance(reporter, ProgressReporter)
     reporter.start()
     reporter.stop()
@@ -434,17 +436,13 @@ def test_build_reporter_on_tty_returns_live(monkeypatch):
 
 def test_build_reporter_auto_on_tty(monkeypatch):
     stream = io.StringIO()
-    reporter = build_reporter(
-        mode='auto', stream=stream, is_tty=True
-    )
+    reporter = build_reporter(mode='auto', stream=stream, is_tty=True)
     assert isinstance(reporter, ProgressReporter)
 
 
 def test_build_reporter_auto_off_tty():
     stream = io.StringIO()
-    reporter = build_reporter(
-        mode='auto', stream=stream, is_tty=False
-    )
+    reporter = build_reporter(mode='auto', stream=stream, is_tty=False)
     assert isinstance(reporter, NullProgressReporter)
 
 
@@ -465,20 +463,13 @@ def test_reporter_start_stop_drives_renders():
     assert 'Forms:' in stream.getvalue()
 
 
-import logging
-
-from commcare_export.progress import ProgressAwareStreamHandler
-
-
 def test_progress_aware_handler_clears_line_before_emitting():
     stream = io.StringIO()
     reporter = _make_reporter()
     reporter.resource_started('form')
     handler = ProgressAwareStreamHandler(stream=stream, reporter=reporter)
     handler.setFormatter(logging.Formatter('%(message)s'))
-    record = logging.LogRecord(
-        'x', logging.INFO, '', 0, 'hello', None, None
-    )
+    record = logging.LogRecord('x', logging.INFO, '', 0, 'hello', None, None)
     handler.emit(record)
     output = stream.getvalue()
     assert output.startswith('\r\x1b[K')
@@ -491,8 +482,76 @@ def test_progress_aware_handler_skips_clear_when_no_driver():
     reporter = NullProgressReporter()
     handler = ProgressAwareStreamHandler(stream=stream, reporter=reporter)
     handler.setFormatter(logging.Formatter('%(message)s'))
-    record = logging.LogRecord(
-        'x', logging.INFO, '', 0, 'world', None, None
-    )
+    record = logging.LogRecord('x', logging.INFO, '', 0, 'world', None, None)
     handler.emit(record)
     assert stream.getvalue() == 'world\n'
+
+
+class _ScriptedSession:
+    def __init__(self):
+        self._calls = 0
+
+    def get(self, url, params=None, auth=None, timeout=None):
+        import requests
+        import simplejson
+
+        self._calls += 1
+        if self._calls == 1:
+            body = {
+                'meta': {
+                    'next': '?offset=1',
+                    'offset': 0,
+                    'limit': 2,
+                    'total_count': 4,
+                },
+                'objects': [
+                    {'id': 1, 'foo': 'a'},
+                    {'id': 2, 'foo': 'b'},
+                ],
+            }
+        else:
+            body = {
+                'meta': {
+                    'next': None,
+                    'offset': 2,
+                    'limit': 2,
+                    'total_count': 4,
+                },
+                'objects': [
+                    {'id': 3, 'foo': 'c'},
+                    {'id': 4, 'foo': 'd'},
+                ],
+            }
+        resp = requests.Response()
+        resp._content = simplejson.dumps(body).encode('utf-8')
+        resp.status_code = 200
+        return resp
+
+
+def test_full_stack_progress_bar_rendered_to_stream():
+    stream = io.StringIO()
+    reporter = build_reporter(
+        mode='on', stream=stream, is_tty=True, interval=0.02
+    )
+    client = CommCareHqClient(
+        '/fake', 'p', None, None, progress_reporter=reporter
+    )
+    client.session = _ScriptedSession()
+    paginator = SimplePaginator(page_size=2)
+    paginator.init()
+    cm = CheckpointManagerWithDetails(None, None, PaginationMode.date_indexed)
+
+    reporter.start()
+    try:
+        results = list(
+            client.iterate('form', paginator, checkpoint_manager=cm)
+        )
+        time.sleep(0.1)
+    finally:
+        reporter.stop()
+
+    output = stream.getvalue()
+    assert len(results) == 4
+    assert 'Forms:' in output
+    assert '4 / 4 (100%)' in output
+    assert '\r\x1b[K' in output
