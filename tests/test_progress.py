@@ -1,5 +1,5 @@
 import io
-import threading
+import time
 
 from commcare_export.progress import (
     NullProgressReporter,
@@ -8,6 +8,7 @@ from commcare_export.progress import (
     RenderDriver,
     ResourceSummary,
     SlidingRate,
+    build_reporter,
     format_bar,
     format_count,
     format_duration,
@@ -414,3 +415,51 @@ def test_render_driver_thread_starts_and_stops_cleanly():
     driver.stop()
     driver._thread.join(timeout=1.0)
     assert not driver._thread.is_alive()
+
+
+def test_build_reporter_off_returns_null():
+    reporter = build_reporter(mode='off')
+    assert isinstance(reporter, NullProgressReporter)
+
+
+def test_build_reporter_on_tty_returns_live(monkeypatch):
+    stream = io.StringIO()
+    reporter = build_reporter(
+        mode='on', stream=stream, is_tty=True
+    )
+    assert isinstance(reporter, ProgressReporter)
+    reporter.start()
+    reporter.stop()
+
+
+def test_build_reporter_auto_on_tty(monkeypatch):
+    stream = io.StringIO()
+    reporter = build_reporter(
+        mode='auto', stream=stream, is_tty=True
+    )
+    assert isinstance(reporter, ProgressReporter)
+
+
+def test_build_reporter_auto_off_tty():
+    stream = io.StringIO()
+    reporter = build_reporter(
+        mode='auto', stream=stream, is_tty=False
+    )
+    assert isinstance(reporter, NullProgressReporter)
+
+
+def test_reporter_start_stop_drives_renders():
+    stream = io.StringIO()
+    reporter = build_reporter(
+        mode='on', stream=stream, is_tty=True, interval=0.02
+    )
+    reporter.start()
+    try:
+        reporter.resource_started('form')
+        reporter.batch_received(fetched=10, total=100)
+        for _ in range(10):
+            reporter.record_yielded()
+        time.sleep(0.1)
+    finally:
+        reporter.stop()
+    assert 'Forms:' in stream.getvalue()

@@ -4,6 +4,7 @@ Live stderr progress indicator for commcare-export.
 See ``claude/specs/2026-04-15-progress-indicator-design.md``.
 """
 
+import sys
 import threading
 import time
 from collections import deque
@@ -179,11 +180,18 @@ class ProgressReporter:
                 last_summary=self._last_summary,
             )
 
+    def attach_driver(self, driver):
+        self._driver = driver
+
     def start(self):
-        pass
+        driver = getattr(self, '_driver', None)
+        if driver is not None:
+            driver.start()
 
     def stop(self):
-        pass
+        driver = getattr(self, '_driver', None)
+        if driver is not None:
+            driver.stop()
 
 
 def format_duration(seconds):
@@ -409,3 +417,41 @@ def render_log_line(snapshot):
         counts = f'{records}/{format_count(total)} ({percent}%)'
 
     return f'{timestamp} {resource}: {counts}  {state}'
+
+
+def build_reporter(
+    mode,
+    stream=None,
+    is_tty=None,
+    interval=None,
+    bar_width=20,
+):
+    if stream is None:
+        stream = sys.stderr
+    if is_tty is None:
+        is_tty = stream.isatty()
+    if interval is None:
+        interval = 0.1 if is_tty else 10.0
+
+    if mode == 'off':
+        return NullProgressReporter()
+    if mode == 'auto' and not is_tty:
+        return NullProgressReporter()
+
+    unicode = _stream_supports_unicode(stream)
+    reporter = ProgressReporter()
+    driver = RenderDriver(
+        reporter,
+        stream=stream,
+        is_tty=is_tty,
+        interval=interval,
+        bar_width=bar_width,
+        unicode=unicode,
+    )
+    reporter.attach_driver(driver)
+    return reporter
+
+
+def _stream_supports_unicode(stream):
+    encoding = getattr(stream, 'encoding', None) or ''
+    return 'utf' in encoding.lower()
