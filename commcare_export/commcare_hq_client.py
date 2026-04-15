@@ -10,6 +10,7 @@ import requests
 from requests.auth import AuthBase, HTTPDigestAuth
 
 import commcare_export
+from commcare_export.progress import NullProgressReporter
 from commcare_export.repeatable_iterator import RepeatableIterator
 
 AUTH_MODE_PASSWORD = 'password'
@@ -75,12 +76,17 @@ class CommCareHqClient:
         password,
         auth_mode=AUTH_MODE_PASSWORD,
         version=LATEST_KNOWN_VERSION,
+        progress_reporter=None,
     ):
         self.version = version
         self.url = url
         self.project = project
         self.__auth = self._get_auth(username, password, auth_mode)
         self.__session = None
+        self.progress_reporter = (
+            progress_reporter if progress_reporter is not None
+            else NullProgressReporter()
+        )
 
     @staticmethod
     def _get_auth(username, password, mode):
@@ -182,69 +188,84 @@ class CommCareHqClient:
         params = dict(params or {})
 
         def iterate_resource(resource=resource, params=params):
-            more_to_fetch = True
-            last_batch_ids = set()
-            total_count = unknown_count
-            fetched = 0
-            repeat_counter = 0
-            last_params = None
+            reporter = self.progress_reporter
+            reporter.resource_started(resource)
+            try:
+                more_to_fetch = True
+                last_batch_ids = set()
+                total_count = unknown_count
+                fetched = 0
+                repeat_counter = 0
+                last_params = None
 
-            while more_to_fetch:
-                if params == last_params:
-                    repeat_counter += 1
-                else:
-                    repeat_counter = 0
-                if repeat_counter >= RESOURCE_REPEAT_LIMIT:
-                    raise ResourceRepeatException(
-                        f"Requested resource '{resource}' {repeat_counter} "
-                        "times with same parameters"
-                    )
-
-                batch = self.get(resource, params)
-                last_params = copy.copy(params)
-                batch_meta = batch['meta']
-                if total_count == unknown_count or fetched >= total_count:
-                    if batch_meta.get('total_count'):
-                        total_count = int(batch_meta['total_count'])
+                while more_to_fetch:
+                    if params == last_params:
+                        repeat_counter += 1
                     else:
-                        total_count = unknown_count
-                    fetched = 0
-
-                batch_objects = batch['objects']
-                fetched += len(batch_objects)
-                logger.debug('Received %s of %s', fetched, total_count)
-                if not batch_objects:
-                    more_to_fetch = False
-                else:
-                    got_new_data = False
-                    for obj in batch_objects:
-                        if obj['id'] not in last_batch_ids:
-                            yield obj
-                            got_new_data = True
-
-                    if batch_meta.get('next'):
-                        last_batch_ids = {obj['id'] for obj in batch_objects}
-                        params = paginator.next_page_params_from_batch(batch)
-                        if not params:
-                            more_to_fetch = False
-                    else:
-                        more_to_fetch = False
-
-                    limit = batch_meta.get('limit')
-                    if more_to_fetch:
-                        # Handle the case where API is 'non-counting'
-                        # and repeats the last batch
-                        repeated_last_page_of_non_counting_resource = (
-                            not got_new_data and total_count == unknown_count
-                            and (limit and len(batch_objects) < limit)
+                        repeat_counter = 0
+                    if repeat_counter >= RESOURCE_REPEAT_LIMIT:
+                        raise ResourceRepeatException(
+                            f"Requested resource '{resource}' "
+                            f"{repeat_counter} times with same parameters"
                         )
-                        more_to_fetch = not repeated_last_page_of_non_counting_resource
 
-                    paginator.set_checkpoint(
-                        checkpoint_manager,
-                        batch,
-                        not more_to_fetch
+                    batch = self.get(resource, params)
+                    last_params = copy.copy(params)
+                    batch_meta = batch['meta']
+                    if total_count == unknown_count or fetched >= total_count:
+                        if batch_meta.get('total_count'):
+                            total_count = int(batch_meta['total_count'])
+                        else:
+                            total_count = unknown_count
+                        fetched = 0
+
+                    batch_objects = batch['objects']
+                    fetched += len(batch_objects)
+                    reporter.batch_received(
+                        fetched=len(batch_objects),
+                        total=batch_meta.get('total_count'),
                     )
+                    logger.debug('Received %s of %s', fetched, total_count)
+                    if not batch_objects:
+                        more_to_fetch = False
+                    else:
+                        got_new_data = False
+                        for obj in batch_objects:
+                            if obj['id'] not in last_batch_ids:
+                                reporter.record_yielded()
+                                yield obj
+                                got_new_data = True
+
+                        if batch_meta.get('next'):
+                            last_batch_ids = {
+                                obj['id'] for obj in batch_objects
+                            }
+                            params = paginator.next_page_params_from_batch(
+                                batch
+                            )
+                            if not params:
+                                more_to_fetch = False
+                        else:
+                            more_to_fetch = False
+
+                        limit = batch_meta.get('limit')
+                        if more_to_fetch:
+                            repeated_last_page_of_non_counting_resource = (
+                                not got_new_data
+                                and total_count == unknown_count
+                                and (limit and len(batch_objects) < limit)
+                            )
+                            more_to_fetch = (
+                                not repeated_last_page_of_non_counting_resource
+                            )
+
+                        paginator.set_checkpoint(
+                            checkpoint_manager,
+                            batch,
+                            not more_to_fetch,
+                        )
+            finally:
+                reporter.resource_finished()
 
         return RepeatableIterator(iterate_resource)
 

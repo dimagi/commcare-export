@@ -293,6 +293,37 @@ class TestCommCareHqClient:
             [1, 2, 3]
         )
 
+    def test_iterate_emits_progress_events(self):
+        from commcare_export.progress import ProgressReporter
+
+        reporter = ProgressReporter()
+        client = CommCareHqClient(
+            '/fake/commcare-hq/url',
+            'fake-project',
+            None,
+            None,
+            progress_reporter=reporter,
+        )
+        client.session = FakeSession()
+        paginator = SimplePaginator('fake')
+        paginator.init()
+        checkpoint_manager = CheckpointManagerWithDetails(
+            None, None, PaginationMode.date_indexed
+        )
+        results = list(
+            client.iterate(
+                'form',
+                paginator,
+                checkpoint_manager=checkpoint_manager,
+            )
+        )
+        assert len(results) == 2
+        snap = reporter.snapshot()
+        assert snap.resource is None
+        assert snap.last_summary is not None
+        assert snap.last_summary.resource == 'form'
+        assert snap.last_summary.records == 2
+
     @pytest.mark.parametrize(
         "headers,expected",
         [
