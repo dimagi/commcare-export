@@ -394,6 +394,44 @@ class TestCommCareHqClient:
             ).get("location")
 
 
+    def test_on_wait_notifies_reporter_throttled(self):
+        from commcare_export.progress import ProgressReporter
+
+        reporter = ProgressReporter()
+        client = CommCareHqClient(
+            '/fake/commcare-hq/url',
+            'fake-project',
+            None,
+            None,
+            progress_reporter=reporter,
+        )
+        reporter.resource_started('form')
+        client._notify_wait({'wait': 12.5})
+        snap = reporter.snapshot()
+        assert snap.throttled_reason == 'throttled'
+        assert snap.throttled_remaining is not None
+        assert snap.throttled_remaining >= 12.0
+
+    def test_on_backoff_notifies_reporter_retrying(self):
+        from commcare_export.progress import ProgressReporter
+
+        reporter = ProgressReporter()
+        client = CommCareHqClient(
+            '/fake/commcare-hq/url',
+            'fake-project',
+            None,
+            None,
+            progress_reporter=reporter,
+        )
+        reporter.resource_started('form')
+        client._notify_backoff(
+            {'tries': 2, 'elapsed': 1.5, 'wait': 4.0}
+        )
+        snap = reporter.snapshot()
+        assert snap.throttled_reason == 'retrying'
+        assert snap.throttled_remaining is not None
+
+
 class TestDatePaginator:
     def test_empty_batch(self):
         assert (

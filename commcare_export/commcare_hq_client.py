@@ -23,27 +23,6 @@ RESOURCE_REPEAT_LIMIT = 10
 logger = logging.getLogger(__name__)
 
 
-def on_wait(details):
-    time_to_wait = details["wait"]
-    logger.warning(f"Rate limit reached. Waiting for {time_to_wait} seconds.")
-
-
-def on_backoff(details):
-    _log_backoff(details, 'Waiting for retry.')
-
-
-def on_giveup(details):
-    _log_backoff(details, 'Giving up.')
-
-
-def _log_backoff(details, action_message):
-    details['__suffix'] = action_message
-    logger.warning(
-        "Request failed after {tries} attempts ({elapsed:.1f}s). {__suffix}"
-        .format(**details)
-    )
-
-
 def is_client_error(ex):
     logger.info(str(ex))
     if hasattr(ex, 'response') and ex.response is not None:
@@ -115,6 +94,34 @@ class CommCareHqClient:
     def api_url(self):
         return f'{self.url}/a/{self.project}/api/v{self.version}'
 
+    def _notify_wait(self, details):
+        time_to_wait = details['wait']
+        logger.warning(
+            f'Rate limit reached. Waiting for {time_to_wait} seconds.'
+        )
+        self.progress_reporter.throttled(
+            wait_seconds=float(time_to_wait), reason='throttled'
+        )
+
+    def _notify_backoff(self, details):
+        self._log_backoff(details, 'Waiting for retry.')
+        wait = float(details.get('wait') or 0.0)
+        self.progress_reporter.throttled(
+            wait_seconds=wait, reason='retrying'
+        )
+
+    def _notify_giveup(self, details):
+        self._log_backoff(details, 'Giving up.')
+
+    @staticmethod
+    def _log_backoff(details, action_message):
+        details = dict(details)
+        details['__suffix'] = action_message
+        logger.warning(
+            'Request failed after {tries} attempts ({elapsed:.1f}s). '
+            '{__suffix}'.format(**details)
+        )
+
     @staticmethod
     def _should_raise_for_status(response):
         return "Retry-After" not in response.headers
@@ -134,15 +141,15 @@ class CommCareHqClient:
             predicate=lambda r: r.status_code == 429,
             value=lambda r: ceil(float(r.headers.get("Retry-After", 1.0))),
             jitter=None,
-            on_backoff=on_wait,
+            on_backoff=self._notify_wait,
         )
         @backoff.on_exception(
             backoff.expo,
             requests.exceptions.RequestException,
             max_time=300,
             giveup=is_client_error,
-            on_backoff=on_backoff,
-            on_giveup=on_giveup
+            on_backoff=self._notify_backoff,
+            on_giveup=self._notify_giveup,
         )
         def _get(resource, params=None):
             logger.debug("Fetching '%s' batch: %s", resource, params)
