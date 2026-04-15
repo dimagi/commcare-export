@@ -19,8 +19,13 @@ from commcare_export.checkpoint import (
 )
 from commcare_export.cli import (
     CLI_ARGS,
+    _progress_mode_from_args,
     main_with_args,
     validate_output_filename,
+)
+from commcare_export.progress import (
+    NullProgressReporter,
+    build_reporter,
 )
 from commcare_export.commcare_hq_client import (
     CommCareHqClient,
@@ -1242,7 +1247,7 @@ def _assert_file_extension(output_format, expected_extension):
 
     errors = validate_output_filename(
         output_format=output_format,
-        output_filename=f'incorrect_file_extension.abc',
+        output_filename='incorrect_file_extension.abc',
     )
     assert errors == [error_message]
 
@@ -1284,18 +1289,6 @@ def test_for_other_non_sql_output():
         output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase',
     )
     assert errors == [error_message]
-
-
-import sys
-
-import pytest
-
-from commcare_export.cli import CLI_ARGS, _progress_mode_from_args
-from commcare_export.progress import (
-    NullProgressReporter,
-    ProgressReporter,
-    build_reporter,
-)
 
 
 class _Args:
