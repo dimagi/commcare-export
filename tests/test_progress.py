@@ -112,3 +112,123 @@ def test_format_bar_unicode():
 def test_format_bar_clamps_fraction():
     assert format_bar(fraction=-0.1, width=5, unicode=False) == '[-----]'
     assert format_bar(fraction=1.5, width=5, unicode=False) == '[#####]'
+
+
+from commcare_export.progress import ProgressReporter, ProgressSnapshot
+
+
+def _make_reporter():
+    return ProgressReporter(clock=_FakeClock(100.0))
+
+
+class _FakeClock:
+    def __init__(self, start=0.0):
+        self.now = start
+
+    def __call__(self):
+        return self.now
+
+    def advance(self, seconds):
+        self.now += seconds
+
+
+def test_reporter_initial_snapshot_is_idle():
+    reporter = _make_reporter()
+    snap = reporter.snapshot()
+    assert snap.resource is None
+    assert snap.records == 0
+    assert snap.total is None
+    assert snap.rate == 0.0
+
+
+def test_resource_started_sets_resource_and_resets_counters():
+    clock = _FakeClock(100.0)
+    reporter = ProgressReporter(clock=clock)
+    reporter.resource_started('form')
+    snap = reporter.snapshot()
+    assert snap.resource == 'form'
+    assert snap.records == 0
+    assert snap.total is None
+    assert snap.elapsed == 0.0
+
+
+def test_batch_received_sets_total_when_known():
+    reporter = _make_reporter()
+    reporter.resource_started('form')
+    reporter.batch_received(fetched=100, total=1000)
+    assert reporter.snapshot().total == 1000
+
+
+def test_batch_received_does_not_overwrite_existing_total():
+    reporter = _make_reporter()
+    reporter.resource_started('form')
+    reporter.batch_received(fetched=100, total=1000)
+    reporter.batch_received(fetched=100, total=900)
+    assert reporter.snapshot().total == 1000
+
+
+def test_batch_received_with_none_total_stays_none():
+    reporter = _make_reporter()
+    reporter.resource_started('form')
+    reporter.batch_received(fetched=100, total=None)
+    assert reporter.snapshot().total is None
+
+
+def test_record_yielded_increments_records_and_rate():
+    clock = _FakeClock(100.0)
+    reporter = ProgressReporter(clock=clock)
+    reporter.resource_started('form')
+    for _ in range(60):
+        reporter.record_yielded()
+    clock.advance(10.0)
+    for _ in range(60):
+        reporter.record_yielded()
+    snap = reporter.snapshot()
+    assert snap.records == 120
+    assert snap.rate == 6.0
+
+
+def test_throttled_sets_deadline():
+    clock = _FakeClock(100.0)
+    reporter = ProgressReporter(clock=clock)
+    reporter.resource_started('form')
+    reporter.throttled(wait_seconds=30.0, reason='throttled')
+    snap = reporter.snapshot()
+    assert snap.throttled_reason == 'throttled'
+    assert snap.throttled_remaining == 30.0
+    clock.advance(10.0)
+    assert reporter.snapshot().throttled_remaining == 20.0
+
+
+def test_throttled_state_clears_on_next_record():
+    reporter = _make_reporter()
+    reporter.resource_started('form')
+    reporter.throttled(wait_seconds=30.0, reason='throttled')
+    reporter.record_yielded()
+    snap = reporter.snapshot()
+    assert snap.throttled_reason is None
+    assert snap.throttled_remaining is None
+
+
+def test_resource_finished_records_summary_and_clears_resource():
+    clock = _FakeClock(100.0)
+    reporter = ProgressReporter(clock=clock)
+    reporter.resource_started('form')
+    for _ in range(1000):
+        reporter.record_yielded()
+    clock.advance(10.0)
+    reporter.resource_finished()
+    snap = reporter.snapshot()
+    assert snap.resource is None
+    assert snap.last_summary is not None
+    assert snap.last_summary.resource == 'form'
+    assert snap.last_summary.records == 1000
+    assert snap.last_summary.elapsed == 10.0
+
+
+def test_snapshot_elapsed_tracks_clock():
+    clock = _FakeClock(100.0)
+    reporter = ProgressReporter(clock=clock)
+    reporter.resource_started('form')
+    clock.advance(45.0)
+    assert reporter.snapshot().elapsed == 45.0
