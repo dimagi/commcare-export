@@ -285,3 +285,45 @@ def render_summary_line(summary):
         f'done in {elapsed} ({format_rate(avg_rate).replace(" rec/s", "")}'
         f' rec/s avg)'
     )
+
+
+def _format_timestamp(elapsed):
+    total = int(elapsed)
+    h = total // 3600
+    m = (total % 3600) // 60
+    s = total % 60
+    return f'[{h:02d}:{m:02d}:{s:02d}]'
+
+
+def render_log_line(snapshot):
+    if snapshot.resource is None:
+        return ''
+    timestamp = _format_timestamp(snapshot.elapsed)
+    resource = _label(snapshot.resource).lower()
+    records = format_count(snapshot.records)
+    total = snapshot.total
+
+    if snapshot.throttled_reason is not None:
+        state = (
+            f'{snapshot.throttled_reason}, retrying in '
+            f'{int(snapshot.throttled_remaining or 0)}s'
+        )
+    elif total is None:
+        state = (
+            f'{format_rate(snapshot.rate)}  '
+            f'elapsed {format_duration(snapshot.elapsed)}'
+        )
+    else:
+        remaining = max(0, total - snapshot.records)
+        state = (
+            f'{format_rate(snapshot.rate)}  '
+            f'ETA {format_eta(snapshot.rate, remaining)}'
+        )
+
+    if total is None:
+        counts = f'{records} records'
+    else:
+        percent = int((snapshot.records / total) * 100) if total else 0
+        counts = f'{records}/{format_count(total)} ({percent}%)'
+
+    return f'{timestamp} {resource}: {counts}  {state}'

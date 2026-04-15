@@ -9,6 +9,7 @@ from commcare_export.progress import (
     format_duration,
     format_eta,
     format_rate,
+    render_log_line,
     render_summary_line,
     render_tty_line,
 )
@@ -313,3 +314,36 @@ def test_render_summary_line():
     assert '(100%)' in line
     assert 'done in 1m' in line
     assert '15 rec/s avg' in line
+
+
+def test_render_log_line_with_total():
+    snap = _snap(records=48231, total=120000, rate=63.0, elapsed=754.0)
+    line = render_log_line(snap)
+    assert line.startswith('[00:12:34]')
+    assert 'forms: 48,231/120,000 (40%)' in line
+    assert '63 rec/s' in line
+    assert 'ETA' in line
+
+
+def test_render_log_line_without_total():
+    snap = _snap(records=100, total=None, rate=10.0, elapsed=75.0)
+    line = render_log_line(snap)
+    assert 'forms: 100 records' in line
+    assert 'elapsed 1m' in line
+
+
+def test_render_log_line_throttled():
+    snap = _snap(
+        records=10,
+        total=100,
+        elapsed=30.0,
+        throttled_reason='throttled',
+        throttled_remaining=12.0,
+    )
+    line = render_log_line(snap)
+    assert 'throttled, retrying in 12s' in line
+
+
+def test_render_log_line_idle_returns_empty():
+    snap = _snap(resource=None)
+    assert render_log_line(snap) == ''
