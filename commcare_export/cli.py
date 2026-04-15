@@ -24,6 +24,10 @@ from commcare_export.exceptions import (
 from commcare_export.location_info_provider import LocationInfoProvider
 from commcare_export.minilinq import List, MiniLinq
 from commcare_export.misc import default_to_json
+from commcare_export.progress import (
+    ProgressAwareStreamHandler,
+    build_reporter,
+)
 from commcare_export.repeatable_iterator import RepeatableIterator
 from commcare_export.utils import get_checkpoint_manager
 from commcare_export.version import __version__
@@ -180,6 +184,18 @@ CLI_ARGS = [
              "Defaults to the current working directory. Log entries are appended "
              "to preserve history across runs."
     ),
+    Argument(
+        'progress',
+        default=None,
+        action='store_true',
+        help='Force-enable the live progress indicator on stderr.',
+    ),
+    Argument(
+        'no-progress',
+        default=False,
+        action='store_true',
+        help='Suppress the live progress indicator.',
+    ),
 ]
 
 
@@ -208,8 +224,21 @@ def set_up_file_logging(log_dir=None):
         return False, log_file, f"{type(err).__name__}: {err}", None
 
 
-def set_up_logging(args):
-    stream_handler = logging.StreamHandler()
+def _progress_mode_from_args(args):
+    if args.no_progress:
+        return 'off'
+    if args.progress:
+        return 'on'
+    return 'auto'
+
+
+def set_up_logging(args, reporter=None):
+    if reporter is not None:
+        stream_handler = ProgressAwareStreamHandler(
+            stream=sys.stderr, reporter=reporter
+        )
+    else:
+        stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(logging.Formatter('%(message)s'))
     handlers = [stream_handler]
     if not args.no_logfile:
@@ -249,9 +278,13 @@ def main(argv):
         errors = []
         errors.extend(validate_output_filename(args.output_format, args.output))
         if errors:
-            raise Exception(f"Could not proceed. Following issues were found: {', '.join(errors)}.")
+            raise Exception(
+                f'Could not proceed. Following issues were found: '
+                f'{", ".join(errors)}.'
+            )
 
-    set_up_logging(args)
+    reporter = build_reporter(mode=_progress_mode_from_args(args))
+    set_up_logging(args, reporter=reporter)
 
     logging.getLogger('alembic').setLevel(logging.WARN)
     logging.getLogger('backoff').setLevel(logging.FATAL)
@@ -262,21 +295,23 @@ def main(argv):
         sys.exit(0)
 
     if not args.project:
-        error_msg = "commcare-export: error: argument --project is required"
+        error_msg = 'commcare-export: error: argument --project is required'
         logger.error(error_msg)
         sys.exit(1)
 
-    print("Running export...")
+    print('Running export...')
+    reporter.start()
     try:
-        exit_code = main_with_args(args)
+        exit_code = main_with_args(args, reporter=reporter)
         if exit_code > 0:
-            print("Error occurred! See log file for error.")
+            print('Error occurred! See log file for error.')
         sys.exit(exit_code)
     except Exception:
-        print("Error occurred! See log file for error.")
+        print('Error occurred! See log file for error.')
         raise
     finally:
-        print("Export finished!")
+        reporter.stop()
+        print('Export finished!')
 
 
 def validate_output_filename(output_format, output_filename):
@@ -396,14 +431,15 @@ def get_date_params(args):
     return since, until
 
 
-def _get_api_client(args, commcarehq_base_url):
+def _get_api_client(args, commcarehq_base_url, reporter):
     return CommCareHqClient(
         url=commcarehq_base_url,
         project=args.project,
         username=args.username,
         password=args.password,
         auth_mode=args.auth_mode,
-        version=args.api_version
+        version=args.api_version,
+        progress_reporter=reporter,
     )
 
 
@@ -466,8 +502,11 @@ def evaluate_query(env, query):
             return EXIT_STATUS_ERROR
 
 
-def main_with_args(args):
-    logger.info(f"CommCare Export Version {__version__}")
+def main_with_args(args, reporter=None):
+    if reporter is None:
+        from commcare_export.progress import NullProgressReporter
+        reporter = NullProgressReporter()
+    logger.info(f'CommCare Export Version {__version__}')
     writer = _get_writer(args.output_format, args.output, args.strict_types)
 
     if args.query is None and args.users is False and args.locations is False:
@@ -493,7 +532,7 @@ def main_with_args(args):
     commcarehq_base_url = commcare_hq_aliases.get(
         args.commcare_hq, args.commcare_hq
     )
-    api_client = _get_api_client(args, commcarehq_base_url)
+    api_client = _get_api_client(args, commcarehq_base_url, reporter)
     lp = LocationInfoProvider(api_client, page_size=args.batch_size)
     try:
         query = get_queries(args, writer, lp, column_enforcer)

@@ -799,6 +799,7 @@ class MockCheckpointingClient(CommCareHqClient):
     """
 
     def __init__(self, mock_data):
+        from commcare_export.progress import NullProgressReporter
         self.mock_data = {
             resource: {
                 _params_to_url(params): result
@@ -810,6 +811,7 @@ class MockCheckpointingClient(CommCareHqClient):
             resource: sum(len(results) for _, results in resource_results)
             for resource, resource_results in mock_data.items()
         }
+        self.progress_reporter = NullProgressReporter()
 
     def get(self, resource, params=None):
         mock_requests = self.mock_data[resource]
@@ -1282,3 +1284,39 @@ def test_for_other_non_sql_output():
         output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase',
     )
     assert errors == [error_message]
+
+
+import sys
+
+import pytest
+
+from commcare_export.cli import CLI_ARGS, _progress_mode_from_args
+from commcare_export.progress import (
+    NullProgressReporter,
+    ProgressReporter,
+    build_reporter,
+)
+
+
+class _Args:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+
+def test_progress_mode_defaults_to_auto():
+    args = _Args(progress=None, no_progress=False)
+    assert _progress_mode_from_args(args) == 'auto'
+
+
+def test_progress_mode_on_when_progress_flag_set():
+    args = _Args(progress=True, no_progress=False)
+    assert _progress_mode_from_args(args) == 'on'
+
+
+def test_progress_mode_off_when_no_progress_flag_set():
+    args = _Args(progress=False, no_progress=True)
+    assert _progress_mode_from_args(args) == 'off'
+
+
+def test_build_reporter_off_returns_null_reporter():
+    assert isinstance(build_reporter(mode='off'), NullProgressReporter)
