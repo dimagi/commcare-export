@@ -4,6 +4,7 @@ Live stderr progress indicator for commcare-export.
 See ``claude/specs/2026-04-15-progress-indicator-design.md``.
 """
 
+import logging
 import sys
 import threading
 import time
@@ -383,6 +384,23 @@ class RenderDriver:
         if self._is_tty:
             self._stream.write(_CLEAR_LINE)
             self._stream.flush()
+
+
+class ProgressAwareStreamHandler(logging.StreamHandler):
+    """
+    A StreamHandler that clears any in-flight progress line on its
+    reporter's stream before emitting a log record, so log output and
+    the progress bar do not overwrite each other.
+    """
+
+    def __init__(self, stream, reporter):
+        super().__init__(stream)
+        self._reporter = reporter
+
+    def emit(self, record):
+        if isinstance(self._reporter, ProgressReporter):
+            self.stream.write(_CLEAR_LINE)
+        super().emit(record)
 
 
 def render_log_line(snapshot):

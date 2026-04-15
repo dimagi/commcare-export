@@ -463,3 +463,36 @@ def test_reporter_start_stop_drives_renders():
     finally:
         reporter.stop()
     assert 'Forms:' in stream.getvalue()
+
+
+import logging
+
+from commcare_export.progress import ProgressAwareStreamHandler
+
+
+def test_progress_aware_handler_clears_line_before_emitting():
+    stream = io.StringIO()
+    reporter = _make_reporter()
+    reporter.resource_started('form')
+    handler = ProgressAwareStreamHandler(stream=stream, reporter=reporter)
+    handler.setFormatter(logging.Formatter('%(message)s'))
+    record = logging.LogRecord(
+        'x', logging.INFO, '', 0, 'hello', None, None
+    )
+    handler.emit(record)
+    output = stream.getvalue()
+    assert output.startswith('\r\x1b[K')
+    assert 'hello' in output
+    assert output.endswith('hello\n')
+
+
+def test_progress_aware_handler_skips_clear_when_no_driver():
+    stream = io.StringIO()
+    reporter = NullProgressReporter()
+    handler = ProgressAwareStreamHandler(stream=stream, reporter=reporter)
+    handler.setFormatter(logging.Formatter('%(message)s'))
+    record = logging.LogRecord(
+        'x', logging.INFO, '', 0, 'world', None, None
+    )
+    handler.emit(record)
+    assert stream.getvalue() == 'world\n'
