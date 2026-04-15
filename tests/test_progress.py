@@ -1,11 +1,16 @@
 from commcare_export.progress import (
     NullProgressReporter,
+    ProgressReporter,
+    ProgressSnapshot,
+    ResourceSummary,
     SlidingRate,
     format_bar,
     format_count,
     format_duration,
     format_eta,
     format_rate,
+    render_summary_line,
+    render_tty_line,
 )
 
 
@@ -112,9 +117,6 @@ def test_format_bar_unicode():
 def test_format_bar_clamps_fraction():
     assert format_bar(fraction=-0.1, width=5, unicode=False) == '[-----]'
     assert format_bar(fraction=1.5, width=5, unicode=False) == '[#####]'
-
-
-from commcare_export.progress import ProgressReporter, ProgressSnapshot
 
 
 def _make_reporter():
@@ -232,3 +234,82 @@ def test_snapshot_elapsed_tracks_clock():
     reporter.resource_started('form')
     clock.advance(45.0)
     assert reporter.snapshot().elapsed == 45.0
+
+
+def _snap(**kwargs):
+    base = dict(
+        resource='form',
+        records=0,
+        total=None,
+        elapsed=0.0,
+        rate=0.0,
+        throttled_reason=None,
+        throttled_remaining=None,
+        last_summary=None,
+    )
+    base.update(kwargs)
+    return ProgressSnapshot(**base)
+
+
+def test_render_tty_with_total_shows_bar_percent_rate_eta():
+    snap = _snap(records=48231, total=120000, rate=63.0)
+    line = render_tty_line(snap, bar_width=20, unicode=False)
+    assert line.startswith('Forms: ')
+    assert '48,231 / 120,000' in line
+    assert '(40%)' in line
+    assert '63 rec/s' in line
+    assert 'ETA' in line
+
+
+def test_render_tty_without_total_shows_fallback():
+    snap = _snap(records=48231, total=None, elapsed=720.0, rate=63.0)
+    line = render_tty_line(snap, bar_width=20, unicode=False)
+    assert 'Forms: 48,231 records' in line
+    assert '63 rec/s' in line
+    assert 'elapsed 12m' in line
+
+
+def test_render_tty_throttled_state():
+    snap = _snap(
+        records=48231,
+        total=120000,
+        rate=63.0,
+        throttled_reason='throttled',
+        throttled_remaining=17.4,
+    )
+    line = render_tty_line(snap, bar_width=20, unicode=False)
+    assert 'throttled, retrying in 17s' in line
+    assert 'ETA' not in line
+
+
+def test_render_tty_retrying_label():
+    snap = _snap(
+        records=10,
+        total=100,
+        throttled_reason='retrying',
+        throttled_remaining=5.0,
+    )
+    line = render_tty_line(snap, bar_width=20, unicode=False)
+    assert 'retrying, retrying in 5s' not in line
+    assert 'retrying in 5s' in line
+
+
+def test_render_tty_title_cases_resource_name():
+    snap = _snap(resource='case', records=1, total=10)
+    line = render_tty_line(snap, bar_width=10, unicode=False)
+    assert line.startswith('Cases: ')
+
+
+def test_render_tty_idle_returns_empty():
+    snap = _snap(resource=None)
+    assert render_tty_line(snap, bar_width=20, unicode=False) == ''
+
+
+def test_render_summary_line():
+    summary = ResourceSummary(resource='form', records=900, elapsed=60.0)
+    line = render_summary_line(summary)
+    assert 'Forms:' in line
+    assert '900' in line
+    assert '(100%)' in line
+    assert 'done in 1m' in line
+    assert '15 rec/s avg' in line

@@ -217,3 +217,71 @@ def format_bar(fraction, width, unicode):
     empty_char = '░' if unicode else '-'
     filled = int(round(fraction * width))
     return f'[{filled_char * filled}{empty_char * (width - filled)}]'
+
+
+_RESOURCE_LABELS = {
+    'form': 'Forms',
+    'case': 'Cases',
+    'user': 'Users',
+    'web-user': 'Web Users',
+    'location': 'Locations',
+    'application': 'Applications',
+    'messaging-event': 'Messaging events',
+    'ucr': 'UCR',
+}
+
+
+def _label(resource):
+    return _RESOURCE_LABELS.get(resource, resource.title())
+
+
+def render_tty_line(snapshot, bar_width, unicode):
+    if snapshot.resource is None:
+        return ''
+    label = _label(snapshot.resource)
+    records = format_count(snapshot.records)
+    total = snapshot.total
+
+    if snapshot.throttled_reason is not None:
+        if snapshot.throttled_reason == 'retrying':
+            state = f'retrying in {int(snapshot.throttled_remaining or 0)}s'
+        else:
+            state = (
+                f'{snapshot.throttled_reason}, retrying in '
+                f'{int(snapshot.throttled_remaining or 0)}s'
+            )
+    elif total is None:
+        rate = format_rate(snapshot.rate)
+        elapsed = format_duration(snapshot.elapsed)
+        return f'{label}: {records} records · {rate} · elapsed {elapsed}'
+    else:
+        rate = format_rate(snapshot.rate)
+        remaining = max(0, total - snapshot.records)
+        eta = format_eta(snapshot.rate, remaining)
+        state = f'{rate} · ETA {eta}'
+
+    if total is None:
+        bar = ''
+        counts = records
+        percent = ''
+    else:
+        fraction = snapshot.records / total if total else 0.0
+        bar = format_bar(fraction, bar_width, unicode) + ' '
+        counts = f'{records} / {format_count(total)}'
+        percent = f' ({int(fraction * 100)}%)'
+
+    return f'{label}: {bar}{counts}{percent} · {state}'
+
+
+def render_summary_line(summary):
+    label = _label(summary.resource)
+    records = format_count(summary.records)
+    elapsed = format_duration(summary.elapsed)
+    avg_rate = (
+        summary.records / summary.elapsed if summary.elapsed > 0 else 0.0
+    )
+    return (
+        f'{label}: {records} / {records} (100%) · '
+        f'done in {elapsed} ({format_rate(avg_rate).replace(" rec/s", "")}'
+        f' rec/s avg)'
+    )
