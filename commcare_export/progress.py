@@ -295,6 +295,88 @@ def _format_timestamp(elapsed):
     return f'[{h:02d}:{m:02d}:{s:02d}]'
 
 
+_CLEAR_LINE = '\r\x1b[K'
+
+
+class RenderDriver:
+    """
+    Periodically snapshots a reporter and writes to a stream.
+
+    On a TTY: in-place redraw using CR + clear-to-EOL, ~10 Hz.
+    Off TTY: newline-terminated line every ``interval`` seconds.
+
+    Runs in a daemon thread. ``start`` / ``stop`` are idempotent.
+    """
+
+    def __init__(
+        self,
+        reporter,
+        stream,
+        is_tty,
+        interval,
+        bar_width=20,
+        unicode=True,
+    ):
+        self._reporter = reporter
+        self._stream = stream
+        self._is_tty = is_tty
+        self._interval = interval
+        self._bar_width = bar_width
+        self._unicode = unicode
+        self._stop_event = threading.Event()
+        self._thread = None
+        self._last_summary = None
+
+    def start(self):
+        if self._thread is not None:
+            return
+        self._thread = threading.Thread(
+            target=self._run, name='progress-render', daemon=True
+        )
+        self._thread.start()
+
+    def stop(self):
+        self._stop_event.set()
+        if self._thread is not None:
+            self._thread.join(timeout=2.0)
+        self._final_clear()
+
+    def _run(self):
+        while not self._stop_event.wait(self._interval):
+            self.render_once()
+
+    def render_once(self):
+        snap = self._reporter.snapshot()
+        self._emit_new_summary(snap)
+        if self._is_tty:
+            line = render_tty_line(
+                snap, bar_width=self._bar_width, unicode=self._unicode
+            )
+            if line:
+                self._stream.write(_CLEAR_LINE + line)
+                self._stream.flush()
+        else:
+            line = render_log_line(snap)
+            if line:
+                self._stream.write(line + '\n')
+                self._stream.flush()
+
+    def _emit_new_summary(self, snapshot):
+        summary = snapshot.last_summary
+        if summary is None or summary is self._last_summary:
+            return
+        self._last_summary = summary
+        if self._is_tty:
+            self._stream.write(_CLEAR_LINE)
+        self._stream.write(render_summary_line(summary) + '\n')
+        self._stream.flush()
+
+    def _final_clear(self):
+        if self._is_tty:
+            self._stream.write(_CLEAR_LINE)
+            self._stream.flush()
+
+
 def render_log_line(snapshot):
     if snapshot.resource is None:
         return ''

@@ -1,7 +1,11 @@
+import io
+import threading
+
 from commcare_export.progress import (
     NullProgressReporter,
     ProgressReporter,
     ProgressSnapshot,
+    RenderDriver,
     ResourceSummary,
     SlidingRate,
     format_bar,
@@ -347,3 +351,66 @@ def test_render_log_line_throttled():
 def test_render_log_line_idle_returns_empty():
     snap = _snap(resource=None)
     assert render_log_line(snap) == ''
+
+
+def test_render_driver_writes_redraw_sequence_on_tty():
+    reporter = _make_reporter()
+    reporter.resource_started('form')
+    reporter.batch_received(fetched=100, total=1000)
+    for _ in range(100):
+        reporter.record_yielded()
+
+    stream = io.StringIO()
+    driver = RenderDriver(
+        reporter, stream=stream, is_tty=True, interval=0.01, bar_width=10
+    )
+    driver.render_once()
+    output = stream.getvalue()
+    assert output.startswith('\r\x1b[K')
+    assert 'Forms:' in output
+    assert '\n' not in output
+
+
+def test_render_driver_writes_newline_terminated_line_off_tty():
+    reporter = _make_reporter()
+    reporter.resource_started('form')
+    reporter.batch_received(fetched=100, total=1000)
+
+    stream = io.StringIO()
+    driver = RenderDriver(
+        reporter, stream=stream, is_tty=False, interval=10.0
+    )
+    driver.render_once()
+    output = stream.getvalue()
+    assert output.endswith('\n')
+    assert '\x1b[K' not in output
+    assert 'forms:' in output
+
+
+def test_render_driver_prints_summary_line_after_resource_finished():
+    reporter = _make_reporter()
+    reporter.resource_started('form')
+    for _ in range(10):
+        reporter.record_yielded()
+    reporter.resource_finished()
+
+    stream = io.StringIO()
+    driver = RenderDriver(reporter, stream=stream, is_tty=True, interval=0.01)
+    driver.render_once()
+    output = stream.getvalue()
+    assert '(100%)' in output
+    assert 'done in' in output
+    assert output.endswith('\n')
+
+
+def test_render_driver_thread_starts_and_stops_cleanly():
+    reporter = _make_reporter()
+    stream = io.StringIO()
+    driver = RenderDriver(
+        reporter, stream=stream, is_tty=True, interval=0.01
+    )
+    driver.start()
+    assert driver._thread.is_alive()
+    driver.stop()
+    driver._thread.join(timeout=1.0)
+    assert not driver._thread.is_alive()
