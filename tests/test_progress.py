@@ -395,10 +395,12 @@ def test_render_driver_writes_newline_terminated_line_off_tty():
 
 
 def test_render_driver_prints_summary_line_after_resource_finished():
-    reporter = _make_reporter()
+    clock = _FakeClock(100.0)
+    reporter = ProgressReporter(clock=clock)
     reporter.resource_started('form')
     for _ in range(10):
         reporter.record_yielded()
+    clock.advance(1.0)
     reporter.resource_finished()
 
     stream = io.StringIO()
@@ -408,6 +410,22 @@ def test_render_driver_prints_summary_line_after_resource_finished():
     assert '(100%)' in output
     assert 'done in' in output
     assert output.endswith('\n')
+
+
+def test_render_driver_skips_transient_summary_under_half_second():
+    clock = _FakeClock(100.0)
+    reporter = ProgressReporter(clock=clock)
+    reporter.resource_started('form')
+    reporter.record_yielded()
+    clock.advance(0.1)
+    reporter.resource_finished()
+
+    stream = io.StringIO()
+    driver = RenderDriver(
+        reporter, stream=stream, is_tty=True, interval=0.01
+    )
+    driver.render_once()
+    assert 'done in' not in stream.getvalue()
 
 
 def test_render_driver_thread_starts_and_stops_cleanly():
@@ -523,6 +541,7 @@ class _ScriptedSession:
         import requests
         import simplejson
 
+        time.sleep(0.3)
         self._calls += 1
         if self._calls == 1:
             body = {

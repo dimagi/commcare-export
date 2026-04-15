@@ -375,7 +375,12 @@ class RenderDriver:
         summary = snapshot.last_summary
         if summary is None or summary is self._last_summary:
             return
-        self._last_summary = summary
+        # Skip transient summaries from the RepeatableIterator.__bool__
+        # probe, which fires a started/finished cycle with a single
+        # record before the real iteration.
+        if summary.elapsed < 0.5:
+            self._last_summary = summary
+            return
         if self._is_tty:
             self._stream.write(_CLEAR_LINE)
         self._stream.write(render_summary_line(summary) + '\n')
