@@ -529,10 +529,12 @@ def _pull_data(writer, checkpoint_manager, query, since, until, batch_size=10):
 
 
 def _check_data(writer, expected, table_name, columns):
-    actual = [
-        list(row) for row in writer.engine
-        .execute(text(f'SELECT {", ".join(columns)} FROM "{table_name}"'))
-    ]
+    with writer.engine.connect() as conn:
+        actual = [
+            list(row) for row in conn.execute(
+                text(f'SELECT {", ".join(columns)} FROM "{table_name}"')
+            )
+        ]
 
     message = ''
     if actual != expected:
@@ -612,15 +614,16 @@ class TestCLIIntegrationTests:
         _check_table_data(writer, expected_form_data, 'forms')
         _check_checkpoints(caplog, ['forms', 'batch', 'final'])
 
-        runs = list(
-            writer.engine.execute(
-                text(
-                    'SELECT * FROM commcare_export_runs '
-                    'WHERE query_file_name = :filename'
-                ),
-                {'filename': 'tests/009_integration.xlsx'},
+        with writer.engine.connect() as conn:
+            runs = list(
+                conn.execute(
+                    text(
+                        'SELECT * FROM commcare_export_runs '
+                        'WHERE query_file_name = :filename'
+                    ),
+                    {'filename': 'tests/009_integration.xlsx'},
+                )
             )
-        )
         assert len(runs) == 2, runs
 
     def test_write_to_sql_with_checkpoints_multiple_tables(
@@ -648,16 +651,17 @@ class TestCLIIntegrationTests:
         _check_table_data(writer, expected_form_1_data, 'forms_1')
         _check_table_data(writer, expected_form_2_data, 'forms_2')
 
-        runs = list(
-            writer.engine.execute(
-                text(
-                    'SELECT table_name, since_param '
-                    'FROM commcare_export_runs '
-                    'WHERE query_file_name = :filename'
-                ),
-                {'filename': 'tests/009b_integration_multiple.xlsx'},
+        with writer.engine.connect() as conn:
+            runs = list(
+                conn.execute(
+                    text(
+                        'SELECT table_name, since_param '
+                        'FROM commcare_export_runs '
+                        'WHERE query_file_name = :filename'
+                    ),
+                    {'filename': 'tests/009b_integration_multiple.xlsx'},
+                )
             )
-        )
         assert {r[0]: r[1] for r in runs} == {
             'forms_1': '2017-09-02T20:05:35.459547',
             'forms_2': '2020-06-01T17:43:26.107701',
@@ -848,16 +852,17 @@ class TestCLIWithDatabaseErrors:
 
         # expect checkpoint to have the date from the first batch and
         # not the 2nd
-        runs = list(
-            strict_writer.engine.execute(
-                text(
-                    'SELECT table_name, since_param, last_doc_id '
-                    'FROM commcare_export_runs '
-                    'WHERE query_file_name = :file'
-                ),
-                {'file': 'tests/013_ConflictingTypes.xlsx'},
+        with strict_writer.engine.connect() as conn:
+            runs = list(
+                conn.execute(
+                    text(
+                        'SELECT table_name, since_param, last_doc_id '
+                        'FROM commcare_export_runs '
+                        'WHERE query_file_name = :file'
+                    ),
+                    {'file': 'tests/013_ConflictingTypes.xlsx'},
+                )
             )
-        )
         assert runs == [
             ('Case', '2012-04-24T05:13:01', 'doc 2'),
         ]
@@ -893,7 +898,7 @@ class TestCLIWithDataTypes:
             'tests/014_ExportWithDataTypes.xlsx'
         )
 
-        metadata = sqlalchemy.schema.MetaData(bind=writer.engine)
+        metadata = sqlalchemy.schema.MetaData()
         table = sqlalchemy.Table(
             'forms',
             metadata,
@@ -908,9 +913,10 @@ class TestCLIWithDataTypes:
         # doesn't support type comparison, and even if we convert to
         # strings, the values are backend specific.
 
-        values = [
-            list(row) for row in writer.engine.execute(text('SELECT * FROM forms'))
-        ]
+        with writer.engine.connect() as conn:
+            values = [
+                list(row) for row in conn.execute(text('SELECT * FROM forms'))
+            ]
 
         assert values == [['1', None, None, None, None, None],
                           ['2', None, None, None, None, None]]

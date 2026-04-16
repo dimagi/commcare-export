@@ -15,6 +15,8 @@ class SqlWriterWithTearDown(SqlTableWriter):
             self.tables.add(table_spec.name)
 
     def tear_down(self):
-        for table in self.tables:
-            self.engine.execute(text(f'DROP TABLE "{table}"'))
+        with self.engine.connect() as conn:
+            for table in self.tables:
+                conn.execute(text(f'DROP TABLE "{table}"'))
+            conn.commit()
         self.tables = set()
