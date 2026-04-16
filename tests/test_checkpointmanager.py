@@ -1,9 +1,9 @@
 import datetime
 import uuid
 
+import pytest
 import sqlalchemy
 
-import pytest
 from commcare_export.checkpoint import (
     Checkpoint,
     CheckpointManager,
@@ -21,15 +21,16 @@ def manager(db_params):
         '123',
         'test',
         'hq',
-        poolclass=sqlalchemy.pool.NullPool
+        poolclass=sqlalchemy.pool.NullPool,
     )
     try:
         yield manager
     finally:
         with manager:
             manager.connection.execute(
-                sqlalchemy.sql
-                .text('DROP TABLE IF EXISTS commcare_export_runs')
+                sqlalchemy.sql.text(
+                    'DROP TABLE IF EXISTS commcare_export_runs'
+                )
             )
             manager.connection.execute(
                 sqlalchemy.sql.text('DROP TABLE IF EXISTS alembic_version')
@@ -58,7 +59,6 @@ def _assert_checkpoint_details(
 
 @pytest.mark.dbtest
 class TestCheckpointManager:
-
     def test_create_checkpoint_table(self, manager, revision='head'):
         manager.create_checkpoint_table(revision)
         with manager:
@@ -99,7 +99,7 @@ class TestCheckpointManager:
                     commcare=None,
                     since_param=since_param,
                     time_of_run=datetime.datetime.utcnow().isoformat(),
-                    final=True
+                    final=True,
                 )
             )
         manager = configured_manager.for_dataset('form', ['t1', 't2'])
@@ -123,7 +123,7 @@ class TestCheckpointManager:
                     commcare=None,
                     since_param=since_param,
                     time_of_run=datetime.datetime.utcnow().isoformat(),
-                    final=True
+                    final=True,
                 )
             )
 
@@ -136,7 +136,7 @@ class TestCheckpointManager:
                     commcare=configured_manager.commcare,
                     since_param=since_param,
                     time_of_run=datetime.datetime.utcnow().isoformat(),
-                    final=True
+                    final=True,
                 )
             )
         manager = configured_manager.for_dataset('form', ['t1', 't2'])
@@ -150,14 +150,10 @@ class TestCheckpointManager:
     def test_clean_on_final_run(self, configured_manager):
         manager = configured_manager.for_dataset('form', ['t1'])
         manager.set_checkpoint(
-            datetime.datetime.utcnow(),
-            PaginationMode.date_indexed,
-            doc_id="1"
+            datetime.datetime.utcnow(), PaginationMode.date_indexed, doc_id='1'
         )
         manager.set_checkpoint(
-            datetime.datetime.utcnow(),
-            PaginationMode.date_indexed,
-            doc_id="2"
+            datetime.datetime.utcnow(), PaginationMode.date_indexed, doc_id='2'
         )
 
         def _get_non_final_rows_count():
@@ -169,7 +165,7 @@ class TestCheckpointManager:
             datetime.datetime.utcnow(),
             PaginationMode.date_indexed,
             True,
-            doc_id="3"
+            doc_id='3',
         )
         assert _get_non_final_rows_count() == 0
 
@@ -179,8 +175,9 @@ class TestCheckpointManager:
         last_run_time = datetime.datetime.utcnow()
         manager.set_checkpoint(last_run_time, PaginationMode.date_indexed)
 
-        assert manager.get_time_of_last_checkpoint(
-        ) == last_run_time.isoformat()
+        assert (
+            manager.get_time_of_last_checkpoint() == last_run_time.isoformat()
+        )
         manager.key = None
         assert manager.get_time_of_last_checkpoint() is None
 
@@ -194,21 +191,27 @@ class TestCheckpointManager:
             last_run_time, PaginationMode.date_indexed, doc_id=doc_id
         )
 
-        assert manager.for_dataset('form', [
-            t1
-        ]).get_time_of_last_checkpoint() == last_run_time.isoformat()
-        assert manager.for_dataset('form', [
-            t2
-        ]).get_time_of_last_checkpoint() == last_run_time.isoformat()
-        assert manager.for_dataset('form',
-                                   ['t3']).get_last_checkpoint() is None
+        assert (
+            manager.for_dataset('form', [t1]).get_time_of_last_checkpoint()
+            == last_run_time.isoformat()
+        )
+        assert (
+            manager.for_dataset('form', [t2]).get_time_of_last_checkpoint()
+            == last_run_time.isoformat()
+        )
+        assert (
+            manager.for_dataset('form', ['t3']).get_last_checkpoint() is None
+        )
 
         checkpoints = manager.list_checkpoints()
         assert len(checkpoints) == 2
-        assert {checkpoints[0].table_name,
-                checkpoints[1].table_name} == {t1, t2}
-        assert {checkpoints[0].last_doc_id,
-                checkpoints[1].last_doc_id} == {doc_id}
+        assert {checkpoints[0].table_name, checkpoints[1].table_name} == {
+            t1,
+            t2,
+        }
+        assert {checkpoints[0].last_doc_id, checkpoints[1].last_doc_id} == {
+            doc_id
+        }
 
     def test_get_latest_checkpoints(self, configured_manager):
         manager = configured_manager.for_dataset('form', ['t1', 't2'])
@@ -227,16 +230,18 @@ class TestCheckpointManager:
         assert len(checkpoints) == 2
         assert [c.table_name for c in checkpoints] == ['t1', 't2']
         assert {c.query_file_md5 for c in checkpoints} == {'456'}
-        assert {c.since_param for c in checkpoints
-               } == {latest_time.isoformat()}
+        assert {c.since_param for c in checkpoints} == {
+            latest_time.isoformat()
+        }
 
 
 @pytest.mark.parametrize(
-    'since, start_over, expected_since, expected_paginator', [
+    'since, start_over, expected_since, expected_paginator',
+    [
         (None, True, None, PaginationMode.date_indexed),
         ('since', False, 'since', PaginationMode.date_indexed),
         (None, False, None, PaginationMode.date_indexed),
-    ]
+    ],
 )
 def test_checkpoint_details_static(
     since,
@@ -251,12 +256,13 @@ def test_checkpoint_details_static(
 
 @pytest.mark.dbtest
 class TestCheckpointManagerProvider:
-
     def test_checkpoint_details_no_checkpoint(self, configured_manager):
         manager = configured_manager.for_dataset('form', ['t1'])
         assert None is CheckpointManagerProvider().get_since(manager)
-        assert PaginationMode.date_indexed == CheckpointManagerProvider(
-        ).get_pagination_mode('form', manager)
+        assert (
+            PaginationMode.date_indexed
+            == CheckpointManagerProvider().get_pagination_mode('form', manager)
+        )
 
     def test_checkpoint_details_latest_from_db(self, configured_manager):
         data_source = 'form'

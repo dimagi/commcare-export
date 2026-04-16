@@ -6,10 +6,10 @@ import zipfile
 from itertools import zip_longest
 
 import openpyxl
+import pytest
 import sqlalchemy
 from sqlalchemy import text
 
-import pytest
 from commcare_export.specs import TableSpec
 from commcare_export.writers import (
     SCHEMA_CHECK_ROWS,
@@ -445,7 +445,9 @@ class TestSQLWriters:
                 [
                     (row['id'], row)
                     for row in writer.connection.execute(
-                        text('SELECT id, a, b, c, d, e FROM foo_fancy_type_changes')
+                        text(
+                            'SELECT id, a, b, c, d, e FROM foo_fancy_type_changes'
+                        )
                     ).mappings()
                 ]
             )
