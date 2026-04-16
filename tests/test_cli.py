@@ -12,7 +12,6 @@ import sqlalchemy
 from sqlalchemy import text
 from unmagic import fixture
 
-from tests.utils import SqlWriterWithTearDown
 from commcare_export.checkpoint import (
     Checkpoint,
     CheckpointManager,
@@ -31,6 +30,7 @@ from commcare_export.commcare_hq_client import (
 from commcare_export.commcare_minilinq import PaginationMode
 from commcare_export.specs import TableSpec
 from commcare_export.writers import JValueTableWriter
+from tests.utils import SqlWriterWithTearDown
 
 CLI_ARGS_BY_NAME = {arg.name: arg for arg in CLI_ARGS}
 
@@ -56,9 +56,7 @@ def make_args(project='test', username='test', password='test', **kwargs):
 
 def _run_cli_and_assert(args, expected):
     writer = JValueTableWriter()
-    with mock.patch(
-        'commcare_export.cli._get_writer', return_value=writer
-    ):
+    with mock.patch('commcare_export.cli._get_writer', return_value=writer):
         main_with_args(args)
 
     for table in expected:
@@ -78,202 +76,288 @@ def restore_root_logger():
 
 
 def mock_hq_client(include_parent):
-    return MockCommCareHqClient({
-        'form': [({
-            'limit': DEFAULT_BATCH_SIZE,
-            'order_by': 'indexed_on'
-        }, [
-            {
-                'id': 1,
-                'form': {
-                    'name': 'f1',
-                    'case': {
-                        '@case_id': 'c1'
-                    }
-                },
-                'metadata': {
-                    'userID': 'id1'
-                }
-            },
-            {
-                'id': 2,
-                'form': {
-                    'name': 'f2',
-                    'case': {
-                        '@case_id': 'c2'
-                    }
-                },
-                'metadata': {
-                    'userID': 'id2'
-                }
-            },
-        ]),],
-        'case': [({
-            'limit': DEFAULT_BATCH_SIZE,
-            'order_by': 'indexed_on'
-        }, [
-            {
-                'id': 'case1'
-            },
-            {
-                'id': 'case2'
-            },
-        ])],
-        'user': [({
-            'limit': DEFAULT_BATCH_SIZE
-        }, [{
-            'id': 'id1',
-            'email': 'em1',
-            'first_name': 'fn1',
-            'last_name': 'ln1',
-            'user_data': {
-                'commcare_location_id': 'lid1',
-                'commcare_location_ids': ['lid1', 'lid2'],
-                'commcare_project': 'p1'
-            },
-            'username': 'u1'
-        }, {
-            'id': 'id2',
-            'default_phone_number': 'pn2',
-            'email': 'em2',
-            'first_name': 'fn2',
-            'last_name': 'ln2',
-            'resource_uri': 'ru0',
-            'user_data': {
-                'commcare_location_id': 'lid2',
-                'commcare_project': 'p2'
-            },
-            'username': 'u2'
-        }])],
-        'location_type': [({
-            'limit': DEFAULT_BATCH_SIZE
-        }, [{
-            'administrative': True,
-            'code': 'hq',
-            'domain': 'd1',
-            'id': 1,
-            'name': 'HQ',
-            'parent': None,
-            'resource_uri': 'lt1',
-            'shares_cases': False,
-            'view_descendants': True
-        }, {
-            'administrative': False,
-            'code': 'local',
-            'domain': 'd1',
-            'id': 2,
-            'name': 'Local',
-            'parent': 'lt1',
-            'resource_uri': 'lt2',
-            'shares_cases': True,
-            'view_descendants': True
-        }])],
-        'location': [({
-            'limit': DEFAULT_BATCH_SIZE
-        }, [{
-            'id': 'id1',
-            'created_at': '2020-04-01T21:57:26.403053',
-            'domain': 'd1',
-            'external_id': 'eid1',
-            'last_modified': '2020-04-01T21:58:23.88343',
-            'latitude': '11.2',
-            'location_data': {
-                'p1': 'ld1'
-            },
-            'location_id': 'lid1',
-            'location_type': 'lt1',
-            'longitude': '-20.5',
-            'name': 'n1',
-            'resource_uri': 'ru1',
-            'site_code': 'sc1'
-        }, {
-            'id': 'id2',
-            'created_at': '2020-04-01T21:58:47.627371',
-            'domain': 'd2',
-            'last_modified': '2020-04-01T21:59:16.018411',
-            'latitude': '-56.3',
-            'location_data': {
-                'p1': 'ld2'
-            },
-            'location_id': 'lid2',
-            'location_type': 'lt2',
-            'longitude': '18.7',
-            'name': 'n2',
-            'parent': 'ru1' if include_parent else None,
-            'resource_uri': 'ru2',
-            'site_code': 'sc2'
-        }])],
-    })
+    return MockCommCareHqClient(
+        {
+            'form': [
+                (
+                    {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on'},
+                    [
+                        {
+                            'id': 1,
+                            'form': {'name': 'f1', 'case': {'@case_id': 'c1'}},
+                            'metadata': {'userID': 'id1'},
+                        },
+                        {
+                            'id': 2,
+                            'form': {'name': 'f2', 'case': {'@case_id': 'c2'}},
+                            'metadata': {'userID': 'id2'},
+                        },
+                    ],
+                ),
+            ],
+            'case': [
+                (
+                    {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on'},
+                    [
+                        {'id': 'case1'},
+                        {'id': 'case2'},
+                    ],
+                )
+            ],
+            'user': [
+                (
+                    {'limit': DEFAULT_BATCH_SIZE},
+                    [
+                        {
+                            'id': 'id1',
+                            'email': 'em1',
+                            'first_name': 'fn1',
+                            'last_name': 'ln1',
+                            'user_data': {
+                                'commcare_location_id': 'lid1',
+                                'commcare_location_ids': ['lid1', 'lid2'],
+                                'commcare_project': 'p1',
+                            },
+                            'username': 'u1',
+                        },
+                        {
+                            'id': 'id2',
+                            'default_phone_number': 'pn2',
+                            'email': 'em2',
+                            'first_name': 'fn2',
+                            'last_name': 'ln2',
+                            'resource_uri': 'ru0',
+                            'user_data': {
+                                'commcare_location_id': 'lid2',
+                                'commcare_project': 'p2',
+                            },
+                            'username': 'u2',
+                        },
+                    ],
+                )
+            ],
+            'location_type': [
+                (
+                    {'limit': DEFAULT_BATCH_SIZE},
+                    [
+                        {
+                            'administrative': True,
+                            'code': 'hq',
+                            'domain': 'd1',
+                            'id': 1,
+                            'name': 'HQ',
+                            'parent': None,
+                            'resource_uri': 'lt1',
+                            'shares_cases': False,
+                            'view_descendants': True,
+                        },
+                        {
+                            'administrative': False,
+                            'code': 'local',
+                            'domain': 'd1',
+                            'id': 2,
+                            'name': 'Local',
+                            'parent': 'lt1',
+                            'resource_uri': 'lt2',
+                            'shares_cases': True,
+                            'view_descendants': True,
+                        },
+                    ],
+                )
+            ],
+            'location': [
+                (
+                    {'limit': DEFAULT_BATCH_SIZE},
+                    [
+                        {
+                            'id': 'id1',
+                            'created_at': '2020-04-01T21:57:26.403053',
+                            'domain': 'd1',
+                            'external_id': 'eid1',
+                            'last_modified': '2020-04-01T21:58:23.88343',
+                            'latitude': '11.2',
+                            'location_data': {'p1': 'ld1'},
+                            'location_id': 'lid1',
+                            'location_type': 'lt1',
+                            'longitude': '-20.5',
+                            'name': 'n1',
+                            'resource_uri': 'ru1',
+                            'site_code': 'sc1',
+                        },
+                        {
+                            'id': 'id2',
+                            'created_at': '2020-04-01T21:58:47.627371',
+                            'domain': 'd2',
+                            'last_modified': '2020-04-01T21:59:16.018411',
+                            'latitude': '-56.3',
+                            'location_data': {'p1': 'ld2'},
+                            'location_id': 'lid2',
+                            'location_type': 'lt2',
+                            'longitude': '18.7',
+                            'name': 'n2',
+                            'parent': 'ru1' if include_parent else None,
+                            'resource_uri': 'ru2',
+                            'site_code': 'sc2',
+                        },
+                    ],
+                )
+            ],
+        }
+    )
 
 
-EXPECTED_MULTIPLE_TABLES_RESULTS = [{
-    "name": "Forms",
-    "headings": ["id", "name"],
-    "rows": [["1", "f1"], ["2", "f2"]],
-}, {
-    "name": "Other cases",
-    "headings": ["id"],
-    "rows": [["case1"], ["case2"]],
-}, {
-    "name": "Cases",
-    "headings": ["case_id"],
-    "rows": [["c1"], ["c2"]],
-}]
+EXPECTED_MULTIPLE_TABLES_RESULTS = [
+    {
+        'name': 'Forms',
+        'headings': ['id', 'name'],
+        'rows': [['1', 'f1'], ['2', 'f2']],
+    },
+    {
+        'name': 'Other cases',
+        'headings': ['id'],
+        'rows': [['case1'], ['case2']],
+    },
+    {
+        'name': 'Cases',
+        'headings': ['case_id'],
+        'rows': [['c1'], ['c2']],
+    },
+]
 
-EXPECTED_USERS_RESULTS = [{
-    "name":
-        "commcare_users",
-    "headings": [
-        "id", "default_phone_number", "email", "first_name", "groups",
-        "last_name", "phone_numbers", "resource_uri", "commcare_location_id",
-        "commcare_location_ids", "commcare_primary_case_sharing_id",
-        "commcare_project", "username"
-    ],
-    "rows": [[
-        "id1", None, "em1", "fn1", None, "ln1", None, None, "lid1",
-        "lid1,lid2", None, "p1", "u1"
-    ],
-             [
-                 "id2", "pn2", "em2", "fn2", None, "ln2", None, "ru0", "lid2",
-                 None, None, "p2", "u2"
-             ]]
-}]
+EXPECTED_USERS_RESULTS = [
+    {
+        'name': 'commcare_users',
+        'headings': [
+            'id',
+            'default_phone_number',
+            'email',
+            'first_name',
+            'groups',
+            'last_name',
+            'phone_numbers',
+            'resource_uri',
+            'commcare_location_id',
+            'commcare_location_ids',
+            'commcare_primary_case_sharing_id',
+            'commcare_project',
+            'username',
+        ],
+        'rows': [
+            [
+                'id1',
+                None,
+                'em1',
+                'fn1',
+                None,
+                'ln1',
+                None,
+                None,
+                'lid1',
+                'lid1,lid2',
+                None,
+                'p1',
+                'u1',
+            ],
+            [
+                'id2',
+                'pn2',
+                'em2',
+                'fn2',
+                None,
+                'ln2',
+                None,
+                'ru0',
+                'lid2',
+                None,
+                None,
+                'p2',
+                'u2',
+            ],
+        ],
+    }
+]
 
 
 def get_expected_locations_results(include_parent):
-    return [{
-        "name":
-            "commcare_locations",
-        "headings": [
-            "id", "created_at", "domain", "external_id", "last_modified",
-            "latitude", "location_data", "location_id", "location_type",
-            "longitude", "name", "parent", "resource_uri", "site_code",
-            "location_type_administrative", "location_type_code",
-            "location_type_name", "location_type_parent", "local", "hq"
-        ],
-        "rows": [[
-            "id1", "2020-04-01 21:57:26", "d1", "eid1", "2020-04-01 21:58:23",
-            "11.2", '{"p1": "ld1", "id": "id1.location_data"}', "lid1", "lt1",
-            "-20.5", "n1", None, "ru1", "sc1", True, "hq", "HQ", None, None,
-            "lid1"
-        ],
-                 [
-                     "id2", "2020-04-01 21:58:47", "d2", None,
-                     "2020-04-01 21:59:16", "-56.3",
-                     '{"p1": "ld2", "id": "id2.location_data"}',
-                     "lid2", "lt2", "18.7", "n2",
-                     ("ru1" if include_parent else None), "ru2", "sc2", False,
-                     "local", "Local", "lt1", "lid2",
-                     ("lid1" if include_parent else None)
-                 ]]
-    }]
+    return [
+        {
+            'name': 'commcare_locations',
+            'headings': [
+                'id',
+                'created_at',
+                'domain',
+                'external_id',
+                'last_modified',
+                'latitude',
+                'location_data',
+                'location_id',
+                'location_type',
+                'longitude',
+                'name',
+                'parent',
+                'resource_uri',
+                'site_code',
+                'location_type_administrative',
+                'location_type_code',
+                'location_type_name',
+                'location_type_parent',
+                'local',
+                'hq',
+            ],
+            'rows': [
+                [
+                    'id1',
+                    '2020-04-01 21:57:26',
+                    'd1',
+                    'eid1',
+                    '2020-04-01 21:58:23',
+                    '11.2',
+                    '{"p1": "ld1", "id": "id1.location_data"}',
+                    'lid1',
+                    'lt1',
+                    '-20.5',
+                    'n1',
+                    None,
+                    'ru1',
+                    'sc1',
+                    True,
+                    'hq',
+                    'HQ',
+                    None,
+                    None,
+                    'lid1',
+                ],
+                [
+                    'id2',
+                    '2020-04-01 21:58:47',
+                    'd2',
+                    None,
+                    '2020-04-01 21:59:16',
+                    '-56.3',
+                    '{"p1": "ld2", "id": "id2.location_data"}',
+                    'lid2',
+                    'lt2',
+                    '18.7',
+                    'n2',
+                    ('ru1' if include_parent else None),
+                    'ru2',
+                    'sc2',
+                    False,
+                    'local',
+                    'Local',
+                    'lt1',
+                    'lid2',
+                    ('lid1' if include_parent else None),
+                ],
+            ],
+        }
+    ]
 
 
 class TestCli:
-
     @mock.patch(
         'commcare_export.cli._get_api_client',
-        return_value=mock_hq_client(True)
+        return_value=mock_hq_client(True),
     )
     def test_cli(self, mock_client):
         args = make_args(
@@ -283,7 +367,7 @@ class TestCli:
 
     @mock.patch(
         'commcare_export.cli._get_api_client',
-        return_value=mock_hq_client(True)
+        return_value=mock_hq_client(True),
     )
     def test_cli_just_users(self, mock_client):
         args = make_args(output_format='json', users=True)
@@ -291,13 +375,13 @@ class TestCli:
 
     @mock.patch(
         'commcare_export.cli._get_api_client',
-        return_value=mock_hq_client(True)
+        return_value=mock_hq_client(True),
     )
     def test_cli_table_plus_users(self, mock_client):
         args = make_args(
             query='tests/008_multiple-tables.xlsx',
             output_format='json',
-            users=True
+            users=True,
         )
         _run_cli_and_assert(
             args, EXPECTED_MULTIPLE_TABLES_RESULTS + EXPECTED_USERS_RESULTS
@@ -305,7 +389,7 @@ class TestCli:
 
     @mock.patch(
         'commcare_export.cli._get_api_client',
-        return_value=mock_hq_client(True)
+        return_value=mock_hq_client(True),
     )
     def test_cli_just_locations(self, mock_client):
         args = make_args(output_format='json', locations=True)
@@ -313,7 +397,7 @@ class TestCli:
 
     @mock.patch(
         'commcare_export.cli._get_api_client',
-        return_value=mock_hq_client(False)
+        return_value=mock_hq_client(False),
     )
     def test_cli_locations_without_parents(self, mock_client):
         args = make_args(output_format='json', locations=True)
@@ -321,17 +405,18 @@ class TestCli:
 
     @mock.patch(
         'commcare_export.cli._get_api_client',
-        return_value=mock_hq_client(True)
+        return_value=mock_hq_client(True),
     )
     def test_cli_table_plus_locations(self, mock_client):
         args = make_args(
             query='tests/008_multiple-tables.xlsx',
             output_format='json',
-            locations=True
+            locations=True,
         )
         _run_cli_and_assert(
-            args, EXPECTED_MULTIPLE_TABLES_RESULTS
-            + get_expected_locations_results(True)
+            args,
+            EXPECTED_MULTIPLE_TABLES_RESULTS
+            + get_expected_locations_results(True),
         )
 
     @mock.patch('os.getcwd', return_value='/mock/cwd')
@@ -357,8 +442,7 @@ class TestCli:
         assert file_handler is handler
         mock_makedirs.assert_called_once_with('/mock/cwd', exist_ok=True)
         mock_file_handler.assert_called_once_with(
-            '/mock/cwd/commcare_export.log',
-            mode='a'
+            '/mock/cwd/commcare_export.log', mode='a'
         )
 
     @mock.patch('os.makedirs')
@@ -382,13 +466,16 @@ class TestCli:
         assert log_file == '/custom/log/path/commcare_export.log'
         assert error is None
         assert file_handler is handler
-        mock_makedirs.assert_called_once_with('/custom/log/path', exist_ok=True)
+        mock_makedirs.assert_called_once_with(
+            '/custom/log/path', exist_ok=True
+        )
         mock_file_handler.assert_called_once_with(
-            '/custom/log/path/commcare_export.log',
-            mode='a'
+            '/custom/log/path/commcare_export.log', mode='a'
         )
 
-    @mock.patch('os.makedirs', side_effect=PermissionError("Permission denied"))
+    @mock.patch(
+        'os.makedirs', side_effect=PermissionError('Permission denied')
+    )
     def test_log_dir_permission_error(
         self,
         mock_makedirs,
@@ -401,9 +488,11 @@ class TestCli:
 
         assert success is False
         assert log_file == '/restricted/path/commcare_export.log'
-        assert error == "PermissionError: Permission denied"
+        assert error == 'PermissionError: Permission denied'
         assert file_handler is None
-        mock_makedirs.assert_called_once_with('/restricted/path', exist_ok=True)
+        mock_makedirs.assert_called_once_with(
+            '/restricted/path', exist_ok=True
+        )
 
     @mock.patch('os.getcwd', return_value='/test/dir')
     @mock.patch('os.makedirs')
@@ -425,11 +514,13 @@ class TestCli:
         assert success is True
         assert file_handler is handler
         mock_file_handler.assert_called_once_with(
-            '/test/dir/commcare_export.log',
-            mode='a'
+            '/test/dir/commcare_export.log', mode='a'
         )
 
-    @mock.patch('commcare_export.cli._get_api_client', return_value=mock_hq_client(True))
+    @mock.patch(
+        'commcare_export.cli._get_api_client',
+        return_value=mock_hq_client(True),
+    )
     @mock.patch('commcare_export.cli.set_up_file_logging')
     @mock.patch('sys.exit')
     @restore_root_logger
@@ -441,15 +532,23 @@ class TestCli:
     ):
         from commcare_export.cli import main
 
-        main([
-            '--query', 'tests/008_multiple-tables.xlsx',
-            '--project', 'test',
-            '--username', 'test',
-            '--password', 'test',
-            '--output-format', 'json',
-            '--no-logfile',
-            '--log-dir', '/some/path'  # Should be ignored
-        ])
+        main(
+            [
+                '--query',
+                'tests/008_multiple-tables.xlsx',
+                '--project',
+                'test',
+                '--username',
+                'test',
+                '--password',
+                'test',
+                '--output-format',
+                'json',
+                '--no-logfile',
+                '--log-dir',
+                '/some/path',  # Should be ignored
+            ]
+        )
 
         mock_set_up_file_logging.assert_not_called()
 
@@ -487,7 +586,7 @@ def checkpoint_manager(pg_db_params):
         '123',
         'test',
         'hq',
-        poolclass=sqlalchemy.pool.NullPool
+        poolclass=sqlalchemy.pool.NullPool,
     )
     cm.create_checkpoint_table()
     return cm
@@ -522,7 +621,7 @@ def _pull_data(writer, checkpoint_manager, query, since, until, batch_size=10):
     )
     checkpoint_patch = mock.patch(
         'commcare_export.cli._get_checkpoint_manager',
-        return_value=checkpoint_manager
+        return_value=checkpoint_manager,
     )
     with writer_patch, checkpoint_patch:
         main_with_args(args)
@@ -531,7 +630,8 @@ def _pull_data(writer, checkpoint_manager, query, since, until, batch_size=10):
 def _check_data(writer, expected, table_name, columns):
     with writer.engine.connect() as conn:
         actual = [
-            list(row) for row in conn.execute(
+            list(row)
+            for row in conn.execute(
                 text(f'SELECT {", ".join(columns)} FROM "{table_name}"')
             )
         ]
@@ -560,7 +660,7 @@ def _check_checkpoint_state(
     checkpoint_manager,
     since_param,
     doc_id,
-    pagination_mode=PaginationMode.date_indexed.name
+    pagination_mode=PaginationMode.date_indexed.name,
 ):
     checkpoint = checkpoint_manager.get_last_checkpoint()
     assert checkpoint.pagination_mode == pagination_mode
@@ -587,7 +687,6 @@ def _check_checkpoints(caplog, expected):
 
 @pytest.mark.dbtest
 class TestCLIIntegrationTests:
-
     def test_write_to_sql_with_checkpoints(
         self, writer, checkpoint_manager, caplog
     ):
@@ -596,8 +695,11 @@ class TestCLIIntegrationTests:
             expected_form_data = list(reader)[1:]
 
         _pull_data(
-            writer, checkpoint_manager, 'tests/009_integration.xlsx',
-            '2012-01-01', '2017-08-29'
+            writer,
+            checkpoint_manager,
+            'tests/009_integration.xlsx',
+            '2012-01-01',
+            '2017-08-29',
         )
         _check_checkpoints(caplog, ['forms', 'batch', 'final'])
         _check_table_data(writer, expected_form_data[:13], 'forms')
@@ -609,7 +711,7 @@ class TestCLIIntegrationTests:
             'tests/009_integration.xlsx',
             None,
             '2020-10-11',
-            batch_size=8
+            batch_size=8,
         )
         _check_table_data(writer, expected_form_data, 'forms')
         _check_checkpoints(caplog, ['forms', 'batch', 'final'])
@@ -638,15 +740,18 @@ class TestCLIIntegrationTests:
             expected_form_2_data = list(reader)[1:]
 
         _pull_data(
-            writer, checkpoint_manager, 'tests/009b_integration_multiple.xlsx',
-            None, '2020-10-11'
+            writer,
+            checkpoint_manager,
+            'tests/009b_integration_multiple.xlsx',
+            None,
+            '2020-10-11',
         )
         _check_checkpoints(
             caplog, ['forms_1', 'batch', 'batch', 'final', 'forms_2', 'final']
         )
         _check_checkpoints(
             caplog,
-            ['forms_1', 'forms_1', 'forms_1', 'forms_1', 'forms_2', 'forms_2']
+            ['forms_1', 'forms_1', 'forms_1', 'forms_1', 'forms_2', 'forms_2'],
         )
         _check_table_data(writer, expected_form_1_data, 'forms_1')
         _check_table_data(writer, expected_form_2_data, 'forms_2')
@@ -670,20 +775,19 @@ class TestCLIIntegrationTests:
 
 # Conflicting types for 'count' will cause errors when inserting into
 # database.
-CONFLICTING_TYPES_CLIENT = MockCommCareHqClient({
-    'case': [({
-        'limit': DEFAULT_BATCH_SIZE,
-        'order_by': 'indexed_on'
-    }, [{
-        'id': 1,
-        'name': 'n1',
-        'count': 10
-    }, {
-        'id': 2,
-        'name': 'f2',
-        'count': 'abc'
-    }]),],
-})
+CONFLICTING_TYPES_CLIENT = MockCommCareHqClient(
+    {
+        'case': [
+            (
+                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on'},
+                [
+                    {'id': 1, 'name': 'n1', 'count': 10},
+                    {'id': 2, 'name': 'f2', 'count': 'abc'},
+                ],
+            ),
+        ],
+    }
+)
 
 
 class MockCheckpointingClient(CommCareHqClient):
@@ -699,11 +803,12 @@ class MockCheckpointingClient(CommCareHqClient):
             resource: {
                 _params_to_url(params): result
                 for params, result in resource_results
-            } for resource, resource_results in mock_data.items()
+            }
+            for resource, resource_results in mock_data.items()
         }
         self.totals = {
-            resource: sum(len(results) for _, results in resource_results
-                         ) for resource, resource_results in mock_data.items()
+            resource: sum(len(results) for _, results in resource_results)
+            for resource, resource_results in mock_data.items()
         }
 
     def get(self, resource, params=None):
@@ -717,56 +822,65 @@ class MockCheckpointingClient(CommCareHqClient):
                     'next': bool(mock_requests),
                     'offset': 0,
                     'previous': None,
-                    'total_count': self.totals[resource]
+                    'total_count': self.totals[resource],
                 },
-                'objects': objects
+                'objects': objects,
             }
         else:
             return None
 
 
 def get_conflicting_types_checkpoint_client():
-    return MockCheckpointingClient({
-        'case': [
-            ({
-                'limit': DEFAULT_BATCH_SIZE,
-                'order_by': 'indexed_on'
-            }, [{
-                'id': "doc 1",
-                'name': 'n1',
-                'count': 10,
-                'indexed_on': '2012-04-23T05:13:01.000000Z'
-            }, {
-                'id': "doc 2",
-                'name': 'f2',
-                'count': 123,
-                'indexed_on': '2012-04-24T05:13:01.000000Z'
-            }]),
-            ({
-                'limit': DEFAULT_BATCH_SIZE,
-                'order_by': 'indexed_on',
-                'indexed_on_start': '2012-04-24T05:13:01'
-            }, [{
-                'id': "doc 3",
-                'name': 'n1',
-                'count': 10,
-                'indexed_on': '2012-04-25T05:13:01.000000Z'
-            }, {
-                'id': "doc 4",
-                'name': 'f2',
-                'count': 'abc',
-                'indexed_on': '2012-04-26T05:13:01.000000Z'
-            }]),
-        ],
-    })
+    return MockCheckpointingClient(
+        {
+            'case': [
+                (
+                    {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on'},
+                    [
+                        {
+                            'id': 'doc 1',
+                            'name': 'n1',
+                            'count': 10,
+                            'indexed_on': '2012-04-23T05:13:01.000000Z',
+                        },
+                        {
+                            'id': 'doc 2',
+                            'name': 'f2',
+                            'count': 123,
+                            'indexed_on': '2012-04-24T05:13:01.000000Z',
+                        },
+                    ],
+                ),
+                (
+                    {
+                        'limit': DEFAULT_BATCH_SIZE,
+                        'order_by': 'indexed_on',
+                        'indexed_on_start': '2012-04-24T05:13:01',
+                    },
+                    [
+                        {
+                            'id': 'doc 3',
+                            'name': 'n1',
+                            'count': 10,
+                            'indexed_on': '2012-04-25T05:13:01.000000Z',
+                        },
+                        {
+                            'id': 'doc 4',
+                            'name': 'f2',
+                            'count': 'abc',
+                            'indexed_on': '2012-04-26T05:13:01.000000Z',
+                        },
+                    ],
+                ),
+            ],
+        }
+    )
 
 
 @pytest.fixture(scope='function')
 def strict_writer(db_params):
     writer = SqlWriterWithTearDown(
-        db_params['url'],
-        poolclass=sqlalchemy.pool.NullPool,
-        strict_types=True
+        db_params['url'], poolclass=sqlalchemy.pool.NullPool, strict_types=True
     )
     yield writer
     writer.tear_down()
@@ -780,7 +894,7 @@ def all_db_checkpoint_manager(db_params):
         '123',
         'test',
         'hq',
-        poolclass=sqlalchemy.pool.NullPool
+        poolclass=sqlalchemy.pool.NullPool,
     )
     cm.create_checkpoint_table()
     yield cm
@@ -789,12 +903,7 @@ def all_db_checkpoint_manager(db_params):
 
 
 def _pull_mock_data(
-    writer,
-    checkpoint_manager,
-    api_client,
-    query,
-    start_over=None,
-    since=None
+    writer, checkpoint_manager, api_client, query, start_over=None, since=None
 ):
     args = make_args(
         query=query,
@@ -803,8 +912,9 @@ def _pull_mock_data(
         since=since,
     )
 
-    assert not (checkpoint_manager and since), \
+    assert not (checkpoint_manager and since), (
         "'checkpoint_manager' must be None when using 'since'"
+    )
 
     if checkpoint_manager:
         # set this so that it gets written to the checkpoints
@@ -820,7 +930,7 @@ def _pull_mock_data(
     )
     checkpoint_patch = mock.patch(
         'commcare_export.cli._get_checkpoint_manager',
-        return_value=checkpoint_manager
+        return_value=checkpoint_manager,
     )
     with api_client_patch, writer_patch, checkpoint_patch:
         return main_with_args(args)
@@ -828,13 +938,14 @@ def _pull_mock_data(
 
 @pytest.mark.dbtest
 class TestCLIWithDatabaseErrors:
-
     def test_cli_database_error(
         self, strict_writer, all_db_checkpoint_manager, caplog
     ):
         _pull_mock_data(
-            strict_writer, all_db_checkpoint_manager, CONFLICTING_TYPES_CLIENT,
-            'tests/013_ConflictingTypes.xlsx'
+            strict_writer,
+            all_db_checkpoint_manager,
+            CONFLICTING_TYPES_CLIENT,
+            'tests/013_ConflictingTypes.xlsx',
         )
         expected_re = re.compile('Stopping because of database error')
         assert re.search(expected_re, caplog.text)
@@ -843,9 +954,10 @@ class TestCLIWithDatabaseErrors:
         self, strict_writer, all_db_checkpoint_manager, caplog
     ):
         _pull_mock_data(
-            strict_writer, all_db_checkpoint_manager,
+            strict_writer,
+            all_db_checkpoint_manager,
             get_conflicting_types_checkpoint_client(),
-            'tests/013_ConflictingTypes.xlsx'
+            'tests/013_ConflictingTypes.xlsx',
         )
         expected_re = re.compile('Stopping because of database error')
         assert re.search(expected_re, caplog.text), caplog.text
@@ -870,23 +982,20 @@ class TestCLIWithDatabaseErrors:
 
 # An input where missing fields should be added due to declared data
 # types.
-DATA_TYPES_CLIENT = MockCommCareHqClient({
-    'form': [({
-        'limit': DEFAULT_BATCH_SIZE,
-        'order_by': 'indexed_on'
-    }, [{
-        'id': 1,
-        'form': {}
-    }, {
-        'id': 2,
-        'form': {}
-    }]),],
-})
+DATA_TYPES_CLIENT = MockCommCareHqClient(
+    {
+        'form': [
+            (
+                {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on'},
+                [{'id': 1, 'form': {}}, {'id': 2, 'form': {}}],
+            ),
+        ],
+    }
+)
 
 
 @pytest.mark.dbtest
 class TestCLIWithDataTypes:
-
     def test_cli_data_types_add_columns(
         self,
         writer,
@@ -894,8 +1003,10 @@ class TestCLIWithDataTypes:
         capfd,
     ):
         _pull_mock_data(
-            writer, all_db_checkpoint_manager, CONFLICTING_TYPES_CLIENT,
-            'tests/014_ExportWithDataTypes.xlsx'
+            writer,
+            all_db_checkpoint_manager,
+            CONFLICTING_TYPES_CLIENT,
+            'tests/014_ExportWithDataTypes.xlsx',
         )
 
         metadata = sqlalchemy.schema.MetaData()
@@ -905,9 +1016,9 @@ class TestCLIWithDataTypes:
             autoload_with=writer.engine,
         )
         cols = table.c
-        assert sorted([c.name for c in cols]) == sorted([
-            u'id', u'a_bool', u'an_int', u'a_date', u'a_datetime', u'a_text'
-        ])
+        assert sorted([c.name for c in cols]) == sorted(
+            ['id', 'a_bool', 'an_int', 'a_date', 'a_datetime', 'a_text']
+        )
 
         # We intentionally don't check the types because SQLAlchemy
         # doesn't support type comparison, and even if we convert to
@@ -918,66 +1029,88 @@ class TestCLIWithDataTypes:
                 list(row) for row in conn.execute(text('SELECT * FROM forms'))
             ]
 
-        assert values == [['1', None, None, None, None, None],
-                          ['2', None, None, None, None, None]]
+        assert values == [
+            ['1', None, None, None, None, None],
+            ['2', None, None, None, None, None],
+        ]
 
 
 def get_indexed_on_client(page):
-    p1 = MockCheckpointingClient({
-        'case': [({
-            'limit': DEFAULT_BATCH_SIZE,
-            'order_by': 'indexed_on'
-        }, [{
-            'id': "doc 1",
-            'name': 'n1',
-            'indexed_on': '2012-04-23T05:13:01.000000Z'
-        }, {
-            'id': "doc 2",
-            'name': 'n2',
-            'indexed_on': '2012-04-24T05:13:01.000000Z'
-        }])]
-    })
-    p2 = MockCheckpointingClient({
-        'case': [({
-            'limit': DEFAULT_BATCH_SIZE,
-            'order_by': 'indexed_on',
-            'indexed_on_start': '2012-04-24T05:13:01'
-        }, [{
-            'id': "doc 3",
-            'name': 'n3',
-            'indexed_on': '2012-04-25T05:13:01.000000Z'
-        }, {
-            'id': "doc 4",
-            'name': 'n4',
-            'indexed_on': '2012-04-26T05:13:01.000000Z'
-        }])]
-    })
+    p1 = MockCheckpointingClient(
+        {
+            'case': [
+                (
+                    {'limit': DEFAULT_BATCH_SIZE, 'order_by': 'indexed_on'},
+                    [
+                        {
+                            'id': 'doc 1',
+                            'name': 'n1',
+                            'indexed_on': '2012-04-23T05:13:01.000000Z',
+                        },
+                        {
+                            'id': 'doc 2',
+                            'name': 'n2',
+                            'indexed_on': '2012-04-24T05:13:01.000000Z',
+                        },
+                    ],
+                )
+            ]
+        }
+    )
+    p2 = MockCheckpointingClient(
+        {
+            'case': [
+                (
+                    {
+                        'limit': DEFAULT_BATCH_SIZE,
+                        'order_by': 'indexed_on',
+                        'indexed_on_start': '2012-04-24T05:13:01',
+                    },
+                    [
+                        {
+                            'id': 'doc 3',
+                            'name': 'n3',
+                            'indexed_on': '2012-04-25T05:13:01.000000Z',
+                        },
+                        {
+                            'id': 'doc 4',
+                            'name': 'n4',
+                            'indexed_on': '2012-04-26T05:13:01.000000Z',
+                        },
+                    ],
+                )
+            ]
+        }
+    )
     return [p1, p2][page]
 
 
 @pytest.mark.dbtest
 class TestCLIPaginationMode:
-
     def test_cli_pagination_fresh(self, writer, all_db_checkpoint_manager):
         checkpoint_manager = all_db_checkpoint_manager.for_dataset(
-            "case", ["Case"]
+            'case', ['Case']
         )
 
         _pull_mock_data(
-            writer, all_db_checkpoint_manager, get_indexed_on_client(0),
-            'tests/013_ConflictingTypes.xlsx'
+            writer,
+            all_db_checkpoint_manager,
+            get_indexed_on_client(0),
+            'tests/013_ConflictingTypes.xlsx',
         )
-        _check_id_data(writer, [["doc 1"], ["doc 2"]], "Case")
+        _check_id_data(writer, [['doc 1'], ['doc 2']], 'Case')
         _check_checkpoint_state(
             checkpoint_manager, '2012-04-24T05:13:01', 'doc 2'
         )
 
         _pull_mock_data(
-            writer, all_db_checkpoint_manager, get_indexed_on_client(1),
-            'tests/013_ConflictingTypes.xlsx'
+            writer,
+            all_db_checkpoint_manager,
+            get_indexed_on_client(1),
+            'tests/013_ConflictingTypes.xlsx',
         )
         _check_id_data(
-            writer, [["doc 1"], ["doc 2"], ["doc 3"], ["doc 4"]], "Case"
+            writer, [['doc 1'], ['doc 2'], ['doc 3'], ['doc 4']], 'Case'
         )
         _check_checkpoint_state(
             checkpoint_manager, '2012-04-26T05:13:01', 'doc 4'
@@ -993,37 +1126,51 @@ class TestCLIPaginationMode:
         already in use
         """
         checkpoint_manager = all_db_checkpoint_manager.for_dataset(
-            "case", ["Case"]
+            'case', ['Case']
         )
         # simulate previous run with legacy pagination mode
         checkpoint_manager.set_checkpoint(
             '2012-04-24T05:13:01', PaginationMode.date_modified, is_final=True
         )
 
-        client = MockCheckpointingClient({
-            'case': [({
-                'limit': DEFAULT_BATCH_SIZE,
-                'order_by': 'server_date_modified',
-                'server_date_modified_start': '2012-04-24T05:13:01'
-            }, [{
-                'id': "doc 1",
-                'name': 'n1',
-                'server_date_modified': '2012-04-25T05:13:01.000000Z'
-            }, {
-                'id': "doc 2",
-                'name': 'n2',
-                'server_date_modified': '2012-04-26T05:13:01.000000Z'
-            }])]
-        })
+        client = MockCheckpointingClient(
+            {
+                'case': [
+                    (
+                        {
+                            'limit': DEFAULT_BATCH_SIZE,
+                            'order_by': 'server_date_modified',
+                            'server_date_modified_start': '2012-04-24T05:13:01',
+                        },
+                        [
+                            {
+                                'id': 'doc 1',
+                                'name': 'n1',
+                                'server_date_modified': '2012-04-25T05:13:01.000000Z',
+                            },
+                            {
+                                'id': 'doc 2',
+                                'name': 'n2',
+                                'server_date_modified': '2012-04-26T05:13:01.000000Z',
+                            },
+                        ],
+                    )
+                ]
+            }
+        )
 
         _pull_mock_data(
-            writer, all_db_checkpoint_manager, client,
-            'tests/013_ConflictingTypes.xlsx'
+            writer,
+            all_db_checkpoint_manager,
+            client,
+            'tests/013_ConflictingTypes.xlsx',
         )
-        _check_id_data(writer, [["doc 1"], ["doc 2"]], "Case")
+        _check_id_data(writer, [['doc 1'], ['doc 2']], 'Case')
         _check_checkpoint_state(
-            checkpoint_manager, '2012-04-26T05:13:01', 'doc 2',
-            PaginationMode.date_modified.name
+            checkpoint_manager,
+            '2012-04-26T05:13:01',
+            'doc 2',
+            PaginationMode.date_modified.name,
         )
 
     def test_cli_pagination_start_over(
@@ -1036,7 +1183,7 @@ class TestCLIPaginationMode:
         'start_over'
         """
         checkpoint_manager = all_db_checkpoint_manager.for_dataset(
-            "case", ["Case"]
+            'case', ['Case']
         )
         # simulate previous run with legacy pagination mode
         checkpoint_manager.set_checkpoint(
@@ -1048,9 +1195,9 @@ class TestCLIPaginationMode:
             all_db_checkpoint_manager,
             get_indexed_on_client(0),
             'tests/013_ConflictingTypes.xlsx',
-            start_over=True
+            start_over=True,
         )
-        _check_id_data(writer, [["doc 1"], ["doc 2"]], "Case")
+        _check_id_data(writer, [['doc 1'], ['doc 2']], 'Case')
         _check_checkpoint_state(
             checkpoint_manager, '2012-04-24T05:13:01', 'doc 2'
         )
@@ -1060,7 +1207,7 @@ class TestCLIPaginationMode:
         Test that we use to the new pagination mode when using 'since'
         """
         checkpoint_manager = all_db_checkpoint_manager.for_dataset(
-            "case", ["Case"]
+            'case', ['Case']
         )
         # simulate previous run with legacy pagination mode
         checkpoint_manager.set_checkpoint(
@@ -1074,32 +1221,32 @@ class TestCLIPaginationMode:
             None,
             get_indexed_on_client(1),
             'tests/013_ConflictingTypes.xlsx',
-            since='2012-04-24T05:13:01'
+            since='2012-04-24T05:13:01',
         )
-        _check_id_data(writer, [["doc 3"], ["doc 4"]], "Case")
+        _check_id_data(writer, [['doc 3'], ['doc 4']], 'Case')
 
 
 def _assert_file_extension(output_format, expected_extension):
     error_message = (
-        f"For output format as {output_format}, output file name should have "
-        f"extension {expected_extension}"
+        f'For output format as {output_format}, output file name should have '
+        f'extension {expected_extension}'
     )
 
     errors = validate_output_filename(
         output_format=output_format,
-        output_filename=f'correct_file_extension.{expected_extension}'
+        output_filename=f'correct_file_extension.{expected_extension}',
     )
     assert len(errors) == 0
 
     errors = validate_output_filename(
         output_format=output_format,
-        output_filename=f'incorrect_file_extension.abc'
+        output_filename=f'incorrect_file_extension.abc',
     )
     assert errors == [error_message]
 
     errors = validate_output_filename(
         output_format=output_format,
-        output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase'
+        output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase',
     )
     assert errors == [error_message]
 
@@ -1117,22 +1264,21 @@ def test_for_xlsx_output():
 
 
 def test_for_other_non_sql_output():
-    error_message = "Missing extension in output file name"
+    error_message = 'Missing extension in output file name'
 
     errors = validate_output_filename(
-        output_format='non_sql',
-        output_filename='correct_file.abc'
+        output_format='non_sql', output_filename='correct_file.abc'
     )
     assert len(errors) == 0
 
     errors = validate_output_filename(
         output_format='non_sql',
-        output_filename='filename_without_extensionxls'
+        output_filename='filename_without_extensionxls',
     )
     assert errors == [error_message]
 
     errors = validate_output_filename(
         output_format='non_sql',
-        output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase'
+        output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase',
     )
     assert errors == [error_message]
