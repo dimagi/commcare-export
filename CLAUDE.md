@@ -11,7 +11,7 @@ that and commit before making code changes.
 
 ## Commands
 
-The `commcare-export` codebases uses a virtualenv managed by uv. Prefix
+The `commcare-export` codebase uses a virtualenv managed by uv. Prefix
 commands with `uv run ...` to run them in the virtualenv.
 
 * Run tests: `uv run pytest -m "not dbtest" [path/to/file.py::Class::method]`
