@@ -34,6 +34,7 @@ def manager(db_params):
             manager.connection.execute(
                 sqlalchemy.sql.text('DROP TABLE IF EXISTS alembic_version')
             )
+            manager.connection.commit()
 
 
 @pytest.fixture()

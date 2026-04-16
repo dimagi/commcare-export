@@ -3,6 +3,7 @@ import os
 import uuid
 
 import sqlalchemy
+from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
 import pytest
@@ -33,10 +34,11 @@ def _db_params(request, db_name):
     def tear_down():
         with sudo_engine.connect() as conn:
             if 'postgres' in db_url:
-                conn.execute('rollback')
+                conn.execute(text('rollback'))
             if 'mssql' in db_url:
                 conn.connection.connection.autocommit = True
-            conn.execute(f'drop database if exists {db_name}')
+            conn.execute(text(f'drop database if exists {db_name}'))
+            conn.commit()
 
     try:
         with sqlalchemy.create_engine(db_connection_url).connect():
@@ -47,10 +49,11 @@ def _db_params(request, db_name):
     ):
         with sudo_engine.connect() as conn:
             if 'postgres' in db_url:
-                conn.execute('rollback')
+                conn.execute(text('rollback'))
             if 'mssql' in db_url:
                 conn.connection.connection.autocommit = True
-            conn.execute(f'create database {db_name}')
+            conn.execute(text(f'create database {db_name}'))
+            conn.commit()
     else:
         raise Exception(
             f'Database {db_name} already exists; refusing to overwrite'
