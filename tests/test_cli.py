@@ -9,6 +9,7 @@ from unittest import mock
 
 import pytest
 import sqlalchemy
+from sqlalchemy import text
 from unmagic import fixture
 
 from tests.utils import SqlWriterWithTearDown
@@ -530,7 +531,7 @@ def _pull_data(writer, checkpoint_manager, query, since, until, batch_size=10):
 def _check_data(writer, expected, table_name, columns):
     actual = [
         list(row) for row in writer.engine
-        .execute(f'SELECT {", ".join(columns)} FROM "{table_name}"')
+        .execute(text(f'SELECT {", ".join(columns)} FROM "{table_name}"'))
     ]
 
     message = ''
@@ -613,10 +614,11 @@ class TestCLIIntegrationTests:
 
         runs = list(
             writer.engine.execute(
-                'SELECT * FROM commcare_export_runs '
-                'WHERE query_file_name = %s',
-
-                'tests/009_integration.xlsx'
+                text(
+                    'SELECT * FROM commcare_export_runs '
+                    'WHERE query_file_name = :filename'
+                ),
+                {'filename': 'tests/009_integration.xlsx'},
             )
         )
         assert len(runs) == 2, runs
@@ -648,11 +650,12 @@ class TestCLIIntegrationTests:
 
         runs = list(
             writer.engine.execute(
-                'SELECT table_name, since_param '
-                'FROM commcare_export_runs '
-                'WHERE query_file_name = %s',
-
-                'tests/009b_integration_multiple.xlsx'
+                text(
+                    'SELECT table_name, since_param '
+                    'FROM commcare_export_runs '
+                    'WHERE query_file_name = :filename'
+                ),
+                {'filename': 'tests/009b_integration_multiple.xlsx'},
             )
         )
         assert {r[0]: r[1] for r in runs} == {
@@ -847,12 +850,12 @@ class TestCLIWithDatabaseErrors:
         # not the 2nd
         runs = list(
             strict_writer.engine.execute(
-                sqlalchemy.text(
+                text(
                     'SELECT table_name, since_param, last_doc_id '
                     'FROM commcare_export_runs '
                     'WHERE query_file_name = :file'
                 ),
-                file='tests/013_ConflictingTypes.xlsx'
+                {'file': 'tests/013_ConflictingTypes.xlsx'},
             )
         )
         assert runs == [
@@ -906,7 +909,7 @@ class TestCLIWithDataTypes:
         # strings, the values are backend specific.
 
         values = [
-            list(row) for row in writer.engine.execute('SELECT * FROM forms')
+            list(row) for row in writer.engine.execute(text('SELECT * FROM forms'))
         ]
 
         assert values == [['1', None, None, None, None, None],
