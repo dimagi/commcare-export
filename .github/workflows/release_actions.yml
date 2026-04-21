@@ -19,12 +19,16 @@ jobs:
       - name: Install package and dependencies
         shell: bash
         run: |
-          uv pip install --system pyinstaller
-          uv pip install --system "commcare-export[executable]"
+          uv venv
+          source .venv/bin/activate
+          uv pip install pyinstaller
+          uv pip install "commcare-export[executable]"
 
       - name: Generate exe
         shell: bash
-        run: pyinstaller --dist ./dist/linux commcare-export.spec
+        run: |
+          source .venv/bin/activate
+          pyinstaller --dist ./dist/linux commcare-export.spec
 
       - name: Upload release assets
         uses: AButler/upload-release-assets@v3.0
@@ -47,12 +51,16 @@ jobs:
       - name: Install package and dependencies
         shell: pwsh
         run: |
-          uv pip install --system pyinstaller
-          uv pip install --system "commcare-export[executable]"
+          uv venv
+          .venv\Scripts\Activate.ps1
+          uv pip install pyinstaller
+          uv pip install "commcare-export[executable]"
 
       - name: Generate exe
         shell: pwsh
-        run: pyinstaller --dist ./dist/windows commcare-export.spec
+        run: |
+          .venv\Scripts\Activate.ps1
+          pyinstaller --dist ./dist/windows commcare-export.spec
 
       - name: Upload release assets
         uses: AButler/upload-release-assets@v3.0
