@@ -6,8 +6,13 @@ from importlib import resources
 from operator import attrgetter
 
 import dateutil.parser
-from sqlalchemy import Boolean, Column, String, and_, func
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy import Boolean, String, and_, func
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    sessionmaker,
+)
 
 from commcare_export.commcare_minilinq import PaginationMode
 from commcare_export.exceptions import DataExportException
@@ -23,20 +28,20 @@ class Base(DeclarativeBase):
 class Checkpoint(Base):
     __tablename__ = 'commcare_export_runs'
 
-    id = Column(String, primary_key=True)
-    query_file_name = Column(String)
-    query_file_md5 = Column(String)
-    table_name = Column(String)
-    key = Column(String)
-    project = Column(String)
-    commcare = Column(String)
-    since_param = Column(String)
-    time_of_run = Column(String)
-    final = Column(Boolean)
-    data_source = Column(String)
-    last_doc_id = Column(String)
-    pagination_mode = Column(String)
-    cursor = Column(String)
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    query_file_name: Mapped[str | None] = mapped_column(String)
+    query_file_md5: Mapped[str | None] = mapped_column(String)
+    table_name: Mapped[str | None] = mapped_column(String)
+    key: Mapped[str | None] = mapped_column(String)
+    project: Mapped[str | None] = mapped_column(String)
+    commcare: Mapped[str | None] = mapped_column(String)
+    since_param: Mapped[str | None] = mapped_column(String)
+    time_of_run: Mapped[str | None] = mapped_column(String)
+    final: Mapped[bool | None] = mapped_column(Boolean)
+    data_source: Mapped[str | None] = mapped_column(String)
+    last_doc_id: Mapped[str | None] = mapped_column(String)
+    pagination_mode: Mapped[str | None] = mapped_column(String)
+    cursor: Mapped[str | None] = mapped_column(String)
 
     def get_pagination_mode(self):
         """
@@ -47,7 +52,7 @@ class Checkpoint(Base):
         if not self.pagination_mode:
             return PaginationMode.date_modified
 
-        return PaginationMode[str(self.pagination_mode)]
+        return PaginationMode[self.pagination_mode]
 
     def __repr__(self):
         return (
