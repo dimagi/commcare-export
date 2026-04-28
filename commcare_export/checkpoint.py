@@ -6,14 +6,17 @@ from importlib import resources
 from operator import attrgetter
 
 import dateutil.parser
-from sqlalchemy import Boolean, String, and_, func
+from sqlalchemy import and_, func
 from sqlalchemy.orm import (
     DeclarativeBase,
-    Mapped,
-    mapped_column,
     sessionmaker,
 )
 
+from commcare_export._typing import (
+    optional_bool_column,
+    optional_string_column,
+    string_column,
+)
 from commcare_export.commcare_minilinq import PaginationMode
 from commcare_export.exceptions import DataExportException
 from commcare_export.writers import SqlMixin
@@ -28,20 +31,20 @@ class Base(DeclarativeBase):
 class Checkpoint(Base):
     __tablename__ = 'commcare_export_runs'
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    query_file_name: Mapped[str | None] = mapped_column(String)
-    query_file_md5: Mapped[str | None] = mapped_column(String)
-    table_name: Mapped[str | None] = mapped_column(String)
-    key: Mapped[str | None] = mapped_column(String)
-    project: Mapped[str | None] = mapped_column(String)
-    commcare: Mapped[str | None] = mapped_column(String)
-    since_param: Mapped[str | None] = mapped_column(String)
-    time_of_run: Mapped[str | None] = mapped_column(String)
-    final: Mapped[bool | None] = mapped_column(Boolean)
-    data_source: Mapped[str | None] = mapped_column(String)
-    last_doc_id: Mapped[str | None] = mapped_column(String)
-    pagination_mode: Mapped[str | None] = mapped_column(String)
-    cursor: Mapped[str | None] = mapped_column(String)
+    id = string_column(primary_key=True)
+    query_file_name = optional_string_column()
+    query_file_md5 = optional_string_column()
+    table_name = optional_string_column()
+    key = optional_string_column()
+    project = optional_string_column()
+    commcare = optional_string_column()
+    since_param = optional_string_column()
+    time_of_run = optional_string_column()
+    final = optional_bool_column()
+    data_source = optional_string_column()
+    last_doc_id = optional_string_column()
+    pagination_mode = optional_string_column()
+    cursor = optional_string_column()
 
     def get_pagination_mode(self):
         """
