@@ -1,16 +1,16 @@
 import csv
 import datetime
 import logging
-from tempfile import NamedTemporaryFile
 import zipfile
 from itertools import zip_longest
+from tempfile import NamedTemporaryFile
 from typing import Optional
 
 import sqlalchemy
-from sqlalchemy.exc import NoSuchTableError
-
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from sqlalchemy.exc import NoSuchTableError
+
 from commcare_export.data_types import UnknownDataType, get_sqlalchemy_type
 from commcare_export.specs import TableSpec
 
@@ -288,10 +288,19 @@ class SqlMixin:
 
     def __enter__(self):
         self.connection = self.engine.connect()
-        return self  # TODO: fork the writer so this can be called many times
+        self.transaction = self.connection.begin()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.connection.close()
+        try:
+            if not self.transaction.is_active:
+                pass
+            elif exc_type is None:
+                self.transaction.commit()
+            else:
+                self.transaction.rollback()
+        finally:
+            self.connection.close()
 
     @property
     def is_postgres(self):
@@ -326,16 +335,8 @@ class SqlMixin:
 
     @property
     def metadata(self):
-        if (
-            self._metadata is None
-            or self._metadata.bind.closed
-            or self._metadata.bind.invalidated
-        ):
-            if self.connection.closed:
-                raise Exception('Tried to bind to a closed connection')
-            if self.connection.invalidated:
-                raise Exception('Tried to bind to an invalidated connection')
-            self._metadata = sqlalchemy.MetaData(bind=self.connection)
+        if self._metadata is None:
+            self._metadata = sqlalchemy.MetaData()
         return self._metadata
 
     def get_table(self, table_name):
@@ -451,7 +452,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     dest_type.length >= source_type.length
                 )
 
-        compatibility = {
+        compatibility: dict[type, tuple[type, ...]] = {
             sqlalchemy.String: (sqlalchemy.Text,),
             sqlalchemy.Integer: (sqlalchemy.String, sqlalchemy.Text),
             sqlalchemy.Boolean: (
@@ -597,8 +598,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
             col: val for col, val in row_dict.items() if val is not None
         }
         try:
-            insert = table.insert().values(**row_dict)
-            self.connection.execute(insert)
+            with self.connection.begin_nested():
+                insert = table.insert().values(**row_dict)
+                self.connection.execute(insert)
         except sqlalchemy.exc.IntegrityError:
             update = (
                 table.update()
@@ -607,10 +609,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
             )
             self.connection.execute(update)
 
-    def _commit(self):
-        # Explicit commit works for all DB types. Replace with explicit
-        # transactions when upgrading to SQLAlchemy 2.0
-        self.connection.execute(sqlalchemy.text('COMMIT'))
+    def _flush(self):
+        self.transaction.commit()
+        self.transaction = self.connection.begin()
 
     def bulk_upsert(self, table, batch):
         if not batch:
@@ -621,35 +622,35 @@ class SqlTableWriter(SqlMixin, TableWriter):
         # `SqlTableWriter.insert()`. `batch_keys` are the columns where
         # _any_ row has a value set.
         batch_keys = {
-            k for row_dict in batch
+            k
+            for row_dict in batch
             for k, v in row_dict.items()
             if v is not None
         }
-        batch = [
-            {k: row_dict[k] for k in batch_keys}
-            for row_dict in batch
-        ]
+        batch = [{k: row_dict[k] for k in batch_keys} for row_dict in batch]
         if self.is_postgres:
-            from sqlalchemy.dialects.postgresql import insert
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-            stmt = insert(table).values(batch)
-            update_cols = {c.name: c for c in stmt.excluded if c.name != 'id'}
-            stmt = stmt.on_conflict_do_update(
+            pg_stmt = pg_insert(table).values(batch)
+            update_cols = {
+                c.name: c for c in pg_stmt.excluded if c.name != 'id'
+            }
+            pg_stmt = pg_stmt.on_conflict_do_update(
                 index_elements=['id'],
                 set_=update_cols,
             )
-            self.connection.execute(stmt)
+            self.connection.execute(pg_stmt)
         elif self.is_mysql:
-            from sqlalchemy.dialects.mysql import insert
+            from sqlalchemy.dialects.mysql import insert as mysql_insert
 
-            stmt = insert(table).values(batch)
+            mysql_stmt = mysql_insert(table).values(batch)
             update_cols = {
-                c.name: stmt.inserted[c.name]
+                c.name: mysql_stmt.inserted[c.name]
                 for c in table.columns
                 if c.name != 'id'
             }
-            stmt = stmt.on_duplicate_key_update(**update_cols)
-            self.connection.execute(stmt)
+            mysql_stmt = mysql_stmt.on_duplicate_key_update(**update_cols)
+            self.connection.execute(mysql_stmt)
         else:
             # MSSQL and others: fall back to row-by-row
             for row_dict in batch:
@@ -663,7 +664,10 @@ class SqlTableWriter(SqlMixin, TableWriter):
             sqlalchemy.exc.OperationalError,
             sqlalchemy.exc.ProgrammingError,
         ):
-            # Likely a schema mismatch; fix schema and retry once
+            # Likely a schema mismatch; roll back failed transaction,
+            # fix schema, and retry once
+            self.transaction.rollback()
+            self.transaction = self.connection.begin()
             for row_dict in batch:
                 table = self.make_table_compatible(
                     table,
@@ -671,7 +675,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                     data_type_dict,
                 )
             self.bulk_upsert(table, batch)
-        self._commit()
+        self._flush()
 
     def write_table(self, table_spec: TableSpec) -> None:
         table_name = table_spec.name
@@ -707,7 +711,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 assert table is not None  # So that mypy knows it's a Table
                 if not schema_check_complete:
                     schema_check_complete = True
-                    self._commit()
+                    self._flush()
                     logger.debug(
                         "Schema check complete for table '%s'. Final columns: %s",
                         table_name,
@@ -725,7 +729,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             self._flush_batch(table, batch, data_type_dict)
         else:
             # All rows in schema-check phase; commit them
-            self._commit()
+            self._flush()
 
         if not schema_check_complete:
             logger.debug(

@@ -6,9 +6,10 @@ import zipfile
 from itertools import zip_longest
 
 import openpyxl
-import sqlalchemy
-
 import pytest
+import sqlalchemy
+from sqlalchemy import text
+
 from commcare_export.specs import TableSpec
 from commcare_export.writers import (
     SCHEMA_CHECK_ROWS,
@@ -104,8 +105,8 @@ def _test_types(writer, table_name):
             [
                 (row['id'], row)
                 for row in connection.execute(
-                    f'SELECT id, a, b, c, d, e FROM {table_name}'
-                )
+                    text(f'SELECT id, a, b, c, d, e FROM {table_name}')
+                ).mappings()
             ]
         )
 
@@ -138,10 +139,12 @@ def _get_column_lengths(connection, table_name):
     return {
         row['COLUMN_NAME']: row
         for row in connection.execute(
-            'SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH '
-            'FROM INFORMATION_SCHEMA.COLUMNS '
-            f"WHERE TABLE_NAME = '{table_name}';"
-        )
+            text(
+                'SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH '
+                'FROM INFORMATION_SCHEMA.COLUMNS '
+                f"WHERE TABLE_NAME = '{table_name}';"
+            )
+        ).mappings()
     }
 
 
@@ -286,8 +289,8 @@ class TestSQLWriters:
                 [
                     (row['id'], row)
                     for row in writer.connection.execute(
-                        'SELECT id, a, b, c FROM foo_insert'
-                    )
+                        text('SELECT id, a, b, c FROM foo_insert')
+                    ).mappings()
                 ]
             )
 
@@ -323,8 +326,8 @@ class TestSQLWriters:
                 [
                     (row['id'], row)
                     for row in writer.connection.execute(
-                        'SELECT id, a, c FROM foo_upsert'
-                    )
+                        text('SELECT id, a, c FROM foo_upsert')
+                    ).mappings()
                 ]
             )
         assert len(result) == 1
@@ -351,8 +354,8 @@ class TestSQLWriters:
                 [
                     (row['id'], row)
                     for row in writer.connection.execute(
-                        'SELECT id, a, b, c FROM foo_upsert'
-                    )
+                        text('SELECT id, a, b, c FROM foo_upsert')
+                    ).mappings()
                 ]
             )
 
@@ -390,8 +393,8 @@ class TestSQLWriters:
                 [
                     (row['id'], row)
                     for row in writer.connection.execute(
-                        'SELECT id, a, b, c FROM foo_upsert'
-                    )
+                        text('SELECT id, a, b, c FROM foo_upsert')
+                    ).mappings()
                 ]
             )
 
@@ -442,8 +445,10 @@ class TestSQLWriters:
                 [
                     (row['id'], row)
                     for row in writer.connection.execute(
-                        'SELECT id, a, b, c, d, e FROM foo_fancy_type_changes'
-                    )
+                        text(
+                            'SELECT id, a, b, c, d, e FROM foo_fancy_type_changes'
+                        )
+                    ).mappings()
                 ]
             )
 
@@ -537,8 +542,8 @@ class TestSQLWriters:
                 [
                     (row['id'], row)
                     for row in writer.connection.execute(
-                        'SELECT id, json_col FROM foo_with_json'
-                    )
+                        text('SELECT id, json_col FROM foo_with_json')
+                    ).mappings()
                 ]
             )
 
@@ -584,8 +589,8 @@ class TestSQLWriters:
                 [
                     (row['id'], row)
                     for row in strict_writer.connection.execute(
-                        'SELECT id, a, b, c, d FROM foo_explicit_types'
-                    )
+                        text('SELECT id, a, b, c, d FROM foo_explicit_types')
+                    ).mappings()
                 ]
             )
 
@@ -638,9 +643,17 @@ class TestSQLWriters:
             connection = writer.connection
 
             result = _get_column_lengths(connection, 'mssql_nvarchar_length')
-            assert result['some_data'] == ('some_data', 'nvarchar', 900)
+            assert result['some_data'] == {
+                'COLUMN_NAME': 'some_data',
+                'DATA_TYPE': 'nvarchar',
+                'CHARACTER_MAXIMUM_LENGTH': 900,
+            }
             # nvarchar(max) is listed as -1
-            assert result['big_data'] == ('big_data', 'nvarchar', -1)
+            assert result['big_data'] == {
+                'COLUMN_NAME': 'big_data',
+                'DATA_TYPE': 'nvarchar',
+                'CHARACTER_MAXIMUM_LENGTH': -1,
+            }
 
             # put bigger data into "some_column" to ensure it is resized
             # properly
@@ -661,8 +674,16 @@ class TestSQLWriters:
             )
 
             result = _get_column_lengths(connection, 'mssql_nvarchar_length')
-            assert result['some_data'] == ('some_data', 'nvarchar', -1)
-            assert result['big_data'] == ('big_data', 'nvarchar', -1)
+            assert result['some_data'] == {
+                'COLUMN_NAME': 'some_data',
+                'DATA_TYPE': 'nvarchar',
+                'CHARACTER_MAXIMUM_LENGTH': -1,
+            }
+            assert result['big_data'] == {
+                'COLUMN_NAME': 'big_data',
+                'DATA_TYPE': 'nvarchar',
+                'CHARACTER_MAXIMUM_LENGTH': -1,
+            }
 
     def test_mssql_nvarchar_length_downsize(self, writer):
         with writer:
@@ -709,7 +730,11 @@ class TestSQLWriters:
             result = _get_column_lengths(
                 writer.connection, 'mssql_nvarchar_length_downsize'
             )
-            assert result['some_data'] == ('some_data', 'nvarchar', -1)
+            assert result['some_data'] == {
+                'COLUMN_NAME': 'some_data',
+                'DATA_TYPE': 'nvarchar',
+                'CHARACTER_MAXIMUM_LENGTH': -1,
+            }
 
     def test_bulk_upsert(self, writer):
         # Create table via normal write_table path
@@ -733,14 +758,14 @@ class TestSQLWriters:
                 {'id': 'row3', 'a': 'val3', 'b': 'z'},
             ]
             writer.bulk_upsert(table, batch)
-            writer._commit()
+            writer._flush()
 
         with writer:
             result = {
                 row['id']: dict(row)
                 for row in writer.connection.execute(
-                    'SELECT id, a, b FROM foo_bulk_upsert'
-                )
+                    text('SELECT id, a, b FROM foo_bulk_upsert')
+                ).mappings()
             }
         assert len(result) == 3
         assert result['row1'] == {'id': 'row1', 'a': 'updated1', 'b': 'ux'}
@@ -772,8 +797,8 @@ class TestSQLWriters:
             result = {
                 row['id']: dict(row)
                 for row in writer.connection.execute(
-                    'SELECT id, a, b FROM foo_flush_retry'
-                )
+                    text('SELECT id, a, b FROM foo_flush_retry')
+                ).mappings()
             }
         assert len(result) == 2
         assert result['row2'] == {
@@ -812,8 +837,8 @@ class TestSQLWriters:
         with writer:
             result = list(
                 writer.connection.execute(
-                    'SELECT id, a, b FROM foo_batched_write'
-                )
+                    text('SELECT id, a, b FROM foo_batched_write')
+                ).mappings()
             )
         assert len(result) == num_rows
         result_dict = {row['id']: dict(row) for row in result}
@@ -852,8 +877,8 @@ class TestSQLWriters:
         with writer:
             result = list(
                 writer.connection.execute(
-                    'SELECT id, a, b FROM foo_batched_upsert'
-                )
+                    text('SELECT id, a, b FROM foo_batched_upsert')
+                ).mappings()
             )
         assert len(result) == num_rows + 5
         result_dict = {row['id']: dict(row) for row in result}
@@ -883,8 +908,8 @@ class TestSQLWriters:
         with writer:
             result = list(
                 writer.connection.execute(
-                    'SELECT id, a, b FROM foo_late_schema'
-                )
+                    text('SELECT id, a, b FROM foo_late_schema')
+                ).mappings()
             )
         assert len(result) == SCHEMA_CHECK_ROWS + 5
         result_dict = {row['id']: dict(row) for row in result}

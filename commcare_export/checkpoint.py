@@ -1,24 +1,26 @@
 import datetime
 import logging
 import uuid
-from importlib import resources
 from contextlib import contextmanager
+from importlib import resources
 from operator import attrgetter
 
 import dateutil.parser
 from sqlalchemy import Boolean, Column, String, and_, func
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from commcare_export.commcare_minilinq import PaginationMode
 from commcare_export.exceptions import DataExportException
 from commcare_export.writers import SqlMixin
 
 logger = logging.getLogger(__name__)
-Base = declarative_base()
 
 
-class Checkpoint(Base):  # type: ignore[misc, valid-type]
+class Base(DeclarativeBase):
+    pass
+
+
+class Checkpoint(Base):
     __tablename__ = 'commcare_export_runs'
 
     id = Column(String, primary_key=True)
@@ -45,25 +47,25 @@ class Checkpoint(Base):  # type: ignore[misc, valid-type]
         if not self.pagination_mode:
             return PaginationMode.date_modified
 
-        return PaginationMode[self.pagination_mode]
+        return PaginationMode[str(self.pagination_mode)]
 
     def __repr__(self):
         return (
-            "<Checkpoint("
-            f"id={self.id}, "
-            f"query_file_name={self.query_file_name}, "
-            f"query_file_md5={self.query_file_md5}, "
-            f"table_name={self.table_name}, "
-            f"key={self.key}, "
-            f"project={self.project}, "
-            f"commcare={self.commcare}, "
-            f"since_param={self.since_param}, "
-            f"time_of_run={self.time_of_run}, "
-            f"final={self.final}), "
-            f"data_source={self.data_source}, "
-            f"last_doc_id={self.last_doc_id}, "
-            f"pagination_mode={self.pagination_mode},"
-            f"cursor={self.cursor}>"
+            '<Checkpoint('
+            f'id={self.id}, '
+            f'query_file_name={self.query_file_name}, '
+            f'query_file_md5={self.query_file_md5}, '
+            f'table_name={self.table_name}, '
+            f'key={self.key}, '
+            f'project={self.project}, '
+            f'commcare={self.commcare}, '
+            f'since_param={self.since_param}, '
+            f'time_of_run={self.time_of_run}, '
+            f'final={self.final}), '
+            f'data_source={self.data_source}, '
+            f'last_doc_id={self.last_doc_id}, '
+            f'pagination_mode={self.pagination_mode},'
+            f'cursor={self.cursor}>'
         )
 
 
@@ -85,7 +87,7 @@ def session_scope(Session):
 
 class CheckpointManager(SqlMixin):
     table_name = 'commcare_export_runs'
-    migrations_repository = resources.files("commcare_export") / "migrations"
+    migrations_repository = resources.files('commcare_export') / 'migrations'
 
     def __init__(
         self,
@@ -98,7 +100,7 @@ class CheckpointManager(SqlMixin):
         table_names=None,
         poolclass=None,
         engine=None,
-        data_source=None
+        data_source=None,
     ):
         super(CheckpointManager, self).__init__(
             db_url, poolclass=poolclass, engine=engine
@@ -122,7 +124,7 @@ class CheckpointManager(SqlMixin):
             self.key,
             engine=self.engine,
             table_names=table_names,
-            data_source=data_source
+            data_source=data_source,
         )
 
     def set_checkpoint(
@@ -215,9 +217,10 @@ class CheckpointManager(SqlMixin):
                 final=False,
                 query_file_md5=self.query_md5,
                 project=self.project,
-                commcare=self.commcare
-            ).filter(Checkpoint.table_name.in_(self.table_names)
-                    ).delete(synchronize_session='fetch')
+                commcare=self.commcare,
+            ).filter(Checkpoint.table_name.in_(self.table_names)).delete(
+                synchronize_session='fetch'
+            )
 
     def get_time_of_last_checkpoint(self, log_warnings=True):
         """
@@ -244,7 +247,7 @@ class CheckpointManager(SqlMixin):
                         table_name=table,
                         key=self.key,
                         project=self.project,
-                        commcare=self.commcare
+                        commcare=self.commcare,
                     )
                 else:
                     table_run = self._get_last_checkpoint(
@@ -253,7 +256,7 @@ class CheckpointManager(SqlMixin):
                         query_file_md5=self.query_md5,
                         project=self.project,
                         commcare=self.commcare,
-                        key=self.key
+                        key=self.key,
                     )
                 if table_run:
                     table_runs.append(table_run)
@@ -276,14 +279,14 @@ class CheckpointManager(SqlMixin):
                 table_name=None,
                 project=self.project,
                 commcare=self.commcare,
-                key=self.key
+                key=self.key,
             )
             if table_run:
                 return self._set_checkpoint(
                     table_run.since_param,
                     PaginationMode.date_modified,
                     table_run.final,
-                    table_run.time_of_run
+                    table_run.time_of_run,
                 )
 
             # Check for run without the args
@@ -293,14 +296,14 @@ class CheckpointManager(SqlMixin):
                 key=self.key,
                 project=None,
                 commcare=None,
-                table_name=None
+                table_name=None,
             )
             if table_run:
                 return self._set_checkpoint(
                     table_run.since_param,
                     PaginationMode.date_modified,
                     table_run.final,
-                    table_run.time_of_run
+                    table_run.time_of_run,
                 )
 
     def _get_last_checkpoint(self, session, **kwarg_filters):
@@ -314,14 +317,14 @@ class CheckpointManager(SqlMixin):
         name_mismatch = run.query_file_name != self.query
         if md5_mismatch or name_mismatch:
             logger.warning(
-                "Query differs from most recent checkpoint:\n"
-                "From checkpoint:         name=%s, md5=%s\n"
-                "From command line args:  name=%s, md5=%s\n",
+                'Query differs from most recent checkpoint:\n'
+                'From checkpoint:         name=%s, md5=%s\n'
+                'From command line args:  name=%s, md5=%s\n',
                 #
                 run.query_file_name,
                 run.query_file_md5,
                 self.query,
-                self.query_md5
+                self.query_md5,
             )
 
     def list_checkpoints(self, limit=20):
@@ -363,30 +366,43 @@ class CheckpointManager(SqlMixin):
                 Checkpoint.project,
                 Checkpoint.commcare,
                 Checkpoint.query_file_md5,
-                Checkpoint.table_name
+                Checkpoint.table_name,
             ]
-            inner_query = self._filter_query(
-                session.query(
-                    *(
-                        cols + [
-                            func.max(Checkpoint.time_of_run
-                                    ).label('max_time_of_run')
-                        ]
+            inner_query = (
+                self._filter_query(
+                    session.query(
+                        *(
+                            cols
+                            + [
+                                func.max(Checkpoint.time_of_run).label(
+                                    'max_time_of_run'
+                                )
+                            ]
+                        )
                     )
-                ).filter(Checkpoint.query_file_md5 == self.query_md5
-                        ).filter(Checkpoint.table_name.isnot(None))
-            ).group_by(*cols).subquery()
-
-            query = session.query(Checkpoint).join(
-                inner_query,
-                and_(
-                    Checkpoint.project == inner_query.c.project,
-                    Checkpoint.commcare == inner_query.c.commcare,
-                    Checkpoint.query_file_md5 == inner_query.c.query_file_md5,
-                    Checkpoint.table_name == inner_query.c.table_name,
-                    Checkpoint.time_of_run == inner_query.c.max_time_of_run
+                    .filter(Checkpoint.query_file_md5 == self.query_md5)
+                    .filter(Checkpoint.table_name.isnot(None))
                 )
-            ).order_by(Checkpoint.table_name.asc())
+                .group_by(*cols)
+                .subquery()
+            )
+
+            query = (
+                session.query(Checkpoint)
+                .join(
+                    inner_query,
+                    and_(
+                        Checkpoint.project == inner_query.c.project,
+                        Checkpoint.commcare == inner_query.c.commcare,
+                        Checkpoint.query_file_md5
+                        == inner_query.c.query_file_md5,
+                        Checkpoint.table_name == inner_query.c.table_name,
+                        Checkpoint.time_of_run
+                        == inner_query.c.max_time_of_run,
+                    ),
+                )
+                .order_by(Checkpoint.table_name.asc())
+            )
 
             # Can't use this since MySQL < 8.0 doesn't support window functions
             # Keeping for future reference
@@ -417,25 +433,29 @@ class CheckpointManager(SqlMixin):
 
     def _validate_tables(self):
         if not self.table_names:
-            raise Exception("Not tables set in checkpoint manager")
+            raise Exception('Not tables set in checkpoint manager')
 
 
 class CheckpointManagerWithDetails:
-
     def __init__(self, manager, since_param, pagination_mode):
         self.manager = manager
         self.since_param = since_param
         self.pagination_mode = pagination_mode
 
-    def set_checkpoint(self, checkpoint_time, is_final=False, doc_id=None, cursor=None):
+    def set_checkpoint(
+        self, checkpoint_time, is_final=False, doc_id=None, cursor=None
+    ):
         if self.manager:
             self.manager.set_checkpoint(
-                checkpoint_time, self.pagination_mode, is_final, doc_id=doc_id, cursor=cursor
+                checkpoint_time,
+                self.pagination_mode,
+                is_final,
+                doc_id=doc_id,
+                cursor=cursor,
             )
 
 
 class CheckpointManagerProvider:
-
     def __init__(
         self,
         base_checkpoint_manager=None,
@@ -500,10 +520,12 @@ class CheckpointManagerProvider:
             )
 
         since = self.get_since(manager)
-        pagination_mode = self.get_pagination_mode(data_source, checkpoint_manager=manager)
+        pagination_mode = self.get_pagination_mode(
+            data_source, checkpoint_manager=manager
+        )
         logger.info(
-            "Creating checkpoint manager for tables: %s, since: %s, "
-            "pagination_mode: %s",
+            'Creating checkpoint manager for tables: %s, since: %s, '
+            'pagination_mode: %s',
             #
             ', '.join(table_names),
             since,
@@ -511,13 +533,13 @@ class CheckpointManagerProvider:
         )
         if pagination_mode not in PaginationMode.supported_modes():
             logger.warning(
-                "\n====================================\n"
-                "This export is using a deprecated pagination mode which will "
-                "be removed in\n"
-                "future versions. To switch to the new mode you must re-sync "
-                "your data using\n"
-                "`--start-over`. For more details see: %s"
-                "\n====================================\n",  #
-                "https://github.com/dimagi/commcare-export/releases/tag/1.5.0"
+                '\n====================================\n'
+                'This export is using a deprecated pagination mode which will '
+                'be removed in\n'
+                'future versions. To switch to the new mode you must re-sync '
+                'your data using\n'
+                '`--start-over`. For more details see: %s'
+                '\n====================================\n',  #
+                'https://github.com/dimagi/commcare-export/releases/tag/1.5.0',
             )
         return CheckpointManagerWithDetails(manager, since, pagination_mode)
