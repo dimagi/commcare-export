@@ -3,6 +3,7 @@ import datetime
 import logging
 from tempfile import NamedTemporaryFile
 import zipfile
+import itertools
 from itertools import zip_longest
 from typing import Optional
 
@@ -16,6 +17,8 @@ from commcare_export.specs import TableSpec
 
 logger = logging.getLogger(__name__)
 MAX_COLUMN_SIZE = 2000
+SCHEMA_CHECK_ROWS = 10
+BATCH_SIZE = 1000
 
 
 def ensure_text(v, convert_none=False):
@@ -605,25 +608,100 @@ class SqlTableWriter(SqlMixin, TableWriter):
             )
             self.connection.execute(update)
 
+    def _commit(self):
+        # Explicit commit works for all DB types. Replace with explicit
+        # transactions when upgrading to SQLAlchemy 2.0
+        self.connection.execute(sqlalchemy.text('COMMIT'))
+
+    def bulk_upsert(self, table, batch):
+        if not batch:
+            return
+        # SQLAlchemy requires all dicts in `batch` to have the same keys
+        # for `insert(table).values(batch)`. We need to drop the columns
+        # whose values are always `None` to reproduce the behavior of
+        # `SqlTableWriter.insert()`. `batch_keys` are the columns where
+        # _any_ row has a value set.
+        batch_keys = {
+            k for row_dict in batch
+            for k, v in row_dict.items()
+            if v is not None
+        }
+        batch = [
+            {k: row_dict[k] for k in batch_keys}
+            for row_dict in batch
+        ]
+        if self.is_postgres:
+            from sqlalchemy.dialects.postgresql import insert
+
+            stmt = insert(table).values(batch)
+            update_cols = {c.name: c for c in stmt.excluded if c.name != 'id'}
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['id'],
+                set_=update_cols,
+            )
+            self.connection.execute(stmt)
+        elif self.is_mysql:
+            from sqlalchemy.dialects.mysql import insert
+
+            stmt = insert(table).values(batch)
+            update_cols = {
+                c.name: stmt.inserted[c.name]
+                for c in table.columns
+                if c.name != 'id'
+            }
+            stmt = stmt.on_duplicate_key_update(**update_cols)
+            self.connection.execute(stmt)
+        else:
+            # MSSQL and others: fall back to row-by-row
+            for row_dict in batch:
+                self.upsert(table, row_dict)
+
+    def _flush_batch(self, table, batch, data_type_dict):
+        try:
+            self.bulk_upsert(table, batch)
+        except (
+            sqlalchemy.exc.CompileError,
+            sqlalchemy.exc.OperationalError,
+            sqlalchemy.exc.ProgrammingError,
+        ):
+            # Likely a schema mismatch; fix schema and retry once
+            for row_dict in batch:
+                table = self.make_table_compatible(
+                    table,
+                    row_dict,
+                    data_type_dict,
+                )
+            self.bulk_upsert(table, batch)
+        self._commit()
+
     def write_table(self, table_spec: TableSpec) -> None:
         table_name = table_spec.name
         headings = table_spec.headings
         data_type_dict = dict(zip_longest(headings, table_spec.data_types))
-        for i, row in enumerate(table_spec.rows):
-            row_dict = dict(zip(headings, row))
-            if i == 0:
-                table = self.get_table(table_name)
-                if table is None:
-                    table = self.create_table(
-                        table_name,
-                        row_dict,
-                        data_type_dict,
-                    )
-            # Checks the data type for every cell in every row. Maybe we
-            # can use a future version of the data dictionary to avoid
-            # this?
+
+        rows = (dict(zip(headings, row)) for row in table_spec.rows)
+        first_row = next(rows, None)
+        if first_row is None:
+            return
+        row_stream = itertools.chain([first_row], rows)
+
+        table = self.get_table(table_name)
+        if table is None:
+            table = self.create_table(table_name, first_row, data_type_dict)
+
+        for row_dict in itertools.islice(row_stream, SCHEMA_CHECK_ROWS):
             table = self.make_table_compatible(table, row_dict, data_type_dict)
             self.upsert(table, row_dict)
+        self._commit()
+
+        logger.debug(
+            "Schema check complete for table '%s'. Final columns: %s",
+            table_name,
+            [c.name for c in table.columns],
+        )
+
+        for batch in _batched(row_stream, BATCH_SIZE):
+            self._flush_batch(table, batch, data_type_dict)
 
     def _get_columns_for_data(self, row_dict, data_type_dict):
         return [self.get_id_column()] + [
@@ -638,3 +716,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 and column_name != 'id'
             )
         ]
+
+
+# Use itertools.batched when Python is always >= 3.12
+def _batched(iterable, n):
+    while batch := list(itertools.islice(iterable, n)):
+        yield batch

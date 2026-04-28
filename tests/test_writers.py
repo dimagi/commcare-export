@@ -3,6 +3,7 @@ import datetime
 import io
 import tempfile
 import zipfile
+from itertools import zip_longest
 
 import openpyxl
 import sqlalchemy
@@ -10,6 +11,7 @@ import sqlalchemy
 import pytest
 from commcare_export.specs import TableSpec
 from commcare_export.writers import (
+    SCHEMA_CHECK_ROWS,
     CsvTableWriter,
     Excel2007TableWriter,
     JValueTableWriter,
@@ -709,6 +711,77 @@ class TestSQLWriters:
             )
             assert result['some_data'] == ('some_data', 'nvarchar', -1)
 
+    def test_bulk_upsert(self, writer):
+        # Create table via normal write_table path
+        with writer:
+            writer.write_table(
+                TableSpec(
+                    name='foo_bulk_upsert',
+                    headings=['id', 'a', 'b'],
+                    rows=[
+                        ['row1', 'val1', 'x'],
+                        ['row2', 'val2', 'y'],
+                    ],
+                )
+            )
+
+        # bulk_upsert: update row1, insert row3
+        with writer:
+            table = writer.get_table('foo_bulk_upsert')
+            batch = [
+                {'id': 'row1', 'a': 'updated1', 'b': 'ux'},
+                {'id': 'row3', 'a': 'val3', 'b': 'z'},
+            ]
+            writer.bulk_upsert(table, batch)
+            writer._commit()
+
+        with writer:
+            result = {
+                row['id']: dict(row)
+                for row in writer.connection.execute(
+                    'SELECT id, a, b FROM foo_bulk_upsert'
+                )
+            }
+        assert len(result) == 3
+        assert result['row1'] == {'id': 'row1', 'a': 'updated1', 'b': 'ux'}
+        assert result['row2'] == {'id': 'row2', 'a': 'val2', 'b': 'y'}
+        assert result['row3'] == {'id': 'row3', 'a': 'val3', 'b': 'z'}
+
+    def test_flush_batch_retry_on_new_column(self, writer):
+        # Create table with columns [id, a]
+        with writer:
+            writer.write_table(
+                TableSpec(
+                    name='foo_flush_retry',
+                    headings=['id', 'a'],
+                    rows=[['row1', 'val1']],
+                )
+            )
+
+        # _flush_batch with a batch containing new column 'b'
+        with writer:
+            table = writer.get_table('foo_flush_retry')
+            headings = ['id', 'a', 'b']
+            data_type_dict = dict(zip_longest(headings, []))
+            batch = [
+                {'id': 'row2', 'a': 'val2', 'b': 'new_col_val'},
+            ]
+            writer._flush_batch(table, batch, data_type_dict)
+
+        with writer:
+            result = {
+                row['id']: dict(row)
+                for row in writer.connection.execute(
+                    'SELECT id, a, b FROM foo_flush_retry'
+                )
+            }
+        assert len(result) == 2
+        assert result['row2'] == {
+            'id': 'row2',
+            'a': 'val2',
+            'b': 'new_col_val',
+        }
+
     def test_emoji(self, writer):
         with writer:
             writer.write_table(
@@ -723,3 +796,97 @@ class TestSQLWriters:
                     }
                 )
             )
+
+    def test_batched_write(self, writer):
+        num_rows = SCHEMA_CHECK_ROWS + 15
+        rows = [[f'id_{i}', f'a_{i}', i] for i in range(num_rows)]
+        with writer:
+            writer.write_table(
+                TableSpec(
+                    name='foo_batched_write',
+                    headings=['id', 'a', 'b'],
+                    rows=rows,
+                )
+            )
+
+        with writer:
+            result = list(
+                writer.connection.execute(
+                    'SELECT id, a, b FROM foo_batched_write'
+                )
+            )
+        assert len(result) == num_rows
+        result_dict = {row['id']: dict(row) for row in result}
+        for i in range(num_rows):
+            assert result_dict[f'id_{i}'] == {
+                'id': f'id_{i}',
+                'a': f'a_{i}',
+                'b': i,
+            }
+
+    def test_batched_upsert(self, writer):
+        num_rows = SCHEMA_CHECK_ROWS + 5
+        rows = [[f'id_{i}', f'a_{i}', i] for i in range(num_rows)]
+        with writer:
+            writer.write_table(
+                TableSpec(
+                    name='foo_batched_upsert',
+                    headings=['id', 'a', 'b'],
+                    rows=rows,
+                )
+            )
+
+        # Second write: update all existing + add 5 new
+        rows2 = [
+            [f'id_{i}', f'updated_{i}', i + 100] for i in range(num_rows + 5)
+        ]
+        with writer:
+            writer.write_table(
+                TableSpec(
+                    name='foo_batched_upsert',
+                    headings=['id', 'a', 'b'],
+                    rows=rows2,
+                )
+            )
+
+        with writer:
+            result = list(
+                writer.connection.execute(
+                    'SELECT id, a, b FROM foo_batched_upsert'
+                )
+            )
+        assert len(result) == num_rows + 5
+        result_dict = {row['id']: dict(row) for row in result}
+        for i in range(num_rows + 5):
+            assert result_dict[f'id_{i}'] == {
+                'id': f'id_{i}',
+                'a': f'updated_{i}',
+                'b': i + 100,
+            }
+
+    def test_late_schema_change_via_write_table(self, writer):
+        rows = []
+        for i in range(SCHEMA_CHECK_ROWS):
+            rows.append([f'id_{i}', f'a_{i}', None])
+        for i in range(SCHEMA_CHECK_ROWS, SCHEMA_CHECK_ROWS + 5):
+            rows.append([f'id_{i}', f'a_{i}', f'b_{i}'])
+
+        with writer:
+            writer.write_table(
+                TableSpec(
+                    name='foo_late_schema',
+                    headings=['id', 'a', 'b'],
+                    rows=rows,
+                )
+            )
+
+        with writer:
+            result = list(
+                writer.connection.execute(
+                    'SELECT id, a, b FROM foo_late_schema'
+                )
+            )
+        assert len(result) == SCHEMA_CHECK_ROWS + 5
+        result_dict = {row['id']: dict(row) for row in result}
+        for i in range(SCHEMA_CHECK_ROWS, SCHEMA_CHECK_ROWS + 5):
+            assert result_dict[f'id_{i}']['b'] == f'b_{i}'
