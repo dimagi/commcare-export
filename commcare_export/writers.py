@@ -700,7 +700,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             [c.name for c in table.columns],
         )
 
-        for batch in itertools.batched(row_stream, BATCH_SIZE):
+        for batch in _batched(row_stream, BATCH_SIZE):
             self._flush_batch(table, batch, data_type_dict)
 
     def _get_columns_for_data(self, row_dict, data_type_dict):
@@ -716,3 +716,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
                 and column_name != 'id'
             )
         ]
+
+
+# Use itertools.batched when Python is always >= 3.12
+def _batched(iterable, n):
+    while batch := list(itertools.islice(iterable, n)):
+        yield batch
