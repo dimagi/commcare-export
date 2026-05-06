@@ -663,6 +663,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
             sqlalchemy.exc.CompileError,
             sqlalchemy.exc.OperationalError,
             sqlalchemy.exc.ProgrammingError,
+            sqlalchemy.exc.DataError,
         ):
             # Likely a schema mismatch; fix schema and retry once
             for row_dict in batch:
