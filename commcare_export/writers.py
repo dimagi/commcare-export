@@ -621,11 +621,11 @@ class SqlTableWriter(SqlMixin, TableWriter):
         # whose values are always `None` to reproduce the behavior of
         # `SqlTableWriter.insert()`. `batch_keys` are the columns where
         # _any_ row has a value set.
-        batch_keys = {
-            k for row_dict in batch
-            for k, v in row_dict.items()
-            if v is not None
-        }
+        batch_keys = set()
+        for row_dict in batch:
+            for key, value in row_dict.items():
+                if value is not None:
+                    batch_keys.add(key)
         batch = [
             {k: row_dict[k] for k in batch_keys}
             for row_dict in batch
