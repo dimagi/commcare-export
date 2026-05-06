@@ -695,7 +695,9 @@ class SqlTableWriter(SqlMixin, TableWriter):
         self._commit()
 
         logger.debug(
-            "Schema check complete for table '%s'. Final columns: %s",
+            "Schema check complete for %s rows in table '%s'. "
+            "Final columns: %s",
+            SCHEMA_CHECK_ROWS,
             table_name,
             [c.name for c in table.columns],
         )
