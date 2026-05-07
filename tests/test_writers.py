@@ -747,6 +747,59 @@ class TestSQLWriters:
         assert result['row2'] == {'id': 'row2', 'a': 'val2', 'b': 'y'}
         assert result['row3'] == {'id': 'row3', 'a': 'val3', 'b': 'z'}
 
+    def test_bulk_upsert_preserves_existing_values_for_none(self, writer):
+        with writer:
+            writer.write_table(
+                TableSpec(
+                    name='foo_bulk_upsert_none',
+                    headings=['id', 'a', 'b', 'c'],
+                    rows=[
+                        ['row1', 'val1', 'x', 'keep1'],
+                        ['row2', 'val2', 'y', 'keep2'],
+                    ],
+                )
+            )
+
+        # Update row1 with None for b (whole-batch None for column c).
+        # Both should be preserved at their existing values rather than
+        # clobbered to NULL. row3 is a new insert; its None values land
+        # as NULL since there is no prior row.
+        with writer:
+            table = writer.get_table('foo_bulk_upsert_none')
+            batch = [
+                {'id': 'row1', 'a': 'updated1', 'b': None, 'c': None},
+                {'id': 'row3', 'a': 'val3', 'b': 'z', 'c': None},
+            ]
+            writer.bulk_upsert(table, batch)
+            writer._commit()
+
+        with writer:
+            result = {
+                row['id']: dict(row)
+                for row in writer.connection.execute(
+                    'SELECT id, a, b, c FROM foo_bulk_upsert_none'
+                )
+            }
+        assert len(result) == 3
+        assert result['row1'] == {
+            'id': 'row1',
+            'a': 'updated1',
+            'b': 'x',
+            'c': 'keep1',
+        }
+        assert result['row2'] == {
+            'id': 'row2',
+            'a': 'val2',
+            'b': 'y',
+            'c': 'keep2',
+        }
+        assert result['row3'] == {
+            'id': 'row3',
+            'a': 'val3',
+            'b': 'z',
+            'c': None,
+        }
+
     def test_flush_batch_retry_on_new_column(self, writer):
         # Create table with columns [id, a]
         with writer:

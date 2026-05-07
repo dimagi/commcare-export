@@ -626,35 +626,43 @@ class SqlTableWriter(SqlMixin, TableWriter):
             for key, value in row_dict.items():
                 if value is not None:
                     batch_keys.add(key)
-        batch = [
-            {k: row_dict[k] for k in batch_keys}
-            for row_dict in batch
-        ]
+        batch = [{k: row_dict[k] for k in batch_keys} for row_dict in batch]
         if self.is_postgres:
             from sqlalchemy.dialects.postgresql import insert
 
             stmt = insert(table).values(batch)
-            update_cols = {c.name: c for c in stmt.excluded if c.name != 'id'}
-            stmt = stmt.on_conflict_do_update(
-                index_elements=['id'],
-                set_=update_cols,
-            )
-            self.connection.execute(stmt)
+            new_row = stmt.excluded
         elif self.is_mysql:
             from sqlalchemy.dialects.mysql import insert
 
             stmt = insert(table).values(batch)
-            update_cols = {
-                c.name: stmt.inserted[c.name]
-                for c in table.columns
-                if c.name != 'id'
-            }
-            stmt = stmt.on_duplicate_key_update(**update_cols)
-            self.connection.execute(stmt)
+            new_row = stmt.inserted
         else:
             # MSSQL and others: fall back to row-by-row
             for row_dict in batch:
                 self.upsert(table, row_dict)
+            return
+
+        # Use COALESCE so that a None in the inserted row preserves the
+        # existing column value, matching the per-row upsert() which
+        # strips Nones before building the UPDATE.
+        # Only reference columns that already exist on the table. New
+        # columns in batch_keys would raise KeyError here; the INSERT
+        # itself will then fail and _flush_batch retries after fixing
+        # the schema.
+        update_cols = {
+            c.name: sqlalchemy.func.coalesce(new_row[c.name], c)
+            for c in table.columns
+            if c.name != 'id' and c.name in batch_keys
+        }
+        if self.is_postgres:
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['id'],
+                set_=update_cols,
+            )
+        else:
+            stmt = stmt.on_duplicate_key_update(**update_cols)
+        self.connection.execute(stmt)
 
     def _flush_batch(self, table, batch, data_type_dict):
         try:
@@ -697,7 +705,7 @@ class SqlTableWriter(SqlMixin, TableWriter):
 
         logger.debug(
             "Schema check complete for %s rows in table '%s'. "
-            "Final columns: %s",
+            'Final columns: %s',
             SCHEMA_CHECK_ROWS,
             table_name,
             [c.name for c in table.columns],
