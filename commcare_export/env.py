@@ -16,7 +16,7 @@ from jsonpath_ng.parser import parse as parse_jsonpath
 
 logger = logging.getLogger(__name__)
 
-JSONPATH_CACHE = {}
+JSONPATH_CACHE: dict[str, Any] = {}
 
 
 class CannotBind(Exception):
