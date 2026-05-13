@@ -696,7 +696,7 @@ def check_columns(parsed_sheets, columns):
         raise MissingColumnException(errors_by_sheet)
 
 
-blacklisted_tables = []
+blacklisted_tables: list[str] = []
 
 
 def blacklist(table_name):
