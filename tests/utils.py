@@ -1,8 +1,9 @@
+from sqlalchemy import text
+
 from commcare_export.writers import SqlTableWriter
 
 
 class SqlWriterWithTearDown(SqlTableWriter):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tables = set()
@@ -13,6 +14,8 @@ class SqlWriterWithTearDown(SqlTableWriter):
             self.tables.add(table_spec.name)
 
     def tear_down(self):
-        for table in self.tables:
-            self.engine.execute(f'DROP TABLE "{table}"')
+        with self.engine.connect() as conn:
+            for table in self.tables:
+                conn.execute(text(f'DROP TABLE "{table}"'))
+            conn.commit()
         self.tables = set()

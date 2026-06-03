@@ -1,6 +1,5 @@
-from __future__ import with_statement
 from alembic import context
-from sqlalchemy import create_engine
+from sqlalchemy import Connection, create_engine
 
 config = context.config
 target_metadata = None
@@ -16,14 +15,20 @@ def run_migrations_online():
         else:
             raise Exception("No connection URL. Use '-x url=<url>'")
 
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata
-        )
+    if isinstance(connectable, Connection):
+        _run_migrations(connectable)
+    else:
+        with connectable.connect() as connection:
+            _run_migrations(connection)
 
-        with context.begin_transaction():
-            context.run_migrations()
+
+def _run_migrations(connection):
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+    )
+    with context.begin_transaction():
+        context.run_migrations()
 
 
 run_migrations_online()
