@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Usage:
+#
+#   PROJECTS="project1 project2 project3" commcare-export-multi [all the same args you'd use for commcare-export]
+#
+
+for PROJECT in ${PROJECTS}
+do
+  echo "commcare-export $@ --project ${PROJECT}"
+  commcare-export "$@" --project ${PROJECT}
+done
