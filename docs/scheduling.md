@@ -47,6 +47,7 @@ Best Practices
 --------------
 
 - Use API keys instead of passwords in scheduled scripts
-- Use SQL output format to leverage automatic checkpoints
+- Use SQL output format, or delta output with
+  `--checkpoint-database-url`, to leverage automatic checkpoints
 - Use `--log-dir` to specify a log directory for troubleshooting
 - Test manually before scheduling

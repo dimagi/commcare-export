@@ -7,6 +7,7 @@ from copy import copy
 from itertools import zip_longest
 from unittest import mock
 
+import openpyxl
 import pytest
 import sqlalchemy
 from sqlalchemy import text
@@ -19,6 +20,8 @@ from commcare_export.checkpoint import (
 )
 from commcare_export.cli import (
     CLI_ARGS,
+    _get_checkpoint_manager,
+    _get_writer,
     main_with_args,
     validate_output_filename,
 )
@@ -29,7 +32,7 @@ from commcare_export.commcare_hq_client import (
 )
 from commcare_export.commcare_minilinq import PaginationMode
 from commcare_export.specs import TableSpec
-from commcare_export.writers import JValueTableWriter
+from commcare_export.writers import DeltaTableWriter, JValueTableWriter
 from tests.utils import SqlWriterWithTearDown
 
 CLI_ARGS_BY_NAME = {arg.name: arg for arg in CLI_ARGS}
@@ -354,6 +357,19 @@ def get_expected_locations_results(include_parent):
     ]
 
 
+def _save_delta_query_workbook(query_file):
+    workbook = openpyxl.Workbook()
+    forms = workbook.active
+    forms.title = 'Forms'
+    forms.append(['Data Source', 'Field', 'Source Field'])
+    forms.append(['form', 'id', 'id'])
+    forms.append([None, 'name', 'form.name'])
+    cases = workbook.create_sheet('Other cases')
+    cases.append(['Data Source', 'Field', 'Source Field'])
+    cases.append(['case', 'id', 'id'])
+    workbook.save(query_file)
+
+
 class TestCli:
     @mock.patch(
         'commcare_export.cli._get_api_client',
@@ -364,6 +380,89 @@ class TestCli:
             query='tests/008_multiple-tables.xlsx', output_format='json'
         )
         _run_cli_and_assert(args, EXPECTED_MULTIPLE_TABLES_RESULTS)
+
+    @mock.patch(
+        'commcare_export.cli._get_api_client',
+        return_value=mock_hq_client(True),
+    )
+    def test_cli_delta_output(self, mock_client, tmp_path):
+        deltalake = pytest.importorskip('deltalake')
+        query_file = str(tmp_path / 'query.xlsx')
+        _save_delta_query_workbook(query_file)
+
+        args = make_args(
+            query=query_file,
+            output_format='delta',
+            output=str(tmp_path / 'exports'),
+        )
+        assert main_with_args(args) == 0
+
+        def read_table(name):
+            table = deltalake.DeltaTable(f'{tmp_path}/exports/{name}')
+            return sorted(
+                table.to_pyarrow_table().to_pylist(),
+                key=lambda row: row['id'],
+            )
+
+        assert read_table('Forms') == [
+            {'id': '1', 'name': 'f1'},
+            {'id': '2', 'name': 'f2'},
+        ]
+        assert read_table('Other cases') == [
+            {'id': 'case1'},
+            {'id': 'case2'},
+        ]
+
+    @mock.patch(
+        'commcare_export.cli._get_api_client',
+        return_value=mock_hq_client(True),
+    )
+    def test_cli_delta_output_reports_unwritable_values(
+        self, mock_client, tmp_path, caplog
+    ):
+        pytest.importorskip('deltalake')
+        query_file = str(tmp_path / 'query.xlsx')
+        workbook = openpyxl.Workbook()
+        forms = workbook.active
+        forms.title = 'Forms'
+        forms.append(['Data Source', 'Field', 'Source Field', 'Data Type'])
+        forms.append(['form', 'id', 'id', None])
+        forms.append([None, 'name', 'form.name', 'integer'])
+        workbook.save(query_file)
+
+        args = make_args(
+            query=query_file,
+            output_format='delta',
+            output=str(tmp_path / 'exports'),
+        )
+        # at the default (non---verbose) log level, the error must be
+        # reported without a traceback, which would carry untruncated
+        # exported values
+        caplog.set_level(logging.INFO, logger='commcare_export.cli')
+        assert main_with_args(args) == 1
+        assert any(
+            'Stopping because of export error' in message
+            for message in caplog.messages
+        )
+        assert 'Traceback' not in caplog.text
+
+    @mock.patch(
+        'commcare_export.cli._get_api_client',
+        return_value=mock_hq_client(True),
+    )
+    def test_checkpoint_database_url_warns_when_unsupported(
+        self, mock_client, caplog
+    ):
+        args = make_args(
+            query='tests/008_multiple-tables.xlsx',
+            output_format='json',
+            checkpoint_database_url='sqlite:///unused.db',
+        )
+        main_with_args(args)
+        assert any(
+            "'--checkpoint-database-url' is ignored" in message
+            for message in caplog.messages
+        )
 
     @mock.patch(
         'commcare_export.cli._get_api_client',
@@ -593,7 +692,8 @@ def checkpoint_manager(pg_db_params):
 
 
 def _pull_data(writer, checkpoint_manager, query, since, until, batch_size=10):
-    if 'HQ_USERNAME' not in os.environ or 'HQ_API_KEY' not in os.environ:
+    # secrets are empty strings on pull requests from forks
+    if not os.environ.get('HQ_USERNAME') or not os.environ.get('HQ_API_KEY'):
         pytest.skip(
             'HQ_USERNAME and HQ_API_KEY are required for integration tests.'
         )
@@ -1282,3 +1382,58 @@ def test_for_other_non_sql_output():
         output_filename='postgresql+psycopg2://scott:tiger@localhost/mydatabase',
     )
     assert errors == [error_message]
+
+
+@pytest.mark.parametrize(
+    'output_filename', ['exports', 'az://container/exports']
+)
+def test_delta_output_accepts_directories_and_uris(output_filename):
+    errors = validate_output_filename(
+        output_format='delta', output_filename=output_filename
+    )
+    assert errors == []
+
+
+def test_delta_output_rejects_file_names():
+    errors = validate_output_filename(
+        output_format='delta', output_filename='reports.zip'
+    )
+    assert errors == [
+        'For delta output, --output should be a directory or object '
+        'storage URI'
+    ]
+
+
+def test_delta_output_uses_the_delta_writer():
+    pytest.importorskip('deltalake')
+    writer = _get_writer(
+        output_format='delta', output='exports', strict_types=False
+    )
+    assert isinstance(writer, DeltaTableWriter)
+
+
+def test_checkpoints_are_stored_in_the_checkpoint_database_url(tmp_path):
+    checkpoint_url = f'sqlite:///{tmp_path}/checkpoints.db'
+    args = make_args(
+        query='tests/009_integration.xlsx',
+        output='exports',
+        output_format='delta',
+        checkpoint_database_url=checkpoint_url,
+    )
+    manager = _get_checkpoint_manager(args)
+    assert manager.db_url == checkpoint_url
+
+
+def test_checkpoints_are_disabled_for_delta_without_a_checkpoint_database(
+    caplog,
+):
+    args = make_args(
+        query='tests/009_integration.xlsx',
+        output='exports',
+        output_format='delta',
+    )
+    assert _get_checkpoint_manager(args) is None
+    assert any(
+        'Checkpointing disabled for delta output' in message
+        for message in caplog.messages
+    )

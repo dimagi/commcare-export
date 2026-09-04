@@ -17,7 +17,12 @@ from commcare_export.writers import (
     Excel2007TableWriter,
     JValueTableWriter,
     SqlTableWriter,
+    _batched,
 )
+
+
+def test_batched_terminates_on_lists():
+    assert list(_batched([1, 2, 3], 2)) == [[1, 2], [3]]
 
 
 @pytest.fixture()

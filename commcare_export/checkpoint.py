@@ -121,9 +121,11 @@ class CheckpointManager(SqlMixin):
         self.Session = sessionmaker(self.engine, expire_on_commit=False)
         self.table_names = table_names
         self.data_source = data_source
+        self.defer_checkpoints = False
+        self.deferred_checkpoints = []
 
     def for_dataset(self, data_source, table_names):
-        return CheckpointManager(
+        manager = CheckpointManager(
             self.db_url,
             self.query,
             self.query_md5,
@@ -134,6 +136,9 @@ class CheckpointManager(SqlMixin):
             table_names=table_names,
             data_source=data_source,
         )
+        manager.defer_checkpoints = self.defer_checkpoints
+        manager.deferred_checkpoints = self.deferred_checkpoints
+        return manager
 
     def set_checkpoint(
         self,
@@ -143,6 +148,16 @@ class CheckpointManager(SqlMixin):
         doc_id=None,
         cursor=None,
     ):
+        if self.defer_checkpoints:
+            # delta output commits rows in large chunks well after their
+            # pages were fetched, so recording progress now could outrun
+            # the committed data; the CLI writes the deferred final
+            # checkpoints once the whole export has succeeded
+            if is_final:
+                self.deferred_checkpoints.append(
+                    (self, checkpoint_time, pagination_mode, doc_id, cursor)
+                )
+            return
         self._set_checkpoint(
             checkpoint_time,
             pagination_mode,
@@ -152,6 +167,20 @@ class CheckpointManager(SqlMixin):
         )
         if is_final:
             self._cleanup()
+
+    def write_deferred_checkpoints(self):
+        for manager, checkpoint_time, pagination_mode, doc_id, cursor in (
+            self.deferred_checkpoints
+        ):
+            manager._set_checkpoint(
+                checkpoint_time,
+                pagination_mode,
+                True,
+                doc_id=doc_id,
+                cursor=cursor,
+            )
+            manager._cleanup()
+        self.deferred_checkpoints.clear()
 
     def _set_checkpoint(
         self,

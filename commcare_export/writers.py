@@ -1,24 +1,44 @@
 import csv
 import datetime
+import json
 import logging
 import zipfile
 import itertools
 from itertools import zip_longest
 from tempfile import NamedTemporaryFile
-from typing import Optional
+from typing import Any, Optional
 
+import dateutil.parser
 import sqlalchemy
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy.exc import NoSuchTableError
 
-from commcare_export.data_types import UnknownDataType, get_sqlalchemy_type
+from commcare_export.data_types import (
+    DATA_TYPE_BOOLEAN,
+    DATA_TYPE_DATE,
+    DATA_TYPE_DATETIME,
+    DATA_TYPE_INTEGER,
+    DATA_TYPE_JSON,
+    DATA_TYPE_TEXT,
+    UnknownDataType,
+    get_sqlalchemy_type,
+)
+from commcare_export.exceptions import (
+    DeltaWriteException,
+    UnwritableValueException,
+    truncated,
+)
 from commcare_export.specs import TableSpec
 
 logger = logging.getLogger(__name__)
 MAX_COLUMN_SIZE = 2000
 SCHEMA_CHECK_ROWS = 10
 BATCH_SIZE = 1000
+# Delta wants few large commits where SQL wants small batches: each
+# Delta commit rewrites whole files, so committing every BATCH_SIZE
+# rows would make a backfill quadratic
+DELTA_BATCH_SIZE = 100_000
 
 
 def ensure_text(v, convert_none=False):
@@ -737,7 +757,317 @@ class SqlTableWriter(SqlMixin, TableWriter):
         ]
 
 
+class DeltaTableWriter(TableWriter):
+    """
+    Writes each table as a Delta Lake table under a base URI, which can
+    be a local directory or object storage (e.g. s3://, az://, gs://).
+    delta-rs reads storage credentials from the environment, so they
+    never appear on the command line.
+    """
+
+    support_checkpoints = True
+    required_columns = ['id']
+
+    def __init__(self, base_uri):
+        try:
+            import deltalake
+            import pyarrow
+        except ImportError:
+            raise Exception(
+                "Delta output requires the 'delta' extra. Install it "
+                "with: pip install 'commcare-export[delta]'"
+            )
+        self.deltalake = deltalake
+        self.pyarrow = pyarrow
+        self.base_uri = base_uri.rstrip('/')
+        self.arrow_types = {
+            DATA_TYPE_TEXT: pyarrow.string(),
+            DATA_TYPE_INTEGER: pyarrow.int64(),
+            DATA_TYPE_BOOLEAN: pyarrow.bool_(),
+            # tz-naive timestamps would require Delta reader version 3,
+            # which several lakehouse query engines cannot read yet
+            DATA_TYPE_DATETIME: pyarrow.timestamp('us', tz='UTC'),
+            DATA_TYPE_DATE: pyarrow.date32(),
+            DATA_TYPE_JSON: pyarrow.string(),
+        }
+
+    def write_table(self, table_spec: TableSpec) -> None:
+        table_uri = self._table_uri(table_spec.name)
+        headings = table_spec.headings
+        if 'id' not in headings:
+            raise DeltaWriteException(
+                table_spec.name, "delta output requires an 'id' column"
+            )
+        for heading in headings:
+            # delta-rs (1.6) cannot parse backticks in merge
+            # expressions, even inside double-quoted identifiers
+            if '`' in heading:
+                raise DeltaWriteException(
+                    table_spec.name, f"cannot use column name '{heading}'"
+                )
+        data_type_dict = dict(zip_longest(headings, table_spec.data_types))
+        # ids are always stored as strings; any declared type is ignored
+        data_type_dict['id'] = None
+        id_index = headings.index('id')
+        schema = self._get_schema(headings, data_type_dict)
+        table_existed = self._get_table(table_uri) is not None
+        appended_ids: set[str] = set()
+        held_back: dict[str, dict[str, Any]] = {}
+        commits = 0
+        for batch in _batched(table_spec.rows, DELTA_BATCH_SIZE):
+            rows_by_id: dict[str, dict[str, Any]] = {}
+            skipped = 0
+            for row in batch:
+                raw_id = row[id_index] if id_index < len(row) else None
+                row_dict = {
+                    heading: self._convert(
+                        table_spec.name, heading, value,
+                        data_type_dict[heading], raw_id,
+                    )
+                    for heading, value in zip(headings, row)
+                }
+                row_id = row_dict.get('id')
+                if row_id is None:
+                    skipped += 1
+                    continue
+                if row_id in rows_by_id:
+                    _absorb_row(rows_by_id[row_id], row_dict)
+                else:
+                    rows_by_id[row_id] = row_dict
+            if skipped:
+                logger.warning(
+                    f"Rows skipped for having no id in table "
+                    f"'{table_spec.name}': {skipped}. They will not be "
+                    "exported by later incremental runs."
+                )
+            if table_existed:
+                if rows_by_id:
+                    self._guarded(
+                        table_spec.name, self._merge,
+                        table_uri, list(rows_by_id.values()), schema,
+                    )
+                    commits += 1
+            else:
+                # first export: append rows and hold back the rare ids
+                # already appended by an earlier chunk, applying those
+                # in one merge at the end, so a backfill never merges
+                # against data this same run just wrote. appended_ids
+                # holds every id of the export in memory, roughly 100MB
+                # per million rows
+                to_append = []
+                for row_id, row_dict in rows_by_id.items():
+                    if row_id in appended_ids:
+                        if row_id in held_back:
+                            _absorb_row(held_back[row_id], row_dict)
+                        else:
+                            held_back[row_id] = row_dict
+                    else:
+                        to_append.append(row_dict)
+                        appended_ids.add(row_id)
+                if to_append:
+                    self._guarded(
+                        table_spec.name, self._append,
+                        table_uri, to_append, schema,
+                    )
+                    commits += 1
+                if len(held_back) >= DELTA_BATCH_SIZE:
+                    self._guarded(
+                        table_spec.name, self._merge,
+                        table_uri, list(held_back.values()), schema,
+                    )
+                    held_back.clear()
+                    commits += 1
+        if held_back:
+            self._guarded(
+                table_spec.name, self._merge,
+                table_uri, list(held_back.values()), schema,
+            )
+            commits += 1
+        if commits > 1:
+            self._compact(table_uri, table_spec.name)
+
+    def _guarded(self, table_name, write, *args):
+        try:
+            return write(*args)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException as err:
+            # delta-rs raises plain Exceptions as well as DeltaErrors,
+            # and its Rust panics subclass BaseException
+            raise DeltaWriteException(table_name, err)
+
+    def _compact(self, table_uri, table_name):
+        try:
+            self._get_table(table_uri).optimize.compact()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException as err:
+            # the exported data is already committed, so a failed
+            # compaction only costs read performance
+            logger.warning(
+                f"Failed to compact table '{truncated(table_name, 50)}': "
+                f'{truncated(err)}'
+            )
+
+    def _convert(self, table_name, column, value, data_type, row_id):
+        try:
+            return _convert_value(value, data_type)
+        except (ValueError, TypeError, OverflowError) as err:
+            raise UnwritableValueException(
+                table_name, column, value, err, row_id=row_id
+            )
+
+    def _table_uri(self, table_name):
+        # table names become path segments, and delta-rs percent-decodes
+        # URIs, so block separators, dot-only names and URI
+        # metacharacters
+        if (
+            not table_name
+            or table_name == '.'
+            or '..' in table_name
+            or set(table_name) & set('/\\%?#:[]^|')
+        ):
+            raise DeltaWriteException(
+                table_name,
+                'the table name cannot be used in a Delta table path',
+            )
+        return f'{self.base_uri}/{table_name}'
+
+    def _get_schema(self, headings, data_type_dict):
+        pa = self.pyarrow
+        # dict.fromkeys dedupes repeated headings to match the row
+        # dicts, which keep the last value for a repeated heading
+        return pa.schema([
+            pa.field('id', pa.string(), nullable=False)
+            if heading == 'id'
+            else pa.field(heading, self._arrow_type(data_type_dict[heading]))
+            for heading in dict.fromkeys(headings)
+        ])
+
+    def _arrow_type(self, data_type):
+        if data_type and data_type not in self.arrow_types:
+            logger.warning(f"Found unknown data type '{data_type}'")
+        return self.arrow_types.get(data_type, self.pyarrow.string())
+
+    def _append(self, table_uri, row_dicts, schema):
+        source = self.pyarrow.Table.from_pylist(row_dicts, schema=schema)
+        self.deltalake.write_deltalake(table_uri, source, mode='append')
+
+    def _merge(self, table_uri, row_dicts, schema):
+        if not row_dicts:
+            return
+        source = self.pyarrow.Table.from_pylist(row_dicts, schema=schema)
+        table = self._get_table(table_uri)
+        if table is None:
+            self.deltalake.write_deltalake(table_uri, source)
+            return
+        existing = {field.name for field in table.schema().fields}
+        new_columns = [
+            name for name in source.schema.names if name not in existing
+        ]
+        # a column merge_schema is about to add cannot be coalesced
+        # against, because t.<column> resolves against the pre-merge
+        # schema
+        updates = {
+            _quoted(name): (
+                f's.{_quoted(name)}'
+                if name in new_columns
+                else f'coalesce(s.{_quoted(name)}, t.{_quoted(name)})'
+            )
+            for name in source.schema.names
+            if name != 'id'
+        }
+        merger = table.merge(
+            source,
+            predicate='t."id" = s."id"',
+            source_alias='s',
+            target_alias='t',
+            merge_schema=bool(new_columns),
+        )
+        if updates:
+            merger = merger.when_matched_update(updates)
+        merger.when_not_matched_insert_all().execute()
+
+    def _get_table(self, table_uri):
+        try:
+            return self.deltalake.DeltaTable(table_uri)
+        except self.deltalake.exceptions.TableNotFoundError:
+            return None
+
+
+def _absorb_row(target, row_dict):
+    # Delta merge fails when duplicate source ids match one target row,
+    # so collapse duplicates the way repeated upserts would: last value
+    # wins, nulls never overwrite
+    target.update({
+        column: value
+        for column, value in row_dict.items()
+        if value is not None
+    })
+
+
+def _quoted(name):
+    escaped = name.replace('"', '""')
+    return f'"{escaped}"'
+
+
+def _convert_value(value, data_type):
+    if value is None:
+        return None
+    if data_type == DATA_TYPE_INTEGER:
+        return round(value) if isinstance(value, float) else int(value)
+    if data_type == DATA_TYPE_BOOLEAN:
+        return _to_bool(value)
+    if data_type == DATA_TYPE_DATETIME:
+        return _to_datetime(value)
+    if data_type == DATA_TYPE_DATE:
+        return _to_date(value)
+    if data_type == DATA_TYPE_JSON:
+        return json.dumps(value)
+    if isinstance(value, bytes):
+        # undecodable bytes are replaced rather than failing the export
+        return value.decode('utf-8', errors='replace')
+    return ensure_text(value)
+
+
+def _to_bool(value):
+    if isinstance(value, bool):
+        return value
+    text = str(value).lower()
+    if text in ('true', 't', '1'):
+        return True
+    if text in ('false', 'f', '0'):
+        return False
+    raise ValueError('cannot convert value to a boolean')
+
+
+def _to_datetime(value):
+    utc = datetime.timezone.utc
+    if isinstance(value, datetime.datetime):
+        parsed = value
+    elif isinstance(value, datetime.date):
+        parsed = datetime.datetime(value.year, value.month, value.day)
+    else:
+        # isoparse rather than parse: parse() guesses the missing parts
+        # of a partial date from the current clock, which would make
+        # re-exports store different values on different days
+        parsed = dateutil.parser.isoparse(value)
+    if parsed.tzinfo:
+        return parsed.astimezone(utc)
+    # CommCare HQ reports timestamps in UTC
+    return parsed.replace(tzinfo=utc)
+
+
+def _to_date(value):
+    if isinstance(value, datetime.datetime):
+        return value.date()
+    if isinstance(value, datetime.date):
+        return value
+    return dateutil.parser.isoparse(value).date()
+
+
 # Use itertools.batched when Python is always >= 3.12
 def _batched(iterable, n):
+    iterable = iter(iterable)
     while batch := list(itertools.islice(iterable, n)):
         yield batch

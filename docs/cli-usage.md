@@ -13,8 +13,8 @@ commcare-export \
     --username <username> \
     --project <project> \
     --query <excel or json file> \
-    --output-format <csv, xls, xlsx, json, markdown, sql> \
-    --output <file name or SQL database URL>
+    --output-format <csv, xls, xlsx, json, markdown, sql, delta> \
+    --output <file name, SQL database URL or Delta Lake base URI>
 ```
 
 See `commcare-export --help` for the full list of options.

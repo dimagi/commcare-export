@@ -105,14 +105,16 @@ CLI_ARGS = [
     Argument(
         'output-format',
         default='json',
-        choices=['json', 'csv', 'xls', 'xlsx', 'sql', 'markdown'],
+        choices=['json', 'csv', 'xls', 'xlsx', 'sql', 'delta', 'markdown'],
         help='Output format'
     ),
     Argument(
         'output',
         metavar='PATH',
         default='reports.zip',
-        help='Path to output; defaults to `reports.zip`.'
+        help='Path to output; defaults to `reports.zip`. For delta, a '
+        'local directory or object storage URI under which each table '
+        'is written as a Delta Lake table.'
     ),
     Argument(
         'strict-types',
@@ -136,6 +138,13 @@ CLI_ARGS = [
         help="Use this key for all checkpoints instead of the query file MD5 "
         "hash in order to prevent table rebuilds after a query file has "
         "been edited."
+    ),
+    Argument(
+        'checkpoint-database-url',
+        help="SQLAlchemy URL of a database in which to store checkpoints. "
+        "For SQL output, defaults to the output database. Required in "
+        "order to checkpoint delta output, which has no database of its "
+        "own, e.g. sqlite:///checkpoints.db"
     ),
     Argument(
         'users',
@@ -282,7 +291,7 @@ def main(argv):
 def validate_output_filename(output_format, output_filename):
     """
     Validate file extensions for csv, xls and xlsx output formats.
-    Ensure extension unless using sql output_format.
+    Ensure extension unless using sql or delta output_format.
     """
     errors = []
     if output_format == 'csv' and not output_filename.endswith('.zip'):
@@ -291,7 +300,17 @@ def validate_output_filename(output_format, output_filename):
         errors.append("For output format as xls, output file name should have extension xls")
     elif output_format == 'xlsx' and not output_filename.endswith('.xlsx'):
         errors.append("For output format as xlsx, output file name should have extension xlsx")
-    elif output_format != 'sql' and "." not in output_filename:
+    elif output_format == 'delta' and output_filename.endswith(
+        ('.zip', '.xls', '.xlsx')
+    ):
+        errors.append(
+            "For delta output, --output should be a directory or object "
+            "storage URI"
+        )
+    elif (
+        output_format not in ('sql', 'delta')
+        and "." not in output_filename
+    ):
         errors.append("Missing extension in output file name")
     return errors
 
@@ -386,6 +405,8 @@ def _get_writer(output_format, output, strict_types):
                 )
 
         return writers.SqlTableWriter(output, strict_types)
+    elif output_format == 'delta':
+        return writers.DeltaTableWriter(output)
     else:
         raise Exception(f"Unknown output format: {output_format}")
 
@@ -418,8 +439,14 @@ def _get_checkpoint_manager(args):
         logger.warning(
             "Checkpointing disabled when using '--since' or '--until'"
         )
+    elif args.output_format == 'delta' and not args.checkpoint_database_url:
+        logger.warning(
+            "Checkpointing disabled for delta output without "
+            "'--checkpoint-database-url'"
+        )
     else:
         checkpoint_manager = get_checkpoint_manager(args)
+        checkpoint_manager.defer_checkpoints = args.output_format == 'delta'
         checkpoint_manager.create_checkpoint_table()
         return checkpoint_manager
 
@@ -461,6 +488,14 @@ def evaluate_query(env, query):
         ) as err:
             logger.error(f'Stopping because of database error:\n{err}')
             return EXIT_STATUS_ERROR
+        except DataExportException as err:
+            # the chained traceback can contain untruncated exported
+            # values, so log it only when the user opts into --verbose
+            logger.error(
+                f'Stopping because of export error:\n{err.message}',
+                exc_info=logger.isEnabledFor(logging.DEBUG),
+            )
+            return EXIT_STATUS_ERROR
         except KeyboardInterrupt:
             logger.error("Export aborted")
             return EXIT_STATUS_ERROR
@@ -469,6 +504,11 @@ def evaluate_query(env, query):
 def main_with_args(args):
     logger.info(f"CommCare Export Version {__version__}")
     writer = _get_writer(args.output_format, args.output, args.strict_types)
+    if args.checkpoint_database_url and not writer.support_checkpoints:
+        logger.warning(
+            "'--checkpoint-database-url' is ignored because output format "
+            f"'{args.output_format}' does not support checkpoints"
+        )
 
     if args.query is None and args.users is False and args.locations is False:
         logger.error(
@@ -534,6 +574,9 @@ def main_with_args(args):
     )
 
     exit_status = evaluate_query(env, query)
+
+    if checkpoint_manager and exit_status == EXIT_STATUS_SUCCESS:
+        checkpoint_manager.write_deferred_checkpoints()
 
     if args.output_format == 'json':
         print(

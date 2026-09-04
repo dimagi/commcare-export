@@ -23,8 +23,8 @@ Query and Output
 ----------------
 
 - [Query Formats](query-formats.md) - Excel and JSON query formats
-- [Output Formats](output-formats.md) - CSV, Excel, JSON, SQL, and
-  Markdown outputs
+- [Output Formats](output-formats.md) - CSV, Excel, JSON, SQL, Delta
+  Lake, and Markdown outputs
 - [User and Location Data](user-location-data.md) - Exporting
   organization data
 - [Command-line Usage](cli-usage.md) - CLI reference and logging

@@ -15,7 +15,7 @@ def get_checkpoint_manager(args, require_query=True):
             raise
 
     return CheckpointManager(
-        args.output,
+        args.checkpoint_database_url or args.output,
         args.query,
         md5,
         args.project,

@@ -36,6 +36,14 @@ commcare-export \
     --project YOUR_PROJECT \
     --output-format sql \
     --output postgresql://user:pass@localhost/dbname
+
+# Export to Delta Lake tables in cloud storage with incremental updates
+commcare-export \
+    --query examples/demo-registrations.xlsx \
+    --project YOUR_PROJECT \
+    --output-format delta \
+    --output az://container/commcare \
+    --checkpoint-database-url sqlite:///checkpoints.db
 ```
 
 Example query files are provided in the [examples/](examples/) directory

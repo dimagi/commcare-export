@@ -286,3 +286,44 @@ class TestCheckpointManagerProvider:
             PaginationMode.date_modified,
             data_source,
         )
+
+
+def sqlite_manager(tmp_path):
+    manager = CheckpointManager(
+        f'sqlite:///{tmp_path}/checkpoints.db',
+        'query',
+        '123',
+        'test',
+        'hq',
+        table_names=['t1'],
+    )
+    manager.defer_checkpoints = True
+    manager.create_checkpoint_table()
+    return manager
+
+
+def test_deferred_checkpoints_are_not_written_during_the_run(tmp_path):
+    manager = sqlite_manager(tmp_path)
+    sub = manager.for_dataset('form', ['t1'])
+    sub.set_checkpoint(
+        '2026-09-01T00:00:00', PaginationMode.date_indexed, is_final=False
+    )
+    sub.set_checkpoint(
+        '2026-09-02T00:00:00', PaginationMode.date_indexed, is_final=True
+    )
+    assert manager.get_latest_checkpoints() == []
+
+
+def test_deferred_final_checkpoints_are_written_on_flush(tmp_path):
+    manager = sqlite_manager(tmp_path)
+    sub = manager.for_dataset('form', ['t1'])
+    sub.set_checkpoint(
+        '2026-09-01T00:00:00', PaginationMode.date_indexed, is_final=False
+    )
+    sub.set_checkpoint(
+        '2026-09-02T00:00:00', PaginationMode.date_indexed, is_final=True
+    )
+    manager.write_deferred_checkpoints()
+    checkpoints = manager.get_latest_checkpoints()
+    assert [c.since_param for c in checkpoints] == ['2026-09-02T00:00:00']
+    assert checkpoints[0].final

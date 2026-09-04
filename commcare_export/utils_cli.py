@@ -9,6 +9,19 @@ from commcare_export.utils import confirm, get_checkpoint_manager, print_runs
 EXIT_STATUS_ERROR = 1
 
 
+def add_checkpoint_database_args(parser):
+    databases = parser.add_mutually_exclusive_group(required=True)
+    databases.add_argument(
+        '--output',
+        help='SQL Database URL where checkpoints are stored',
+    )
+    databases.add_argument(
+        '--checkpoint-database-url',
+        help='SQL Database URL where checkpoints are stored (the same '
+        'option name commcare-export uses)',
+    )
+
+
 class BaseCommand:
     slug: str | None = None
     help: str | None = None
@@ -25,8 +38,9 @@ class ListHistoryCommand(BaseCommand):
     slug = 'history'
     help = """List export history. History will be filtered by arguments provided.
 
-    This command only applies when exporting to a SQL database. The command
-    lists the checkpoints that have been created by the command.
+    The command lists the checkpoints that exports have created.
+    Checkpoints are stored in the export database for SQL output, or in
+    the database named by '--checkpoint-database-url'.
     """
 
     @classmethod
@@ -36,7 +50,7 @@ class ListHistoryCommand(BaseCommand):
             default=10,
             help="Limit the number of export runs to display"
         )
-        parser.add_argument('--output', required=True, help='SQL Database URL')
+        add_checkpoint_database_args(parser)
         shared_args = {'project', 'query', 'checkpoint_key', 'commcare_hq'}
         for arg in CLI_ARGS:
             if arg.name in shared_args:
@@ -89,7 +103,7 @@ class SetKeyCommand(BaseCommand):
 
     @classmethod
     def add_arguments(cls, parser):
-        parser.add_argument('--output', required=True, help='SQL Database URL')
+        add_checkpoint_database_args(parser)
         shared_args = {'project', 'query', 'checkpoint_key'}
         for arg in CLI_ARGS:
             if arg.name in shared_args:
@@ -111,8 +125,10 @@ class SetKeyCommand(BaseCommand):
         runs_no_key = manager.get_latest_checkpoints()
 
         if not runs_no_key:
-            print(args)
-            print("No checkpoint found with args matching those provided.")
+            print("No checkpoint found matching:")
+            print(f"    project:        {args.project}")
+            print(f"    query filename: {args.query}")
+            print(f"    commcare-hq:    {args.commcare_hq}")
             return
 
         print_runs(runs_no_key)
