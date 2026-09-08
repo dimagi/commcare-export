@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.16.0] - 2026-09-08
+
+- Added Delta Lake as an output format
+- Faster, lower-memory SQL exports via batched upserts
+- Upgraded to SQLAlchemy 2.0
+- Dropped support for Python 3.9; added support for Python 3.14
+
+[1.16.0]: https://github.com/dimagi/commcare-export/compare/1.15.0...1.16.0
+
 ## [1.15.0] - 2026-01-27
 
 - Alembic migrations are included in the package
